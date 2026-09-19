@@ -103,6 +103,9 @@ Item {
 
 		anchors.centerIn: parent
 
+		height: Theme.barIconHeight
+		width: height * label.aspect
+
 		// The cell fills with the charge, so the number is not needed to read
 		// it at a glance.
 		level: root.ready ? root.level : -1

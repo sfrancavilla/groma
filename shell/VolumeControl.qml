@@ -58,10 +58,18 @@ Item {
 
 		anchors.centerIn: parent
 
+		height: Theme.barIconHeight
+		width: height * label.aspect
+
 		// The glyph is the readout: no waves when muted, one below half, two
 		// above. A pack would need three separate icons to say this.
-		waves: root.muted ? 0 : root.volume > 0.5 ? 2 : 1
-		color: root.muted ? Theme.glassTextMuted : Theme.glassTextPrimary
+		//
+		// Silent is silent, so zero gets the same crossed glyph as mute - it
+		// previously fell through to "one wave", which says the opposite.
+		waves: root.muted || root.volume <= 0 ? 0
+			: root.volume > 0.5 ? 2 : 1
+		color: root.muted || root.volume <= 0
+			? Theme.glassTextMuted : Theme.glassTextPrimary
 
 		opacity: trigger.containsMouse || root.open ? 1.0 : 0.85
 

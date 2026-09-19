@@ -13,12 +13,25 @@ Item {
 	// 0 = muted (a cross), 1 = one arc, 2 = both arcs.
 	property int waves: 2
 
-	implicitWidth: 18
-	implicitHeight: 14
+	// The paths below are drawn at this size; setting width or height scales
+	// them rather than cropping, which absolute path coordinates would
+	// otherwise do.
+	readonly property real baseWidth: 18
+	readonly property real baseHeight: 14
+	readonly property real aspect: icon.baseWidth / icon.baseHeight
+
+	implicitWidth: icon.baseWidth
+	implicitHeight: icon.baseHeight
 
 	Shape {
-		anchors.fill: parent
+		width: icon.baseWidth
+		height: icon.baseHeight
 		preferredRendererType: Shape.CurveRenderer
+
+		transform: Scale {
+			xScale: icon.width / icon.baseWidth
+			yScale: icon.height / icon.baseHeight
+		}
 
 		// Body and cone as a single outline.
 		ShapePath {
