@@ -11,7 +11,13 @@ import QtQuick
 Item {
 	id: root
 
+	// displayDevice is a synthetic aggregate: right for percentage, state and
+	// time, but it carries no capacity, so health reads 0 off it. Health has
+	// to come from the physical battery.
 	readonly property var device: UPower.displayDevice
+	readonly property var physical:
+		UPower.devices.values.find(d => d.isLaptopBattery) ?? null
+	readonly property real health: root.physical?.healthPercentage ?? 0
 	readonly property bool ready: root.device?.ready && root.device?.isPresent
 	readonly property real level: root.ready ? root.device.percentage : 0
 	readonly property int state: root.ready ? root.device.state
@@ -243,12 +249,11 @@ Item {
 				Row {
 					anchors.right: parent.right
 					spacing: Theme.spacingS / 2 + 3
+					visible: root.health > 0
 
 					Text {
 						anchors.verticalCenter: parent.verticalCenter
-						text: root.ready
-							? "Health " + Math.round(root.device.healthPercentage) + "%"
-							: ""
+						text: "Health " + Math.round(root.health) + "%"
 						font.pixelSize: Theme.fontCaption
 						font.weight: Font.DemiBold
 						opacity: 0.85
@@ -260,12 +265,10 @@ Item {
 						width: 6
 						height: 6
 						radius: 3
-						visible: root.ready
 
-						color: root.device.healthPercentage >= 80
-							? Theme.success
-							: root.device.healthPercentage >= 60
-								? Theme.warning : Theme.danger
+						color: root.health >= 80 ? Theme.success
+							: root.health >= 60 ? Theme.warning
+							: Theme.danger
 					}
 				}
 			}
