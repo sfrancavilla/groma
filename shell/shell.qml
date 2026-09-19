@@ -10,6 +10,9 @@ ShellRoot {
 		precision: SystemClock.Minutes
 	}
 
+	// The desktop background. Drawn, so the glass has something to tint.
+	Wallpaper {}
+
 	// The polkit password prompt, defined in PolkitDialog.qml.
 	PolkitDialog {}
 

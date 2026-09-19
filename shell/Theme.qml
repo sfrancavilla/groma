@@ -38,6 +38,15 @@ Singleton {
 	readonly property color warning: "#f5b942"
 	readonly property color success: "#4ade80"
 
+	// --- Desktop ---
+	//
+	// The backdrop the glass is tinted by. Approximations of the design's
+	// oklch mesh: a dark blue base with a green wash top-left and a violet one
+	// bottom-right.
+	readonly property color desktopBase: "#2c3a48"
+	readonly property color desktopWashA: Qt.rgba(0.63, 0.80, 0.51, 0.85)
+	readonly property color desktopWashB: Qt.rgba(0.51, 0.37, 0.78, 0.85)
+
 	// --- Liquid glass (experimental) ---
 	//
 	// The blur behind these surfaces is done by the compositor; everything
@@ -55,9 +64,11 @@ Singleton {
 	//
 	// The tint is near-black rather than grey. Its job is to darken whatever
 	// shows through for contrast, not to add a colour of its own.
-	readonly property color glassTint: "#101018"
-	readonly property real glassOpacityTop: 0.46
-	readonly property real glassOpacityBottom: 0.30
+	// White, as in the design. This only works with something behind it - see
+	// Wallpaper.qml. White glass over an empty dark desktop is grey.
+	readonly property color glassTint: "#ffffff"
+	readonly property real glassOpacityTop: 0.18
+	readonly property real glassOpacityBottom: 0.12
 
 	// Two stops rather than one flat fill - the sheen is what stops it
 	// reading as "a dark box with some transparency".
