@@ -19,6 +19,8 @@ One long-running process provides the whole desktop shell:
 | `hypr/hyprland.lua` | Compositor config: keybinds, input, look and feel, and starting the shell |
 | `shell/shell.qml` | Root. The bar, and it instantiates the components below |
 | `shell/PolkitDialog.qml` | Polkit authentication agent and its password dialog |
+| `shell/VolumeControl.qml` | Bar readout and the Sound tile: slider, output-device chips |
+| `shell/BatteryControl.qml` | Bar readout and the Battery tile: charge, time, health |
 | `shell/Notifications.qml` | Notification daemon; owns `org.freedesktop.Notifications` |
 | `shell/NotificationToast.qml` | A single notification card |
 | `shell/DialogButton.qml` | Shared button used by dialogs and notification actions |
@@ -46,7 +48,7 @@ whole shell instead of leaving one widget behind.
 | `Slider.qml` | Any 0..1 value. The lens sits inside the track; the caller owns the value and handles `moved` |
 | `Chip.qml` | One option among a few, the chosen one brighter |
 | `DialogButton.qml` | Buttons in dialogs and notification actions |
-| `SpeakerIcon.qml` | Drawn glyph, as paths rather than an icon font |
+| `SpeakerIcon.qml` / `BatteryIcon.qml` / `BoltIcon.qml` | Drawn glyphs, as paths rather than an icon font |
 
 Tokens are named by **role**, never by value: `Theme.danger` rather than
 `Theme.red`, `Theme.surface` rather than `Theme.white`. A component asking for

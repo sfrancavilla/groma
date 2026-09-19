@@ -18,6 +18,15 @@ Rectangle {
 
 	// Off dims the fill without disabling the control, for mute and the like.
 	property bool active: true
+	// A readout rather than a control: battery is shown, not set.
+	property bool interactive: true
+	// The fill carries state through its tint - charging, low, normal.
+	property color fillColor: Theme.glassTrackFill
+	// A band travelling along the fill, for something in progress.
+	property bool shimmer: false
+
+	// Anything to place inside the lens itself, such as a charging bolt.
+	property alias knobContent: knobOverlay.data
 	// Suppressed while a panel is opening, where the first layout would
 	// otherwise animate from zero.
 	property bool animateValue: true
@@ -47,8 +56,52 @@ Rectangle {
 		width: Math.min(control.width,
 			knob.x + knob.width / 2 + Theme.sliderKnobBias)
 		radius: control.radius
-		color: Theme.glassTrackFill
+		color: control.fillColor
 		opacity: control.active ? 1.0 : 0.5
+
+		Behavior on color {
+			ColorAnimation { duration: 200 }
+		}
+
+		// Travels along the filled part only, so it reads as the fill
+		// advancing rather than as a highlight on the whole track.
+		Rectangle {
+			id: shimmer
+
+			property real pos: 0.5
+
+			anchors.fill: parent
+			radius: parent.radius
+			visible: control.shimmer
+
+			gradient: Gradient {
+				orientation: Gradient.Horizontal
+
+				GradientStop {
+					position: Math.max(0, shimmer.pos - 0.3)
+					color: "#00ffffff"
+				}
+				GradientStop {
+					position: shimmer.pos
+					color: Qt.rgba(1, 1, 1, 0.35)
+				}
+				GradientStop {
+					position: Math.min(1, shimmer.pos + 0.3)
+					color: "#00ffffff"
+				}
+			}
+
+			SequentialAnimation {
+				running: shimmer.visible
+				loops: Animation.Infinite
+
+				NumberAnimation {
+					target: shimmer; property: "pos"
+					from: 0.0; to: 1.0
+					duration: 2400; easing.type: Easing.InOutSine
+				}
+			}
+		}
 
 		Behavior on width {
 			enabled: control.animateValue && !drag.pressed
@@ -77,7 +130,10 @@ Rectangle {
 			NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
 		}
 
-		scale: drag.pressed ? 1.06 : drag.containsMouse ? 1.03 : 1.0
+		scale: !control.interactive ? 1.0
+			: drag.pressed ? 1.06
+			: drag.containsMouse ? 1.03
+			: 1.0
 
 		Behavior on scale {
 			NumberAnimation { duration: 120; easing.type: Easing.OutBack }
@@ -136,6 +192,13 @@ Rectangle {
 			}
 		}
 
+		// Declared after the lens so it draws on top of it.
+		Item {
+			id: knobOverlay
+
+			anchors.fill: parent
+		}
+
 		SequentialAnimation {
 			running: control.visible
 			loops: Animation.Infinite
@@ -157,8 +220,10 @@ Rectangle {
 		id: drag
 
 		anchors.fill: parent
-		hoverEnabled: true
-		cursorShape: Qt.PointingHandCursor
+		enabled: control.interactive
+		hoverEnabled: control.interactive
+		cursorShape: control.interactive
+			? Qt.PointingHandCursor : Qt.ArrowCursor
 
 		// The pointer grabs the centre of the lens, so undo the same inset the
 		// knob's position applies.

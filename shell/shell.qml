@@ -1,7 +1,6 @@
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import Quickshell.Services.UPower
 import Quickshell.Services.Pipewire
 import QtQuick
 
@@ -111,20 +110,8 @@ ShellRoot {
 				anchors.verticalCenter: parent.verticalCenter
 			}
 
-			Text {
+			BatteryControl {
 				anchors.verticalCenter: parent.verticalCenter
-				color: UPower.displayDevice.ready && UPower.displayDevice.isPresent
-					&& UPower.displayDevice.state === UPowerDeviceState.Discharging
-					&& UPower.displayDevice.percentage <= 0.20
-					? Theme.danger : bar.barText
-
-				style: Theme.glass ? Text.Raised : Text.Normal
-				styleColor: Theme.glassTextShadow
-
-				text: UPower.displayDevice.ready && UPower.displayDevice.isPresent
-					? (UPower.displayDevice.state === UPowerDeviceState.Charging ? "⚡ " : "")
-						+ Math.round(UPower.displayDevice.percentage * 100) + "%"
-					: "--%"
 			}
 
 		}

@@ -32,8 +32,10 @@ Singleton {
 	readonly property color textMuted: "#888888"
 	readonly property color textOnStrong: "#ffffff"
 
-	// Status. One red, used everywhere something is wrong.
+	// Status. One of each, used everywhere that state occurs.
 	readonly property color danger: "#cc3333"
+	readonly property color warning: "#f5b942"
+	readonly property color success: "#4ade80"
 
 	// --- Liquid glass (experimental) ---
 	//
@@ -112,6 +114,14 @@ Singleton {
 	readonly property color glassKnobRim: Qt.rgba(1, 1, 1, 0.25)
 	readonly property color glassKnobEdge: Qt.rgba(1, 1, 1, 0.70)
 	readonly property color glassSheen: Qt.rgba(1, 1, 1, 0.80)
+
+	// A slider fill carries state through its tint: charging green, low amber.
+	readonly property color glassFillCharging:
+		Qt.rgba(success.r, success.g, success.b, 0.60)
+	readonly property color glassFillWarning:
+		Qt.rgba(warning.r, warning.g, warning.b, 0.70)
+	// The lens is nearly white, so anything drawn on it has to be dark.
+	readonly property color glassOnLens: "#1d6b3f"
 
 	readonly property color glassChip: Qt.rgba(1, 1, 1, 0.10)
 	readonly property color glassChipActive: Qt.rgba(1, 1, 1, 0.28)
