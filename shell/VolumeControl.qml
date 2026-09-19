@@ -201,6 +201,16 @@ Item {
 				Rectangle {
 					id: track
 
+					// The knob travels between the insets rather than across
+					// the full width, so it never overhangs either end. The
+					// fill then runs to the knob's centre, not to the raw
+					// percentage - otherwise the track's edge cuts through the
+					// middle of the lens at full volume.
+					readonly property int knobSize: 40
+					readonly property int inset: 2
+					readonly property real travel:
+						width - track.knobSize - track.inset * 2
+
 					width: parent.width
 					height: 44
 					radius: height / 2
@@ -218,7 +228,7 @@ Item {
 							bottom: parent.bottom
 						}
 
-						width: track.width * root.volume
+						width: knob.x + knob.width / 2
 						radius: track.radius
 						color: Theme.glassTrackFill
 
@@ -258,10 +268,9 @@ Item {
 
 						property real sheenPos: 0.5
 
-						width: 40
-						height: 40
-						x: Math.max(2, Math.min(track.width - width - 2,
-							fill.width - width / 2))
+						width: track.knobSize
+						height: track.knobSize
+						x: track.inset + root.volume * track.travel
 						anchors.verticalCenter: parent.verticalCenter
 
 						Behavior on x {
@@ -353,12 +362,16 @@ Item {
 						hoverEnabled: true
 						cursorShape: Qt.PointingHandCursor
 
+						// The pointer grabs the centre of the lens, so undo the
+						// same inset the knob's position applies.
 						function setFromX(x) {
-							if (!root.ready)
+							if (!root.ready || track.travel <= 0)
 								return;
 
-							root.sink.audio.volume =
-								Math.max(0, Math.min(1, x / track.width));
+							const v = (x - track.inset - track.knobSize / 2)
+								/ track.travel;
+
+							root.sink.audio.volume = Math.max(0, Math.min(1, v));
 						}
 
 						onPressed: mouse => drag.setFromX(mouse.x)
