@@ -145,9 +145,9 @@ Singleton {
 	readonly property color glassOnLens: "#1d6b3f"
 	readonly property color glassTextOnLens: "#16161c"
 
-	// Depth cues the design carries as inset box-shadows. Without them a panel
-	// is a flat translucent rectangle and the lens is a pale disc.
-	readonly property color glassInnerHighlight: Qt.rgba(1, 1, 1, 0.45)
+	// Depth cues the design carries as inset box-shadows, for the lens. The
+	// panel's own inset highlight is not here: on screen it read as a line
+	// drawn on the top edge rather than as a surface catching light.
 	readonly property color glassLensShade: Qt.rgba(0, 0, 0, 0.16)
 	readonly property color glassLensGlow: Qt.rgba(1, 1, 1, 0.80)
 

@@ -6,8 +6,12 @@ import QtQuick
 //
 //   background:  rgba(255,255,255,.14)                 - flat
 //   border:      1px solid rgba(255,255,255,.32)       - uniform
-//   box-shadow:  inset 0 1px 0 rgba(255,255,255,.45)   - lit top edge
-//                0 16px 40px rgba(0,0,0,.30)           - it floats
+//   box-shadow:  0 16px 40px rgba(0,0,0,.30)           - it floats
+//
+// The design's `inset 0 1px 0 rgba(255,255,255,.45)` is deliberately left out.
+// Three attempts at it all read as a stray line on the top edge rather than as
+// a lit surface - duplicating the border, hanging outside the corners, or
+// simply being visible as a line. The uniform border carries the edge alone.
 //
 // Earlier versions graded both the fill and the edge from light at the top to
 // dark at the bottom, on the theory that real glass catches light unevenly.
@@ -82,44 +86,6 @@ Rectangle {
 		originY: panel.washOriginY
 		fieldWidth: panel.washFieldWidth
 		fieldHeight: panel.washFieldHeight
-	}
-
-	// `inset 0 1px 0`: the top of the edge, lit.
-	//
-	// It sits *on* the border rather than below it. Drawn one pixel down, it
-	// is a second line beside the border - two bright rows, which on a scaled
-	// display reads as a doubled edge.
-	//
-	// And it fades out where the corners begin rather than stopping short of
-	// them. A straight line inset by less than the radius has its ends hanging
-	// in the space the corner has already curved away from, so they float
-	// outside the panel's outline.
-	Rectangle {
-		id: litEdge
-
-		// How far along the width the straight part of the top edge starts.
-		readonly property real corner:
-			Math.min(0.45, parent.radius / Math.max(1, parent.width))
-
-		visible: Theme.glass
-		anchors {
-			left: parent.left
-			right: parent.right
-			top: parent.top
-			leftMargin: 1
-			rightMargin: 1
-		}
-
-		height: 1
-
-		gradient: Gradient {
-			orientation: Gradient.Horizontal
-
-			GradientStop { position: 0.0; color: "#00ffffff" }
-			GradientStop { position: litEdge.corner; color: Theme.glassInnerHighlight }
-			GradientStop { position: 1.0 - litEdge.corner; color: Theme.glassInnerHighlight }
-			GradientStop { position: 1.0; color: "#00ffffff" }
-		}
 	}
 
 	// Declared last, so caller content sits above the glass.
