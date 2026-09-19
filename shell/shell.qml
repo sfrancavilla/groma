@@ -20,7 +20,10 @@ ShellRoot {
 	Notifications {}
 
 	// Not a lock screen yet - a harness for proving the PAM conversation.
-	LockScreen {}
+	LockScreen { id: lockScreen }
+
+	// Dim, then lock, then turn the screen off.
+	IdleChain { lock: lockScreen }
 
 	PwObjectTracker {
 		objects: [Pipewire.defaultAudioSink]

@@ -22,6 +22,7 @@ One long-running process provides the whole desktop shell:
 | `shell/VolumeControl.qml` | Bar readout and the Sound tile: slider, output-device chips |
 | `shell/BatteryControl.qml` | Bar readout and the Battery tile: charge, time, health |
 | `shell/LockScreen.qml` | Session lock (SUPER+L). `LockContent.qml` is the unlock face |
+| `shell/IdleChain.qml` | Dim, then lock, then blank, on increasing idle timeouts |
 | `shell/Notifications.qml` | Notification daemon; owns `org.freedesktop.Notifications` |
 | `shell/NotificationToast.qml` | A single notification card |
 | `shell/DialogButton.qml` | Shared button used by dialogs and notification actions |
