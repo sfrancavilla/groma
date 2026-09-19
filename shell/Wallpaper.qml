@@ -6,11 +6,19 @@ import QtQuick.Shapes
 // The desktop background.
 //
 // Drawn rather than loaded, so there is something behind the glass out of the
-// box: glass over an empty black desktop is just grey, whatever tint you give
-// it. Point `source` at a file and that is used instead.
+// box: glass over an empty dark desktop is grey, whatever tint you give it.
+// Point `source` at a file and that is used instead.
 //
-// The gradient is the mesh the design's mockups sit on, so the shell looks the
-// way it was drawn.
+// This is the mesh the design's mockups sit on, transcribed rather than
+// approximated. In CSS it is
+//
+//   radial-gradient(100% 80% at 15% 15%, oklch(0.78 0.13 130) 0%, transparent 55%),
+//   radial-gradient( 90% 90% at 85% 75%, oklch(0.62 0.18 290) 0%, transparent 60%),
+//   oklch(0.3 0.05 230)
+//
+// where the leading pair is the ellipse's radii as a share of the box, not a
+// circle - which is what made the first attempt at this too small and too
+// round to read as the same backdrop.
 PanelWindow {
 	id: wallpaper
 
@@ -38,62 +46,76 @@ PanelWindow {
 		asynchronous: true
 	}
 
-	// Two broad washes of colour over the base, the way the design's backdrop
-	// is built. Shapes rather than Rectangle, because a Rectangle gradient is
-	// linear only.
-	Shape {
+	// Shapes only offers a circular radial gradient, so the ellipse is a
+	// circle of radius rx with the whole layer squashed vertically about the
+	// gradient's own centre.
+	component Wash: Item {
+		id: blob
+
+		property color tint: "#ffffff"
+		property real cx: 0
+		property real cy: 0
+		property real rx: 100
+		property real ry: 100
+		// Where the colour has faded out entirely, as a share of rx.
+		property real fade: 0.55
+
 		anchors.fill: parent
 		visible: wallpaper.source === ""
-		preferredRendererType: Shape.CurveRenderer
-		asynchronous: true
 
-		ShapePath {
-			strokeWidth: 0
+		transform: Scale {
+			origin.x: blob.cx
+			origin.y: blob.cy
+			yScale: blob.rx > 0 ? blob.ry / blob.rx : 1
+		}
 
-			fillGradient: RadialGradient {
-				centerX: wallpaper.width * 0.15
-				centerY: wallpaper.height * 0.15
-				centerRadius: wallpaper.width * 0.75
-				focalX: wallpaper.width * 0.15
-				focalY: wallpaper.height * 0.15
+		Shape {
+			anchors.fill: parent
+			preferredRendererType: Shape.CurveRenderer
+			asynchronous: true
 
-				GradientStop { position: 0.0; color: Theme.desktopWashA }
-				GradientStop { position: 0.55; color: "#00000000" }
+			ShapePath {
+				strokeWidth: 0
+
+				fillGradient: RadialGradient {
+					centerX: blob.cx
+					centerY: blob.cy
+					centerRadius: blob.rx
+					focalX: blob.cx
+					focalY: blob.cy
+
+					GradientStop { position: 0.0; color: blob.tint }
+					GradientStop {
+						position: blob.fade
+						color: Qt.rgba(blob.tint.r, blob.tint.g, blob.tint.b, 0)
+					}
+				}
+
+				// Overdrawn vertically, because the squash above would
+				// otherwise leave the top and bottom of the screen bare.
+				startX: 0; startY: blob.cy - blob.height * 4
+				PathLine { x: blob.width; y: blob.cy - blob.height * 4 }
+				PathLine { x: blob.width; y: blob.cy + blob.height * 4 }
+				PathLine { x: 0; y: blob.cy + blob.height * 4 }
 			}
-
-			startX: 0; startY: 0
-			PathLine { x: wallpaper.width; y: 0 }
-			PathLine { x: wallpaper.width; y: wallpaper.height }
-			PathLine { x: 0; y: wallpaper.height }
-			PathLine { x: 0; y: 0 }
 		}
 	}
 
-	Shape {
-		anchors.fill: parent
-		visible: wallpaper.source === ""
-		preferredRendererType: Shape.CurveRenderer
-		asynchronous: true
+	Wash {
+		tint: Theme.desktopWashA
+		cx: wallpaper.width * 0.15
+		cy: wallpaper.height * 0.15
+		rx: wallpaper.width * 1.0
+		ry: wallpaper.height * 0.8
+		fade: 0.55
+	}
 
-		ShapePath {
-			strokeWidth: 0
-
-			fillGradient: RadialGradient {
-				centerX: wallpaper.width * 0.85
-				centerY: wallpaper.height * 0.78
-				centerRadius: wallpaper.width * 0.7
-				focalX: wallpaper.width * 0.85
-				focalY: wallpaper.height * 0.78
-
-				GradientStop { position: 0.0; color: Theme.desktopWashB }
-				GradientStop { position: 0.6; color: "#00000000" }
-			}
-
-			startX: 0; startY: 0
-			PathLine { x: wallpaper.width; y: 0 }
-			PathLine { x: wallpaper.width; y: wallpaper.height }
-			PathLine { x: 0; y: wallpaper.height }
-			PathLine { x: 0; y: 0 }
-		}
+	Wash {
+		tint: Theme.desktopWashB
+		cx: wallpaper.width * 0.85
+		cy: wallpaper.height * 0.75
+		rx: wallpaper.width * 0.9
+		ry: wallpaper.height * 0.9
+		fade: 0.60
 	}
 }

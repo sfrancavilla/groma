@@ -43,9 +43,13 @@ Singleton {
 	// The backdrop the glass is tinted by. Approximations of the design's
 	// oklch mesh: a dark blue base with a green wash top-left and a violet one
 	// bottom-right.
-	readonly property color desktopBase: "#2c3a48"
-	readonly property color desktopWashA: Qt.rgba(0.63, 0.80, 0.51, 0.85)
-	readonly property color desktopWashB: Qt.rgba(0.51, 0.37, 0.78, 0.85)
+	// Converted from the design's oklch rather than matched by eye. The base
+	// is a deep teal, not a mid grey-blue: oklch(0.3 0.05 230) is much darker
+	// than it looks written down, and everything sitting on it was lifted
+	// because of it.
+	readonly property color desktopBase: "#0d3242"          // oklch(0.30 0.05 230)
+	readonly property color desktopWashA: "#9cc86c"         // oklch(0.78 0.13 130)
+	readonly property color desktopWashB: "#886de9"         // oklch(0.62 0.18 290)
 
 	// --- Liquid glass (experimental) ---
 	//
