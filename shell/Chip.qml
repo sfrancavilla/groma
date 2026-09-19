@@ -1,0 +1,49 @@
+import QtQuick
+
+// A pill: one option among a few, the chosen one brighter.
+Rectangle {
+	id: chip
+
+	property alias text: label.text
+	property bool active: false
+
+	signal clicked
+
+	height: Theme.chipHeight
+	radius: Theme.radiusPill
+
+	color: chip.active ? Theme.glassChipActive
+		: mouse.containsMouse ? Theme.glassControlHover
+		: Theme.glassChip
+
+	Behavior on color {
+		ColorAnimation { duration: 120 }
+	}
+
+	Text {
+		id: label
+
+		anchors {
+			fill: parent
+			leftMargin: Theme.spacingS
+			rightMargin: Theme.spacingS
+		}
+
+		horizontalAlignment: Text.AlignHCenter
+		verticalAlignment: Text.AlignVCenter
+		elide: Text.ElideRight
+		font.pixelSize: Theme.fontCaption
+		font.bold: chip.active
+		opacity: chip.active ? 1.0 : 0.8
+		color: Theme.glassTextPrimary
+	}
+
+	MouseArea {
+		id: mouse
+
+		anchors.fill: parent
+		hoverEnabled: true
+		cursorShape: Qt.PointingHandCursor
+		onClicked: chip.clicked()
+	}
+}

@@ -105,7 +105,7 @@ ShellRoot {
 				rightMargin: 10
 				verticalCenter: parent.verticalCenter
 			}
-			spacing: 16
+			spacing: Theme.spacingL
 
 			VolumeControl {
 				anchors.verticalCenter: parent.verticalCenter

@@ -58,8 +58,8 @@ GlassPanel {
 			left: parent.left
 			right: parent.right
 			verticalCenter: parent.verticalCenter
-			leftMargin: 12
-			rightMargin: 12
+			leftMargin: Theme.spacingM
+			rightMargin: Theme.spacingM
 		}
 
 		spacing: 10
@@ -84,7 +84,7 @@ GlassPanel {
 		}
 
 		Column {
-			spacing: 4
+			spacing: Theme.spacingXs
 			width: layout.width
 				- (thumbnail.visible ? thumbnail.width + layout.spacing : 0)
 
@@ -97,7 +97,7 @@ GlassPanel {
 
 					anchors.left: parent.left
 					text: toast.modelData.appName
-					font.pixelSize: 11
+					font.pixelSize: Theme.fontCaption
 					style: Theme.glass ? Text.Raised : Text.Normal
 					styleColor: Theme.glassTextShadow
 					color: toast.isCritical ? Theme.danger : toast.cardTextMuted
@@ -126,7 +126,7 @@ GlassPanel {
 			Text {
 				width: parent.width
 				text: toast.modelData.summary
-				font.pixelSize: 13
+				font.pixelSize: Theme.fontTitle
 				font.bold: true
 				style: Theme.glass ? Text.Raised : Text.Normal
 				styleColor: Theme.glassTextShadow

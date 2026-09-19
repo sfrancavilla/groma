@@ -116,6 +116,34 @@ Singleton {
 	readonly property color glassChip: Qt.rgba(1, 1, 1, 0.10)
 	readonly property color glassChipActive: Qt.rgba(1, 1, 1, 0.28)
 
+	// --- Metrics ---
+	//
+	// Taken from the volume tile, which is the reference for the rest of the
+	// shell. Components use these rather than their own numbers, so a change
+	// here moves everything together instead of leaving one widget behind.
+	readonly property int tilePadding: 14
+	readonly property int tileWidth: 300
+
+	readonly property int spacingXs: 4
+	readonly property int spacingS: 8
+	readonly property int spacingM: 12
+	readonly property int spacingL: 16
+
+	// Sliders: the knob sits inside the track, not on it.
+	readonly property int sliderHeight: 44
+	readonly property int sliderKnobSize: 40
+	readonly property int sliderInset: 2
+	// How far past the knob centre the fill runs.
+	readonly property int sliderKnobBias: 24
+
+	readonly property int chipHeight: 29
+
+	// --- Type scale ---
+	readonly property int fontCaption: 11
+	readonly property int fontBody: 12
+	readonly property int fontTitle: 13
+	readonly property int fontHeading: 16
+
 	// Corner radii, by element size.
 	readonly property int radiusSmall: 6
 	readonly property int radiusMedium: 10

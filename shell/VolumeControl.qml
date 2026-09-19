@@ -3,12 +3,11 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import QtQuick
-import QtQuick.Shapes
 
 // The bar's volume readout, and the control-center tile it opens.
 //
-// Layout follows the "Refractive lens knob" design: a 44px track the knob sits
-// inside rather than on, and a lens that reads as a sphere catching light.
+// Built from the shell's shared pieces - GlassTile, Slider, Chip - rather than
+// its own. This is the tile the rest of the setup is modelled on.
 Item {
 	id: root
 
@@ -17,7 +16,6 @@ Item {
 	readonly property bool muted: root.ready && root.sink.audio.muted
 	readonly property real volume: root.ready ? root.sink.audio.volume : 0
 
-	// Output devices, so the chips at the bottom of the tile are real.
 	readonly property var sinks: Pipewire.nodes.values.filter(
 		node => node.isSink && !node.isStream)
 
@@ -25,6 +23,11 @@ Item {
 
 	implicitWidth: label.implicitWidth
 	implicitHeight: label.implicitHeight
+
+	function setVolume(v) {
+		if (root.ready)
+			root.sink.audio.volume = Math.max(0, Math.min(1, v));
+	}
 
 	// Descriptions are only populated for tracked nodes.
 	PwObjectTracker {
@@ -66,11 +69,10 @@ Item {
 		}
 
 		onWheel: wheel => {
-			if (!root.ready)
-				return;
-
-			const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
-			root.sink.audio.volume = Math.max(0, Math.min(1, root.volume + step));
+			if (wheel.angleDelta.y > 0)
+				root.setVolume(root.volume + 0.05);
+			else
+				root.setVolume(root.volume - 0.05);
 		}
 	}
 
@@ -103,7 +105,7 @@ Item {
 		id: panel
 
 		// Stays mapped until the closing animation has finished.
-		visible: root.open || card.opacity > 0.01
+		visible: root.open || tile.opacity > 0.01
 
 		anchors {
 			top: true
@@ -113,13 +115,13 @@ Item {
 		exclusionMode: ExclusionMode.Ignore
 		margins {
 			top: 40
-			right: 8
+			right: Theme.spacingS
 		}
 
 		readonly property int pad: Theme.glass ? Theme.glassShadowPadding : 0
 
-		implicitWidth: 300 + panel.pad * 2
-		implicitHeight: content.implicitHeight + 28 + panel.pad * 2
+		implicitWidth: Theme.tileWidth + panel.pad * 2
+		implicitHeight: tile.implicitHeight + panel.pad * 2
 		color: "transparent"
 
 		WlrLayershell.layer: WlrLayer.Overlay
@@ -127,353 +129,105 @@ Item {
 		WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
 		BackgroundEffect.blurRegion: Region {
-			item: card
+			item: tile
 			radius: Theme.radiusPanel
 		}
 
-		GlassPanel {
-			id: card
+		GlassTile {
+			id: tile
 
 			anchors.fill: parent
 			anchors.margins: panel.pad
-			radius: Theme.radiusPanel
+
+			title: "Sound"
+			trailing: root.sink?.description ?? ""
 
 			// Value changes should animate while you are looking at the panel,
 			// but not while it is opening: mapping the window lays the track
 			// out from zero width, and animating that reads as the slider
 			// sliding up to the current volume every time you open it.
-			readonly property bool settled: root.open && card.opacity > 0.99
+			readonly property bool settled: root.open && tile.opacity > 0.99
 
-			// Opacity, scale and y on different curves, so it reads as one
-			// movement settling rather than three separate effects.
 			opacity: root.open ? 1 : 0
 			scale: root.open ? 1 : 0.96
 			y: root.open ? 0 : -6
 
 			Behavior on opacity {
-				NumberAnimation { duration: 180; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1]; easing.type: Easing.Bezier }
+				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
 			}
 			Behavior on scale {
-				NumberAnimation { duration: 180; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1]; easing.type: Easing.Bezier }
+				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
 			}
 			Behavior on y {
-				NumberAnimation { duration: 180; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1]; easing.type: Easing.Bezier }
+				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
 			}
 
-			Column {
-				id: content
+			Slider {
+				width: parent.width
+				value: root.volume
+				active: !root.muted
+				animateValue: tile.settled
+				onMoved: v => root.setVolume(v)
 
-				anchors {
-					left: parent.left
-					right: parent.right
-					top: parent.top
-					leftMargin: 14
-					rightMargin: 14
-					topMargin: 14
+				SpeakerIcon {
+					anchors {
+						left: parent.left
+						leftMargin: Theme.spacingL
+						verticalCenter: parent.verticalCenter
+					}
+
+					color: Theme.glassTextPrimary
+					waves: root.muted ? 0 : root.volume > 0.5 ? 2 : 1
 				}
 
-				spacing: 12
-
-				// Header: what this is, and what it is coming out of.
-				Item {
-					width: parent.width
-					height: title.implicitHeight
-
-					Text {
-						id: title
-
-						anchors.left: parent.left
-						text: "Sound"
-						font.pixelSize: 12
-						font.bold: true
-						color: Theme.glassTextPrimary
+				Text {
+					anchors {
+						right: parent.right
+						rightMargin: Theme.spacingL
+						verticalCenter: parent.verticalCenter
 					}
 
-					Text {
-						anchors.right: parent.right
-						width: parent.width - title.width - 12
-						horizontalAlignment: Text.AlignRight
-						elide: Text.ElideRight
-						text: root.sink?.description ?? root.sink?.nickname ?? ""
-						font.pixelSize: 12
-						font.weight: Font.DemiBold
-						opacity: 0.8
-						color: Theme.glassTextPrimary
-					}
+					text: root.muted ? "Muted" : Math.round(root.volume * 100)
+					font.pixelSize: Theme.fontBody
+					font.bold: true
+					color: Theme.glassTextPrimary
 				}
+			}
 
-				// The track. The knob sits inside it, not on top of it, which
-				// is what makes this read as a control rather than a meter.
-				Rectangle {
-					id: track
+			// Output devices. Chips wrap rather than shrink, so the tile grows
+			// downward instead of squeezing names to nothing.
+			Flow {
+				id: chips
 
-					// The knob travels between the insets rather than across
-					// the full width, so it never overhangs either end.
-					readonly property int knobSize: 40
-					readonly property int inset: 2
-					readonly property real travel:
-						width - track.knobSize - track.inset * 2
+				readonly property int perRow: Math.min(2, root.sinks.length)
+				readonly property real chipWidth:
+					(width - (chips.perRow - 1) * Theme.spacingS)
+					/ Math.max(1, chips.perRow)
 
-					// How far past the lens centre the fill runs. At 0 the fill
-					// edge cuts through the middle of the lens, which is what
-					// the design does and what looked wrong on screen. At
-					// knobSize / 2 the fill edge meets the lens's right edge.
-					// Half the radius sits between the two.
-					readonly property int knobBias: 24
+				width: parent.width
+				spacing: Theme.spacingS
+				visible: root.sinks.length > 0
 
-					width: parent.width
-					height: 44
-					radius: height / 2
-					color: Theme.glassTrack
-					border.width: 1
-					border.color: Theme.glassTrackBorder
-					clip: true
+				Repeater {
+					model: root.sinks
 
-					Rectangle {
-						id: fill
+					Chip {
+						required property var modelData
 
-						anchors {
-							left: parent.left
-							top: parent.top
-							bottom: parent.bottom
-						}
+						width: chips.chipWidth
+						active: modelData === Pipewire.defaultAudioSink
 
-						width: Math.min(track.width,
-							knob.x + knob.width / 2 + track.knobBias)
-						radius: track.radius
-						color: Theme.glassTrackFill
+						// PipeWire offers three names for a sink and only one
+						// is any use on a chip: nickname is the codec
+						// ("ALC285 Analog"), description is device plus profile,
+						// and the profile description is what it actually is.
+						text: (modelData.properties
+								|| {})["device.profile.description"]
+							|| modelData.description
+							|| modelData.nickname
+							|| "Output"
 
-						Behavior on width {
-							enabled: card.settled && !drag.pressed
-							NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
-						}
-					}
-
-					SpeakerIcon {
-						anchors {
-							left: parent.left
-							leftMargin: 16
-							verticalCenter: parent.verticalCenter
-						}
-
-						color: Theme.glassTextPrimary
-						waves: root.muted ? 0 : root.volume > 0.5 ? 2 : 1
-					}
-
-					Text {
-						anchors {
-							right: parent.right
-							rightMargin: 16
-							verticalCenter: parent.verticalCenter
-						}
-
-						text: root.muted ? "Muted" : Math.round(root.volume * 100)
-						font.pixelSize: 12
-						font.bold: true
-						color: Theme.glassTextPrimary
-					}
-
-					// The lens.
-					Item {
-						id: knob
-
-						property real sheenPos: 0.5
-
-						width: track.knobSize
-						height: track.knobSize
-						x: track.inset + root.volume * track.travel
-						anchors.verticalCenter: parent.verticalCenter
-
-						Behavior on x {
-							enabled: card.settled && !drag.pressed
-							NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
-						}
-
-						scale: drag.pressed ? 1.06 : drag.containsMouse ? 1.03 : 1.0
-
-						Behavior on scale {
-							NumberAnimation { duration: 120; easing.type: Easing.OutBack }
-						}
-
-						// A sphere, not a disc: the highlight is off-centre and
-						// the falloff is radial, so it catches light on one side.
-						Shape {
-							anchors.fill: parent
-							preferredRendererType: Shape.CurveRenderer
-
-							ShapePath {
-								strokeColor: Theme.glassKnobEdge
-								strokeWidth: 1
-
-								fillGradient: RadialGradient {
-									centerX: 14; centerY: 12; centerRadius: 32
-									focalX: 14; focalY: 12
-
-									GradientStop { position: 0.0; color: Theme.glassKnobCore }
-									GradientStop { position: 0.45; color: Theme.glassKnobMid }
-									GradientStop { position: 1.0; color: Theme.glassKnobRim }
-								}
-
-								PathAngleArc {
-									centerX: 20; centerY: 20
-									radiusX: 19; radiusY: 19
-									startAngle: 0; sweepAngle: 360
-								}
-							}
-						}
-
-						// The sheen. A rotated circle clips the sweeping band to
-						// the lens for free - rotating a circle leaves a circle,
-						// so no mask is needed.
-						Rectangle {
-							anchors.fill: parent
-							radius: width / 2
-							rotation: 115
-							opacity: 0.9
-
-							gradient: Gradient {
-								orientation: Gradient.Horizontal
-
-								GradientStop {
-									position: Math.max(0, knob.sheenPos - 0.22)
-									color: "#00ffffff"
-								}
-								GradientStop {
-									position: knob.sheenPos
-									color: Theme.glassSheen
-								}
-								GradientStop {
-									position: Math.min(1, knob.sheenPos + 0.22)
-									color: "#00ffffff"
-								}
-							}
-						}
-
-						SequentialAnimation {
-							running: panel.visible
-							loops: Animation.Infinite
-
-							NumberAnimation {
-								target: knob; property: "sheenPos"
-								from: 0.18; to: 0.82
-								duration: 2000; easing.type: Easing.InOutSine
-							}
-							NumberAnimation {
-								target: knob; property: "sheenPos"
-								from: 0.82; to: 0.18
-								duration: 2000; easing.type: Easing.InOutSine
-							}
-						}
-					}
-
-					MouseArea {
-						id: drag
-
-						anchors.fill: parent
-						hoverEnabled: true
-						cursorShape: Qt.PointingHandCursor
-
-						// The pointer grabs the centre of the lens, so undo the
-						// same inset the knob's position applies.
-						function setFromX(x) {
-							if (!root.ready || track.travel <= 0)
-								return;
-
-							const v = (x - track.inset - track.knobSize / 2)
-								/ track.travel;
-
-							root.sink.audio.volume = Math.max(0, Math.min(1, v));
-						}
-
-						onPressed: mouse => drag.setFromX(mouse.x)
-						onPositionChanged: mouse => {
-							if (drag.pressed)
-								drag.setFromX(mouse.x);
-						}
-					}
-				}
-
-				// Output devices. One chip each; the active one is brighter.
-				//
-				// A Flow rather than a Row: dividing a fixed width between
-				// however many sinks exist means four devices get 62px each
-				// and every name elides to nothing. Chips keep a usable width
-				// and wrap instead, so the tile grows downward - which it can
-				// afford to do, unlike sideways.
-				Flow {
-					id: chips
-
-					// Two per row, so a name has room to be read.
-					readonly property int perRow: Math.min(2, root.sinks.length)
-					readonly property real chipWidth:
-						(width - (chips.perRow - 1) * 8) / Math.max(1, chips.perRow)
-
-					width: parent.width
-					spacing: 8
-					visible: root.sinks.length > 0
-
-					Repeater {
-						model: root.sinks
-
-						Rectangle {
-							id: chip
-
-							required property var modelData
-							readonly property bool active:
-								chip.modelData === Pipewire.defaultAudioSink
-
-							width: chips.chipWidth
-							height: 29
-							radius: Theme.radiusPill
-
-							color: chip.active ? Theme.glassChipActive
-								: chipMouse.containsMouse ? Theme.glassControlHover
-								: Theme.glassChip
-
-							Behavior on color {
-								ColorAnimation { duration: 120 }
-							}
-
-							Text {
-								anchors {
-									fill: parent
-									leftMargin: 8
-									rightMargin: 8
-								}
-
-								horizontalAlignment: Text.AlignHCenter
-								verticalAlignment: Text.AlignVCenter
-								elide: Text.ElideRight
-								// PipeWire offers three names for the same
-								// sink, and only one of them is any use on a
-								// chip. For the built-in speakers they are:
-								//
-								//   nickname    ALC285 Analog   (the codec)
-								//   description Ryzen HD Audio Controller Speaker
-								//   profile     Speaker
-								//
-								// The profile description is the part that says
-								// what it is, so prefer it and fall back.
-								text: (chip.modelData.properties
-										|| {})["device.profile.description"]
-									|| chip.modelData.description
-									|| chip.modelData.nickname
-									|| "Output"
-								font.pixelSize: 11
-								font.bold: chip.active
-								opacity: chip.active ? 1.0 : 0.8
-								color: Theme.glassTextPrimary
-							}
-
-							MouseArea {
-								id: chipMouse
-
-								anchors.fill: parent
-								hoverEnabled: true
-								cursorShape: Qt.PointingHandCursor
-								onClicked: Pipewire.preferredDefaultAudioSink = chip.modelData
-							}
-						}
+						onClicked: Pipewire.preferredDefaultAudioSink = modelData
 					}
 				}
 			}
@@ -498,11 +252,7 @@ Item {
 		}
 
 		function set(percent: string): void {
-			if (!root.ready)
-				return;
-
-			root.sink.audio.volume =
-				Math.max(0, Math.min(1, parseFloat(percent) / 100));
+			root.setVolume(parseFloat(percent) / 100);
 		}
 	}
 }

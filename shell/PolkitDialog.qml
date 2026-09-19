@@ -123,11 +123,11 @@ Scope {
 					rightMargin: 20
 				}
 
-				spacing: 12
+				spacing: Theme.spacingM
 
 				Text {
 					text: "Authentication Required"
-					font.pixelSize: 16
+					font.pixelSize: Theme.fontHeading
 					font.bold: true
 					color: card.cardText
 				}
@@ -190,7 +190,7 @@ Scope {
 
 				Row {
 					anchors.right: parent.right
-					spacing: 8
+					spacing: Theme.spacingS
 
 					DialogButton {
 						text: "Cancel"

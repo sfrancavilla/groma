@@ -77,7 +77,7 @@ Scope {
 
 			anchors.fill: parent
 			anchors.margins: toastWindow.pad
-			spacing: 8
+			spacing: Theme.spacingS
 
 			Repeater {
 				model: server.trackedNotifications
