@@ -88,20 +88,38 @@ Rectangle {
 	//
 	// It sits *on* the border rather than below it. Drawn one pixel down, it
 	// is a second line beside the border - two bright rows, which on a scaled
-	// display reads as a doubled edge. Overlapping makes the top of the rim
-	// brighter than its sides, which is the whole intent.
+	// display reads as a doubled edge.
+	//
+	// And it fades out where the corners begin rather than stopping short of
+	// them. A straight line inset by less than the radius has its ends hanging
+	// in the space the corner has already curved away from, so they float
+	// outside the panel's outline.
 	Rectangle {
+		id: litEdge
+
+		// How far along the width the straight part of the top edge starts.
+		readonly property real corner:
+			Math.min(0.45, parent.radius / Math.max(1, parent.width))
+
 		visible: Theme.glass
 		anchors {
 			left: parent.left
 			right: parent.right
 			top: parent.top
-			leftMargin: parent.radius * 0.5
-			rightMargin: parent.radius * 0.5
+			leftMargin: 1
+			rightMargin: 1
 		}
 
 		height: 1
-		color: Theme.glassInnerHighlight
+
+		gradient: Gradient {
+			orientation: Gradient.Horizontal
+
+			GradientStop { position: 0.0; color: "#00ffffff" }
+			GradientStop { position: litEdge.corner; color: Theme.glassInnerHighlight }
+			GradientStop { position: 1.0 - litEdge.corner; color: Theme.glassInnerHighlight }
+			GradientStop { position: 1.0; color: "#00ffffff" }
+		}
 	}
 
 	// Declared last, so caller content sits above the glass.
