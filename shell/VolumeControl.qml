@@ -213,7 +213,7 @@ Item {
 					// the design does and what looked wrong on screen. At
 					// knobSize / 2 the fill edge meets the lens's right edge.
 					// Half the radius sits between the two.
-					readonly property int knobBias: 10
+					readonly property int knobBias: 24
 
 					width: parent.width
 					height: 44
@@ -388,7 +388,20 @@ Item {
 				}
 
 				// Output devices. One chip each; the active one is brighter.
-				Row {
+				//
+				// A Flow rather than a Row: dividing a fixed width between
+				// however many sinks exist means four devices get 62px each
+				// and every name elides to nothing. Chips keep a usable width
+				// and wrap instead, so the tile grows downward - which it can
+				// afford to do, unlike sideways.
+				Flow {
+					id: chips
+
+					// Two per row, so a name has room to be read.
+					readonly property int perRow: Math.min(2, root.sinks.length)
+					readonly property real chipWidth:
+						(width - (chips.perRow - 1) * 8) / Math.max(1, chips.perRow)
+
 					width: parent.width
 					spacing: 8
 					visible: root.sinks.length > 0
@@ -403,8 +416,7 @@ Item {
 							readonly property bool active:
 								chip.modelData === Pipewire.defaultAudioSink
 
-							width: (content.width - (root.sinks.length - 1) * 8)
-								/ Math.max(1, root.sinks.length)
+							width: chips.chipWidth
 							height: 29
 							radius: Theme.radiusPill
 
@@ -426,8 +438,10 @@ Item {
 								horizontalAlignment: Text.AlignHCenter
 								verticalAlignment: Text.AlignVCenter
 								elide: Text.ElideRight
-								text: chip.modelData.description
-									?? chip.modelData.nickname ?? "Output"
+								// Nickname first - "Speaker" rather than
+								// "Ryzen HD Audio Controller Speaker".
+								text: chip.modelData.nickname
+									|| chip.modelData.description || "Output"
 								font.pixelSize: 11
 								font.bold: chip.active
 								opacity: chip.active ? 1.0 : 0.8
