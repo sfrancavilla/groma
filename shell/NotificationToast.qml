@@ -30,11 +30,11 @@ Rectangle {
 	width: parent.width
 	implicitHeight: layout.implicitHeight + 24
 	height: implicitHeight
-	radius: 10
+	radius: Theme.radiusMedium
 
-	color: "#ffffff"
+	color: Theme.surface
 	border.width: toast.isCritical ? 2 : 1
-	border.color: toast.isCritical ? "#cc3333" : "#dddddd"
+	border.color: toast.isCritical ? Theme.danger : Theme.borderSubtle
 
 	// Notifications carry their own lifetime. A timeout of 0 means "wait for
 	// the user", and urgent ones should not disappear on their own either.
@@ -93,14 +93,14 @@ Rectangle {
 					anchors.left: parent.left
 					text: toast.modelData.appName
 					font.pixelSize: 11
-					color: toast.isCritical ? "#cc3333" : "#888888"
+					color: toast.isCritical ? Theme.danger : Theme.textMuted
 				}
 
 				Text {
 					anchors.right: parent.right
 					text: "×"
 					font.pixelSize: 14
-					color: closeMouse.containsMouse ? "#000000" : "#888888"
+					color: closeMouse.containsMouse ? Theme.textPrimary : Theme.textMuted
 
 					MouseArea {
 						id: closeMouse
@@ -122,7 +122,7 @@ Rectangle {
 				font.pixelSize: 13
 				font.bold: true
 				elide: Text.ElideRight
-				color: "#000000"
+				color: Theme.textPrimary
 			}
 
 			Text {
@@ -134,7 +134,7 @@ Rectangle {
 				elide: Text.ElideRight
 				// Clients may send limited markup in the body.
 				textFormat: Text.StyledText
-				color: "#333333"
+				color: Theme.textSecondary
 			}
 
 			Row {

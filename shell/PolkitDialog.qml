@@ -80,7 +80,7 @@ Scope {
 		// Dim the desktop behind the dialog, and swallow stray clicks.
 		Rectangle {
 			anchors.fill: parent
-			color: "#99000000"
+			color: Theme.scrim
 
 			MouseArea {
 				anchors.fill: parent
@@ -93,8 +93,8 @@ Scope {
 			anchors.centerIn: parent
 			width: 420
 			height: content.implicitHeight + 40
-			radius: 12
-			color: "#ffffff"
+			radius: Theme.radiusLarge
+			color: Theme.surface
 
 			// Take focus so Escape reaches us even when no password field is shown.
 			focus: true
@@ -117,31 +117,31 @@ Scope {
 					text: "Authentication Required"
 					font.pixelSize: 16
 					font.bold: true
-					color: "#000000"
+					color: Theme.textPrimary
 				}
 
 				Text {
 					width: parent.width
 					wrapMode: Text.WordWrap
 					text: dialogWindow.flow?.message ?? ""
-					color: "#333333"
+					color: Theme.textSecondary
 				}
 
 				// polkitd tells us what to ask for ("Password: ") and whether
 				// the answer should be shown on screen.
 				Text {
 					text: dialogWindow.flow?.inputPrompt ?? "Password:"
-					color: "#333333"
+					color: Theme.textSecondary
 					visible: dialogWindow.flow?.isResponseRequired ?? false
 				}
 
 				Rectangle {
 					width: parent.width
 					height: 34
-					radius: 6
-					color: "#f2f2f2"
+					radius: Theme.radiusSmall
+					color: Theme.surfaceSunken
 					border.width: passwordInput.activeFocus ? 2 : 1
-					border.color: passwordInput.activeFocus ? "#444444" : "#cccccc"
+					border.color: passwordInput.activeFocus ? Theme.borderFocus : Theme.border
 					visible: dialogWindow.flow?.isResponseRequired ?? false
 					onVisibleChanged: if (visible) passwordInput.forceActiveFocus()
 
@@ -156,7 +156,7 @@ Scope {
 
 						verticalAlignment: TextInput.AlignVCenter
 						clip: true
-						color: "#000000"
+						color: Theme.textPrimary
 						echoMode: (dialogWindow.flow?.responseVisible ?? false)
 							? TextInput.Normal : TextInput.Password
 
@@ -171,7 +171,7 @@ Scope {
 					text: dialogWindow.supplementaryLines.join("\n")
 					visible: text !== ""
 					color: (dialogWindow.flow?.supplementaryIsError ?? false)
-						? "#cc3333" : "#666666"
+						? Theme.danger : Theme.textMuted
 				}
 
 				Row {

@@ -1,3 +1,4 @@
+import Quickshell
 import QtQuick
 
 // A small push button. QtQuick has no button of its own, so a button is a
@@ -13,22 +14,22 @@ Rectangle {
 
 	implicitWidth: label.implicitWidth + 28
 	implicitHeight: 32
-	radius: 6
+	radius: Theme.radiusSmall
 
 	opacity: button.enabled ? 1.0 : 0.4
 
 	color: button.primary
-		? (mouse.containsMouse ? "#222222" : "#444444")
-		: (mouse.containsMouse ? "#dddddd" : "#f2f2f2")
+		? (mouse.containsMouse ? Theme.surfaceStrongHover : Theme.surfaceStrong)
+		: (mouse.containsMouse ? Theme.surfaceHover : Theme.surfaceSunken)
 
 	border.width: button.primary ? 0 : 1
-	border.color: "#cccccc"
+	border.color: Theme.border
 
 	Text {
 		id: label
 
 		anchors.centerIn: parent
-		color: button.primary ? "#ffffff" : "#000000"
+		color: button.primary ? Theme.textOnStrong : Theme.textPrimary
 	}
 
 	MouseArea {

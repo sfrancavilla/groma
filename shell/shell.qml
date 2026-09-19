@@ -53,15 +53,15 @@ ShellRoot {
 					
 					width: 26
 					height: 22
-					radius: 6
+					radius: Theme.radiusSmall
 
-					color: workspaceButton.isFocused ? "#444444"
-						: workspaceMouse.containsMouse ? "#dddddd" : "#ffffff"
+					color: workspaceButton.isFocused ? Theme.surfaceStrong
+						: workspaceMouse.containsMouse ? Theme.surfaceHover : Theme.surface
 
 					Text {
 						anchors.centerIn: parent
 						text: workspaceButton.workspaceId
-						color: workspaceButton.isFocused ? "#ffffff" : "#000000"
+						color: workspaceButton.isFocused ? Theme.textOnStrong : Theme.textPrimary
 					}
 
 					MouseArea {
@@ -100,7 +100,7 @@ ShellRoot {
 				color: UPower.displayDevice.ready && UPower.displayDevice.isPresent
 					&& UPower.displayDevice.state === UPowerDeviceState.Discharging
 					&& UPower.displayDevice.percentage <= 0.20
-					? "#cc3333" : "#000000"
+					? Theme.danger : Theme.textPrimary
 
 				text: UPower.displayDevice.ready && UPower.displayDevice.isPresent
 					? (UPower.displayDevice.state === UPowerDeviceState.Charging ? "⚡ " : "")
