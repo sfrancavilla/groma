@@ -17,16 +17,12 @@ One long-running process provides the whole desktop shell:
 | File | Role |
 |---|---|
 | `hypr/hyprland.lua` | Compositor config: keybinds, input, look and feel, and starting the shell |
-| `shell/shell.qml` | Root. The bar, and it instantiates the components below |
-| `shell/PolkitDialog.qml` | Polkit authentication agent and its password dialog |
-| `shell/VolumeControl.qml` | Bar readout and the Sound tile: slider, output-device chips |
-| `shell/BatteryControl.qml` | Bar readout and the Battery tile: charge, time, health |
-| `shell/LockScreen.qml` | Session lock (SUPER+L). `LockContent.qml` is the unlock face |
-| `shell/IdleChain.qml` | Dim, lock, blank, then suspend, on increasing idle timeouts |
+| `shell/shell.qml` | Entry point. The bar, and it instantiates everything else |
+| `shell/Theme.qml` | Every colour, radius, spacing and type size |
+| `shell/ui/` | Generic pieces with no domain knowledge: glass, slider, chip, button |
+| `shell/icons/` | Drawn glyphs, as paths rather than an icon font |
+| `shell/modules/` | The features: volume, battery, notifications, polkit, lock, idle, wallpaper |
 | `system/groma-lock-on-sleep.service` | Locks before suspend, which the idle chain cannot cover |
-| `shell/Notifications.qml` | Notification daemon; owns `org.freedesktop.Notifications` |
-| `shell/NotificationToast.qml` | A single notification card |
-| `shell/DialogButton.qml` | Shared button used by dialogs and notification actions |
 
 Being one process rather than a collection of daemons means components share
 live state directly — the bar and a future volume popup read the same PipeWire
@@ -46,14 +42,14 @@ whole shell instead of leaving one widget behind.
 | Component | Use for |
 |---|---|
 | `Theme.qml` | Every colour, radius, spacing and type size. A singleton; needs `import QtQuick` as well as `import Quickshell`, or the whole config fails to load |
-| `GlassPanel.qml` | Any glass surface: gradient rim, inset body, feathered shadow. Falls back to flat when `Theme.glass` is off |
-| `GlassTile.qml` | Panel-sized things. Standard padding, a header naming what it is and what it acts on |
-| `Slider.qml` | Any 0..1 value. The lens sits inside the track; the caller owns the value and handles `moved` |
-| `Lens.qml` | The sphere of glass. The slider's knob and a dialog's icon disc are this at different sizes |
-| `GlassDialog.qml` | Modal sheet: dimmed, blurred desktop with a centred pane. The caller owns the window |
-| `GlassField.qml` | Text entry as a glass track, with a focus ring rather than a thicker border |
-| `Chip.qml` | One option among a few, the chosen one brighter |
-| `DialogButton.qml` | Buttons in dialogs and notification actions. `variant`: secondary, primary, destructive |
+| `ui/GlassPanel.qml` | Any glass surface: gradient rim, inset body, feathered shadow. Falls back to flat when `Theme.glass` is off |
+| `ui/GlassTile.qml` | Panel-sized things. Standard padding, a header naming what it is and what it acts on |
+| `ui/Slider.qml` | Any 0..1 value. The lens sits inside the track; the caller owns the value and handles `moved` |
+| `ui/Lens.qml` | The sphere of glass. The slider's knob and a dialog's icon disc are this at different sizes |
+| `ui/GlassDialog.qml` | Modal sheet: dimmed, blurred desktop with a centred pane. The caller owns the window |
+| `ui/GlassField.qml` | Text entry as a glass track, with a focus ring rather than a thicker border |
+| `ui/Chip.qml` | One option among a few, the chosen one brighter |
+| `ui/DialogButton.qml` | Buttons in dialogs and notification actions. `variant`: secondary, primary, destructive |
 | `SpeakerIcon.qml` / `BatteryIcon.qml` / `BoltIcon.qml` | Drawn glyphs, as paths rather than an icon font |
 
 ### Why no icon pack
@@ -70,6 +66,16 @@ This does not scale to dozens of icons. When something needs a large set - a
 launcher, a settings panel - use SVGs from Material Symbols or Lucide (qt6-svg
 is present, so `Image` renders them), and `Quickshell.iconPath` for
 *application* icons, which the notification toasts already do.
+
+The layering runs one way — `icons` depend on nothing, `ui` only on `Theme` and
+each other, `modules` on all three, and `shell.qml` only on `modules`. A `ui`
+file importing `../modules` would be the signal something is in the wrong place.
+
+QML does not find components in subdirectories on its own, so each file declares
+what it uses — `import ".."` for the `Theme` singleton, then `import "../ui"`
+and `import "../icons"`. A bare `qmldir` is not a substitute: a singleton at the
+root stays invisible to a subfolder without the import, and the failure is a
+runtime `ReferenceError` rather than a load error, so it would ship looking fine.
 
 Tokens are named by **role**, never by value: `Theme.danger` rather than
 `Theme.red`, `Theme.surface` rather than `Theme.white`. A component asking for
