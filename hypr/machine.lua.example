@@ -1,0 +1,18 @@
+-- Machine-local Hyprland overrides for Groma.
+--
+-- Copy to ~/.config/hypr/machine.lua (NOT into this repository) and edit.
+-- It is loaded last, so anything here wins over the Groma defaults.
+
+-- A specific monitor layout, rather than the default "preferred/auto":
+-- hl.monitor({
+--     output   = "eDP-1",
+--     mode     = "2256x1504@60",
+--     position = "auto",
+--     scale    = 1.5,
+-- })
+
+-- Blur is expensive on battery; soften it on a weaker machine:
+-- hl.config({ decoration = { blur = { passes = 1, size = 3 } } })
+
+-- A keybind you only want here:
+-- hl.bind("SUPER + F1", hl.dsp.exec_cmd("something-local"))

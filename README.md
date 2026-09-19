@@ -16,6 +16,7 @@ One long-running process provides the whole desktop shell:
 
 | File | Role |
 |---|---|
+| `hypr/hyprland.lua` | Compositor config: keybinds, input, look and feel, and starting the shell |
 | `shell/shell.qml` | Root. The bar, and it instantiates the components below |
 | `shell/PolkitDialog.qml` | Polkit authentication agent and its password dialog |
 | `shell/Notifications.qml` | Notification daemon; owns `org.freedesktop.Notifications` |
@@ -41,17 +42,33 @@ claims them itself.
 
 ```bash
 git clone <this repo> ~/groma
-mkdir -p ~/.config/quickshell
+
+mkdir -p ~/.config/quickshell ~/.config/hypr
 ln -s ~/groma/shell ~/.config/quickshell/groma
+ln -s ~/groma/hypr/hyprland.lua ~/.config/hypr/hyprland.lua
 ```
 
-Start it, and have Hyprland start it on login — in `hyprland.lua`:
+The compositor config starts the shell itself, so there is nothing further to
+wire up:
 
 ```lua
 hl.on("hyprland.start", function ()
   hl.exec_cmd("qs -c groma")
 end)
 ```
+
+### Machine-local overrides
+
+Anything specific to one machine — a monitor layout, a keybind you want on this
+laptop only — goes in `~/.config/hypr/machine.lua`, which is not tracked here.
+It is loaded last, so it wins over the defaults. Start from
+`hypr/machine.lua.example`:
+
+```bash
+cp ~/groma/hypr/machine.lua.example ~/.config/hypr/machine.lua
+```
+
+Leave it out entirely and nothing breaks — the config only loads it if present.
 
 ## Development
 
