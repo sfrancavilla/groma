@@ -438,10 +438,21 @@ Item {
 								horizontalAlignment: Text.AlignHCenter
 								verticalAlignment: Text.AlignVCenter
 								elide: Text.ElideRight
-								// Nickname first - "Speaker" rather than
-								// "Ryzen HD Audio Controller Speaker".
-								text: chip.modelData.nickname
-									|| chip.modelData.description || "Output"
+								// PipeWire offers three names for the same
+								// sink, and only one of them is any use on a
+								// chip. For the built-in speakers they are:
+								//
+								//   nickname    ALC285 Analog   (the codec)
+								//   description Ryzen HD Audio Controller Speaker
+								//   profile     Speaker
+								//
+								// The profile description is the part that says
+								// what it is, so prefer it and fall back.
+								text: (chip.modelData.properties
+										|| {})["device.profile.description"]
+									|| chip.modelData.description
+									|| chip.modelData.nickname
+									|| "Output"
 								font.pixelSize: 11
 								font.bold: chip.active
 								opacity: chip.active ? 1.0 : 0.8
