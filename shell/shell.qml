@@ -26,6 +26,9 @@ ShellRoot {
 	// Dim, then lock, then turn the screen off.
 	IdleChain { lock: lockScreen }
 
+	// Feedback for the volume and brightness keys.
+	Osd {}
+
 	PwObjectTracker {
 		objects: [Pipewire.defaultAudioSink]
 	}

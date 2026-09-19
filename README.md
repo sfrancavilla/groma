@@ -21,7 +21,12 @@ One long-running process provides the whole desktop shell:
 | `shell/Theme.qml` | Every colour, radius, spacing and type size |
 | `shell/ui/` | Generic pieces with no domain knowledge: glass, slider, chip, button |
 | `shell/icons/` | Drawn glyphs, as paths rather than an icon font |
-| `shell/modules/` | The features: volume, battery, notifications, polkit, lock, idle, wallpaper |
+| `shell/modules/` | The features: volume, battery, notifications, polkit, lock, idle, OSD, wallpaper |
+
+The volume and brightness keys call the shell (`ipc call keys …`) rather than
+running `wpctl` and `brightnessctl` themselves, so the change and its on-screen
+readout are one action. The shell does not have to discover what a keybind just
+did. The cost is that those keys need the shell running.
 | `system/groma-lock-on-sleep.service` | Locks before suspend, which the idle chain cannot cover |
 
 Being one process rather than a collection of daemons means components share
