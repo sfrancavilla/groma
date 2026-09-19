@@ -138,6 +138,12 @@ Item {
 			anchors.margins: panel.pad
 			radius: Theme.radiusPanel
 
+			// Value changes should animate while you are looking at the panel,
+			// but not while it is opening: mapping the window lays the track
+			// out from zero width, and animating that reads as the slider
+			// sliding up to the current volume every time you open it.
+			readonly property bool settled: root.open && card.opacity > 0.99
+
 			// Opacity, scale and y on different curves, so it reads as one
 			// movement settling rather than three separate effects.
 			opacity: root.open ? 1 : 0
@@ -238,7 +244,7 @@ Item {
 						color: Theme.glassTrackFill
 
 						Behavior on width {
-							enabled: !drag.pressed
+							enabled: card.settled && !drag.pressed
 							NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
 						}
 					}
@@ -279,7 +285,7 @@ Item {
 						anchors.verticalCenter: parent.verticalCenter
 
 						Behavior on x {
-							enabled: !drag.pressed
+							enabled: card.settled && !drag.pressed
 							NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
 						}
 
