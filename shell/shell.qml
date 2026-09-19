@@ -34,28 +34,17 @@ ShellRoot {
 
 		implicitHeight: 32
 
-		// In glass mode the window itself draws nothing; the panel below is
-		// the surface. In flat mode the window is the surface.
+		// The bar has no surface of its own: the widgets float directly over
+		// the desktop. It still reserves its 32px, so nothing is ever behind
+		// it except the background - which is what makes this readable rather
+		// than a gamble on whatever window happens to be underneath.
+		//
+		// No blur either. Blurring behind a surface that draws nothing would
+		// just smear a band across the top of the wallpaper.
 		color: Theme.glass ? "transparent" : Theme.surface
 
 		readonly property color barText:
 			Theme.glass ? Theme.glassTextPrimary : Theme.textPrimary
-
-		// Blur behind the bar, for the same reason as the toasts: without it
-		// the translucency just shows a sharp desktop through a dark film.
-		BackgroundEffect.blurRegion: Region { item: barGlass }
-
-		// Declared first so everything else sits on top of it. No radius - it
-		// spans the screen edge - and one shadow ring to separate it from the
-		// desktop rather than four to feather it.
-		GlassPanel {
-			id: barGlass
-
-			visible: Theme.glass
-			anchors.fill: parent
-			radius: 0
-			shadowLayers: 1
-		}
 
 		// LEFT: workspaces
 		Row {
@@ -83,7 +72,7 @@ ShellRoot {
 					color: Theme.glass
 						? (workspaceButton.isFocused ? Theme.glassControlStrong
 							: workspaceMouse.containsMouse ? Theme.glassControlHover
-							: Theme.glassControl)
+							: "transparent")
 						: (workspaceButton.isFocused ? Theme.surfaceStrong
 							: workspaceMouse.containsMouse ? Theme.surfaceHover
 							: Theme.surface)
@@ -94,6 +83,8 @@ ShellRoot {
 						color: Theme.glass ? Theme.glassTextPrimary
 							: workspaceButton.isFocused ? Theme.textOnStrong
 							: Theme.textPrimary
+						style: Theme.glass ? Text.Raised : Text.Normal
+						styleColor: Theme.glassTextShadow
 					}
 
 					MouseArea {
@@ -119,6 +110,8 @@ ShellRoot {
 			Text {
 				anchors.verticalCenter: parent.verticalCenter
 				color: bar.barText
+				style: Theme.glass ? Text.Raised : Text.Normal
+				styleColor: Theme.glassTextShadow
 				text: {
 					const sink = Pipewire.defaultAudioSink;
 					if (!sink?.ready || !sink.audio)
@@ -135,6 +128,9 @@ ShellRoot {
 					&& UPower.displayDevice.percentage <= 0.20
 					? Theme.danger : bar.barText
 
+				style: Theme.glass ? Text.Raised : Text.Normal
+				styleColor: Theme.glassTextShadow
+
 				text: UPower.displayDevice.ready && UPower.displayDevice.isPresent
 					? (UPower.displayDevice.state === UPowerDeviceState.Charging ? "⚡ " : "")
 						+ Math.round(UPower.displayDevice.percentage * 100) + "%"
@@ -147,6 +143,8 @@ ShellRoot {
 		Text {
 			anchors.centerIn: parent
 			color: bar.barText
+			style: Theme.glass ? Text.Raised : Text.Normal
+			styleColor: Theme.glassTextShadow
 			text: Qt.formatDateTime(clock.date, "ddd d MMM hh:mm")
 		}
  
