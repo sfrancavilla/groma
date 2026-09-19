@@ -1,40 +1,53 @@
 import Quickshell
 import QtQuick
 
-// A small push button. QtQuick has no button of its own, so a button is a
-// rectangle with a label and a MouseArea on top of it.
+// A dialog button: the same chip the tiles use, in three weights.
+//
 // `enabled` comes from Item and already disables the MouseArea for us.
 Rectangle {
 	id: button
 
 	property alias text: label.text
-	property bool primary: false
+	// "secondary" | "primary" | "destructive"
+	property string variant: "secondary"
+
+	readonly property bool isPrimary: button.variant === "primary"
+	readonly property bool isDestructive: button.variant === "destructive"
 
 	signal clicked
 
-	implicitWidth: label.implicitWidth + 28
-	implicitHeight: 32
-	radius: Theme.radiusSmall
+	implicitWidth: label.implicitWidth + Theme.spacingL * 2
+	implicitHeight: Theme.chipHeight
+	radius: Theme.radiusPill
 
 	opacity: button.enabled ? 1.0 : 0.4
 
-	color: Theme.glass
-		? (button.primary
-			? (mouse.containsMouse ? Theme.glassControlStrongHover : Theme.glassControlStrong)
-			: (mouse.containsMouse ? Theme.glassControlHover : Theme.glassControl))
-		: (button.primary
-			? (mouse.containsMouse ? Theme.surfaceStrongHover : Theme.surfaceStrong)
-			: (mouse.containsMouse ? Theme.surfaceHover : Theme.surfaceSunken))
+	color: button.isPrimary
+		? (mouse.containsMouse ? Theme.chipPrimaryHover : Theme.chipPrimary)
+		: button.isDestructive
+			? (mouse.containsMouse ? Theme.chipDestructiveHover : Theme.chipDestructive)
+			: (mouse.containsMouse ? Theme.glassControlHover : Theme.glassControl)
 
-	border.width: Theme.glass ? 1 : (button.primary ? 0 : 1)
-	border.color: Theme.glass ? Theme.glassControlBorder : Theme.border
+	border.width: 1
+	border.color: button.isPrimary ? Theme.chipPrimaryBorder
+		: button.isDestructive ? Theme.chipDestructiveBorder
+		: Theme.glassControlBorder
+
+	Behavior on color {
+		ColorAnimation { duration: 120 }
+	}
 
 	Text {
 		id: label
 
 		anchors.centerIn: parent
-		color: Theme.glass ? Theme.glassTextPrimary
-			: button.primary ? Theme.textOnStrong : Theme.textPrimary
+		font.pixelSize: Theme.fontBody
+		font.bold: button.isPrimary || button.isDestructive
+		font.weight: button.isPrimary || button.isDestructive
+			? Font.Bold : Font.DemiBold
+
+		// The primary chip is bright enough that white on it would not read.
+		color: button.isPrimary ? Theme.glassTextOnLens : Theme.glassTextPrimary
 	}
 
 	MouseArea {

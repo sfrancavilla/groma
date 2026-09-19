@@ -18,8 +18,9 @@ Singleton {
 	readonly property color surfaceStrong: "#444444"
 	readonly property color surfaceStrongHover: "#222222"
 
-	// The dim behind a modal dialog. Deliberately includes alpha.
-	readonly property color scrim: "#99000000"
+	// The dim behind a modal dialog. With the desktop blurred behind it, far
+	// less dimming is needed; without glass, it has to carry the job alone.
+	readonly property color scrim: glass ? Qt.rgba(0, 0, 0, 0.28) : "#99000000"
 
 	// Borders.
 	readonly property color border: "#cccccc"
@@ -107,6 +108,7 @@ Singleton {
 	// that is a sphere catching light rather than a flat dot.
 	readonly property color glassTrack: Qt.rgba(1, 1, 1, 0.14)
 	readonly property color glassTrackBorder: Qt.rgba(1, 1, 1, 0.25)
+	readonly property color glassTrackBorderFocus: Qt.rgba(1, 1, 1, 0.55)
 	readonly property color glassTrackFill: Qt.rgba(1, 1, 1, 0.40)
 
 	readonly property color glassKnobCore: Qt.rgba(1, 1, 1, 0.95)
@@ -126,6 +128,21 @@ Singleton {
 
 	readonly property color glassChip: Qt.rgba(1, 1, 1, 0.10)
 	readonly property color glassChipActive: Qt.rgba(1, 1, 1, 0.28)
+
+	// Dialog buttons are the tiles' chips. The primary one is bright enough
+	// that its label has to go dark.
+	readonly property color chipPrimary: Qt.rgba(1, 1, 1, 0.50)
+	readonly property color chipPrimaryHover: Qt.rgba(1, 1, 1, 0.62)
+	readonly property color chipPrimaryBorder: Qt.rgba(1, 1, 1, 0.70)
+	readonly property color chipDestructive:
+		Qt.rgba(warning.r, warning.g, warning.b, 0.45)
+	readonly property color chipDestructiveHover:
+		Qt.rgba(warning.r, warning.g, warning.b, 0.58)
+	readonly property color chipDestructiveBorder:
+		Qt.rgba(warning.r, warning.g, warning.b, 0.60)
+
+	// A ring rather than a thicker border, so focus does not move anything.
+	readonly property color focusRing: Qt.rgba(1, 1, 1, 0.18)
 
 	// --- Metrics ---
 	//
@@ -149,10 +166,14 @@ Singleton {
 
 	readonly property int chipHeight: 29
 
+	readonly property int dialogWidth: 320
+	readonly property int dialogPadding: 20
+
 	// --- Type scale ---
 	readonly property int fontCaption: 11
 	readonly property int fontBody: 12
 	readonly property int fontTitle: 13
+	readonly property int fontLead: 14
 	readonly property int fontHeading: 16
 
 	// Corner radii, by element size.

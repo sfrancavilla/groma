@@ -6,8 +6,9 @@ import QtQuick
 // A polkit authentication agent: the password prompt that appears when an
 // application asks to do something administrative.
 //
-// Quickshell's PolkitAgent handles the protocol with polkitd. All we supply
-// is the interface: show the request, collect a password, submit it.
+// Quickshell's PolkitAgent handles the protocol with polkitd. All we supply is
+// the interface - built from GlassDialog, so it matches the rest of the shell
+// rather than being its own thing.
 Scope {
 	id: root
 
@@ -22,9 +23,9 @@ Scope {
 		// is pending. Everything the dialog shows comes from it.
 		readonly property var flow: agent.flow
 
-		// PAM sends feedback one message at a time, and each new message replaces
-		// the previous one. Collect them so an explanation is not lost the
-		// instant a follow-up line arrives.
+		// PAM sends feedback one message at a time, and each new message
+		// replaces the previous one. Collect them so an explanation is not
+		// lost the instant a follow-up line arrives.
 		property var supplementaryLines: []
 
 		// A new request starts with a clean slate.
@@ -46,14 +47,16 @@ Scope {
 		}
 
 		function submitPassword() {
-			dialogWindow.flow?.submit(passwordInput.text);
-			passwordInput.text = "";
+			dialogWindow.flow?.submit(password.text);
+			password.clear();
 		}
 
-		visible: dialogWindow.flow !== null && !dialogWindow.flow.isCompleted
+		readonly property bool active: dialogWindow.flow !== null
+			&& !dialogWindow.flow.isCompleted
 
-		// Cover the whole screen so we can dim it, but never reserve space
-		// the way the bar does.
+		// Stays mapped until the sheet has animated out.
+		visible: dialogWindow.active || dialog.sheet.opacity > 0.01
+
 		anchors {
 			top: true
 			bottom: true
@@ -70,139 +73,74 @@ Scope {
 		// not to whatever was focused before.
 		WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
+		// Blur the whole desktop, not just behind the sheet: this is modal, and
+		// the blur is what lets the scrim stay light.
 		BackgroundEffect.blurRegion: Region {
-			item: card
-			radius: Theme.radiusLarge
+			item: dialog
 		}
 
 		onVisibleChanged: {
 			if (dialogWindow.visible) {
-				passwordInput.text = "";
-				passwordInput.forceActiveFocus();
+				password.clear();
+				password.focusInput();
 			}
 		}
 
-		// Dim the desktop behind the dialog, and swallow stray clicks.
-		Rectangle {
+		GlassDialog {
+			id: dialog
+
 			anchors.fill: parent
-			color: Theme.scrim
+			open: dialogWindow.active
 
-			MouseArea {
-				anchors.fill: parent
-			}
-		}
+			title: "Authentication Required"
+			body: dialogWindow.flow?.message ?? ""
 
-		GlassPanel {
-			id: card
-
-			anchors.centerIn: parent
-			width: 420
-			height: content.implicitHeight + Theme.tilePadding * 2
-			radius: Theme.radiusLarge
-
-			// Resolved once rather than branching on Theme.glass at every use.
-			readonly property color cardText:
-				Theme.glass ? Theme.glassTextPrimary : Theme.textPrimary
-			readonly property color cardTextBody:
-				Theme.glass ? Theme.glassTextSecondary : Theme.textSecondary
-			readonly property color cardTextMuted:
-				Theme.glass ? Theme.glassTextMuted : Theme.textMuted
-
-			// Take focus so Escape reaches us even when no password field is shown.
 			focus: true
 			Keys.onEscapePressed: dialogWindow.flow?.cancelAuthenticationRequest()
 
-			Column {
-				id: content
+			GlassField {
+				id: password
 
-				anchors {
-					left: parent.left
-					right: parent.right
-					verticalCenter: parent.verticalCenter
-					leftMargin: Theme.tilePadding
-					rightMargin: Theme.tilePadding
+				width: parent.width
+				visible: dialogWindow.flow?.isResponseRequired ?? false
+
+				// polkitd says what to ask for, so the field says it too.
+				placeholder: dialogWindow.flow?.inputPrompt ?? "Password"
+
+				echoMode: (dialogWindow.flow?.responseVisible ?? false)
+					? TextInput.Normal : TextInput.Password
+
+				onVisibleChanged: if (visible) focusInput()
+				onAccepted: dialogWindow.submitPassword()
+			}
+
+			// Retry counts, lockout warnings and other feedback from PAM.
+			Text {
+				width: parent.width
+				wrapMode: Text.WordWrap
+				text: dialogWindow.supplementaryLines.join("\n")
+				visible: text !== ""
+				font.pixelSize: Theme.fontCaption
+				lineHeight: 1.4
+
+				color: (dialogWindow.flow?.supplementaryIsError ?? false)
+					? Theme.danger : Theme.glassTextMuted
+			}
+
+			Row {
+				anchors.right: parent.right
+				spacing: Theme.spacingS
+
+				DialogButton {
+					text: "Cancel"
+					onClicked: dialogWindow.flow?.cancelAuthenticationRequest()
 				}
 
-				spacing: Theme.spacingM
-
-				Text {
-					text: "Authentication Required"
-					font.pixelSize: Theme.fontHeading
-					font.bold: true
-					color: card.cardText
-				}
-
-				Text {
-					width: parent.width
-					wrapMode: Text.WordWrap
-					text: dialogWindow.flow?.message ?? ""
-					color: card.cardTextBody
-				}
-
-				// polkitd tells us what to ask for ("Password: ") and whether
-				// the answer should be shown on screen.
-				Text {
-					text: dialogWindow.flow?.inputPrompt ?? "Password:"
-					color: card.cardTextBody
-					visible: dialogWindow.flow?.isResponseRequired ?? false
-				}
-
-				Rectangle {
-					width: parent.width
-					height: 34
-					radius: Theme.radiusSmall
-					color: Theme.glass ? Theme.glassControl : Theme.surfaceSunken
-					border.width: passwordInput.activeFocus ? 2 : 1
-					border.color: passwordInput.activeFocus
-						? (Theme.glass ? Theme.glassTextPrimary : Theme.borderFocus)
-						: (Theme.glass ? Theme.glassControlBorder : Theme.border)
-					visible: dialogWindow.flow?.isResponseRequired ?? false
-					onVisibleChanged: if (visible) passwordInput.forceActiveFocus()
-
-					TextInput {
-						id: passwordInput
-
-						anchors {
-							fill: parent
-							leftMargin: Theme.spacingM
-							rightMargin: Theme.spacingM
-						}
-
-						verticalAlignment: TextInput.AlignVCenter
-						clip: true
-						color: card.cardText
-						echoMode: (dialogWindow.flow?.responseVisible ?? false)
-							? TextInput.Normal : TextInput.Password
-
-						onAccepted: dialogWindow.submitPassword()
-					}
-				}
-
-				// Retry counts, lockout warnings and other feedback from PAM.
-				Text {
-					width: parent.width
-					wrapMode: Text.WordWrap
-					text: dialogWindow.supplementaryLines.join("\n")
-					visible: text !== ""
-					color: (dialogWindow.flow?.supplementaryIsError ?? false)
-						? Theme.danger : card.cardTextMuted
-				}
-
-				Row {
-					anchors.right: parent.right
-					spacing: Theme.spacingS
-
-					DialogButton {
-						text: "Cancel"
-						onClicked: dialogWindow.flow?.cancelAuthenticationRequest()
-					}
-
-					DialogButton {
-						text: "Authenticate"
-						primary: true
-						enabled: dialogWindow.flow?.isResponseRequired ?? false
-						onClicked: dialogWindow.submitPassword()
-					}
+				DialogButton {
+					text: "Authenticate"
+					variant: "primary"
+					enabled: dialogWindow.flow?.isResponseRequired ?? false
+					onClicked: dialogWindow.submitPassword()
 				}
 			}
 		}

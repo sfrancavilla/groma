@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Shapes
 
 // The shell's slider: a track the lens sits inside, not on.
 //
@@ -115,10 +114,8 @@ Rectangle {
 		}
 	}
 
-	Item {
+	Lens {
 		id: knob
-
-		property real sheenPos: 0.5
 
 		width: control.knobSize
 		height: control.knobSize
@@ -139,80 +136,11 @@ Rectangle {
 			NumberAnimation { duration: 120; easing.type: Easing.OutBack }
 		}
 
-		// A sphere, not a disc: the highlight is off-centre and the falloff is
-		// radial, so it catches light on one side.
-		Shape {
-			anchors.fill: parent
-			preferredRendererType: Shape.CurveRenderer
-
-			ShapePath {
-				strokeColor: Theme.glassKnobEdge
-				strokeWidth: 1
-
-				fillGradient: RadialGradient {
-					centerX: 14; centerY: 12; centerRadius: 32
-					focalX: 14; focalY: 12
-
-					GradientStop { position: 0.0; color: Theme.glassKnobCore }
-					GradientStop { position: 0.45; color: Theme.glassKnobMid }
-					GradientStop { position: 1.0; color: Theme.glassKnobRim }
-				}
-
-				PathAngleArc {
-					centerX: 20; centerY: 20
-					radiusX: 19; radiusY: 19
-					startAngle: 0; sweepAngle: 360
-				}
-			}
-		}
-
-		// The sheen. A rotated circle clips the sweeping band to the lens for
-		// free - a rotated circle is still a circle, so no mask is needed.
-		Rectangle {
-			anchors.fill: parent
-			radius: width / 2
-			rotation: 115
-			opacity: 0.9
-
-			gradient: Gradient {
-				orientation: Gradient.Horizontal
-
-				GradientStop {
-					position: Math.max(0, knob.sheenPos - 0.22)
-					color: "#00ffffff"
-				}
-				GradientStop {
-					position: knob.sheenPos
-					color: Theme.glassSheen
-				}
-				GradientStop {
-					position: Math.min(1, knob.sheenPos + 0.22)
-					color: "#00ffffff"
-				}
-			}
-		}
-
-		// Declared after the lens so it draws on top of it.
+		// Whatever the caller wants inside the lens, such as a charging bolt.
 		Item {
 			id: knobOverlay
 
 			anchors.fill: parent
-		}
-
-		SequentialAnimation {
-			running: control.visible
-			loops: Animation.Infinite
-
-			NumberAnimation {
-				target: knob; property: "sheenPos"
-				from: 0.18; to: 0.82
-				duration: 2000; easing.type: Easing.InOutSine
-			}
-			NumberAnimation {
-				target: knob; property: "sheenPos"
-				from: 0.82; to: 0.18
-				duration: 2000; easing.type: Easing.InOutSine
-			}
 		}
 	}
 

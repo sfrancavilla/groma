@@ -46,8 +46,11 @@ whole shell instead of leaving one widget behind.
 | `GlassPanel.qml` | Any glass surface: gradient rim, inset body, feathered shadow. Falls back to flat when `Theme.glass` is off |
 | `GlassTile.qml` | Panel-sized things. Standard padding, a header naming what it is and what it acts on |
 | `Slider.qml` | Any 0..1 value. The lens sits inside the track; the caller owns the value and handles `moved` |
+| `Lens.qml` | The sphere of glass. The slider's knob and a dialog's icon disc are this at different sizes |
+| `GlassDialog.qml` | Modal sheet: dimmed, blurred desktop with a centred pane. The caller owns the window |
+| `GlassField.qml` | Text entry as a glass track, with a focus ring rather than a thicker border |
 | `Chip.qml` | One option among a few, the chosen one brighter |
-| `DialogButton.qml` | Buttons in dialogs and notification actions |
+| `DialogButton.qml` | Buttons in dialogs and notification actions. `variant`: secondary, primary, destructive |
 | `SpeakerIcon.qml` / `BatteryIcon.qml` / `BoltIcon.qml` | Drawn glyphs, as paths rather than an icon font |
 
 Tokens are named by **role**, never by value: `Theme.danger` rather than
