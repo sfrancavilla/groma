@@ -18,18 +18,23 @@ Rectangle {
 
 	opacity: button.enabled ? 1.0 : 0.4
 
-	color: button.primary
-		? (mouse.containsMouse ? Theme.surfaceStrongHover : Theme.surfaceStrong)
-		: (mouse.containsMouse ? Theme.surfaceHover : Theme.surfaceSunken)
+	color: Theme.glass
+		? (button.primary
+			? (mouse.containsMouse ? Theme.glassControlStrongHover : Theme.glassControlStrong)
+			: (mouse.containsMouse ? Theme.glassControlHover : Theme.glassControl))
+		: (button.primary
+			? (mouse.containsMouse ? Theme.surfaceStrongHover : Theme.surfaceStrong)
+			: (mouse.containsMouse ? Theme.surfaceHover : Theme.surfaceSunken))
 
-	border.width: button.primary ? 0 : 1
-	border.color: Theme.border
+	border.width: Theme.glass ? 1 : (button.primary ? 0 : 1)
+	border.color: Theme.glass ? Theme.glassControlBorder : Theme.border
 
 	Text {
 		id: label
 
 		anchors.centerIn: parent
-		color: button.primary ? Theme.textOnStrong : Theme.textPrimary
+		color: Theme.glass ? Theme.glassTextPrimary
+			: button.primary ? Theme.textOnStrong : Theme.textPrimary
 	}
 
 	MouseArea {

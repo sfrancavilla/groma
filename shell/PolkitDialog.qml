@@ -70,6 +70,11 @@ Scope {
 		// not to whatever was focused before.
 		WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
+		BackgroundEffect.blurRegion: Region {
+			item: card
+			radius: Theme.radiusLarge
+		}
+
 		onVisibleChanged: {
 			if (dialogWindow.visible) {
 				passwordInput.text = "";
@@ -87,14 +92,21 @@ Scope {
 			}
 		}
 
-		Rectangle {
+		GlassPanel {
 			id: card
 
 			anchors.centerIn: parent
 			width: 420
 			height: content.implicitHeight + 40
 			radius: Theme.radiusLarge
-			color: Theme.surface
+
+			// Resolved once rather than branching on Theme.glass at every use.
+			readonly property color cardText:
+				Theme.glass ? Theme.glassTextPrimary : Theme.textPrimary
+			readonly property color cardTextBody:
+				Theme.glass ? Theme.glassTextSecondary : Theme.textSecondary
+			readonly property color cardTextMuted:
+				Theme.glass ? Theme.glassTextMuted : Theme.textMuted
 
 			// Take focus so Escape reaches us even when no password field is shown.
 			focus: true
@@ -117,21 +129,21 @@ Scope {
 					text: "Authentication Required"
 					font.pixelSize: 16
 					font.bold: true
-					color: Theme.textPrimary
+					color: card.cardText
 				}
 
 				Text {
 					width: parent.width
 					wrapMode: Text.WordWrap
 					text: dialogWindow.flow?.message ?? ""
-					color: Theme.textSecondary
+					color: card.cardTextBody
 				}
 
 				// polkitd tells us what to ask for ("Password: ") and whether
 				// the answer should be shown on screen.
 				Text {
 					text: dialogWindow.flow?.inputPrompt ?? "Password:"
-					color: Theme.textSecondary
+					color: card.cardTextBody
 					visible: dialogWindow.flow?.isResponseRequired ?? false
 				}
 
@@ -139,9 +151,11 @@ Scope {
 					width: parent.width
 					height: 34
 					radius: Theme.radiusSmall
-					color: Theme.surfaceSunken
+					color: Theme.glass ? Theme.glassControl : Theme.surfaceSunken
 					border.width: passwordInput.activeFocus ? 2 : 1
-					border.color: passwordInput.activeFocus ? Theme.borderFocus : Theme.border
+					border.color: passwordInput.activeFocus
+						? (Theme.glass ? Theme.glassTextPrimary : Theme.borderFocus)
+						: (Theme.glass ? Theme.glassControlBorder : Theme.border)
 					visible: dialogWindow.flow?.isResponseRequired ?? false
 					onVisibleChanged: if (visible) passwordInput.forceActiveFocus()
 
@@ -156,7 +170,7 @@ Scope {
 
 						verticalAlignment: TextInput.AlignVCenter
 						clip: true
-						color: Theme.textPrimary
+						color: card.cardText
 						echoMode: (dialogWindow.flow?.responseVisible ?? false)
 							? TextInput.Normal : TextInput.Password
 
@@ -171,7 +185,7 @@ Scope {
 					text: dialogWindow.supplementaryLines.join("\n")
 					visible: text !== ""
 					color: (dialogWindow.flow?.supplementaryIsError ?? false)
-						? Theme.danger : Theme.textMuted
+						? Theme.danger : card.cardTextMuted
 				}
 
 				Row {

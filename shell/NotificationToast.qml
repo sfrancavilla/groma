@@ -4,7 +4,7 @@ import QtQuick
 
 // One notification card. Repeater hands each delegate its element as
 // `modelData`, which `required property` makes explicit.
-Rectangle {
+GlassPanel {
 	id: toast
 
 	required property var modelData
@@ -12,10 +12,6 @@ Rectangle {
 		toast.modelData.urgency === NotificationUrgency.Critical
 
 	// Resolved once here rather than branching on Theme.glass at every use.
-	// Only consulted in flat mode - in glass mode the edge is the rim gradient,
-	// and border.width is 0.
-	readonly property color cardBorder:
-		toast.isCritical ? Theme.danger : Theme.borderSubtle
 	readonly property color cardText:
 		Theme.glass ? Theme.glassTextPrimary : Theme.textPrimary
 	readonly property color cardTextBody:
@@ -43,67 +39,7 @@ Rectangle {
 	implicitHeight: layout.implicitHeight + 24
 	height: implicitHeight
 	radius: Theme.radiusMedium
-
-	color: Theme.glass ? "transparent" : Theme.surface
-
-	// In glass mode this outer rectangle *is* the edge: filled with a gradient
-	// that fades top to bottom, with the pane inset inside it. No stroke.
-	border.width: Theme.glass ? 0 : (toast.isCritical ? 2 : 1)
-	border.color: toast.cardBorder
-	gradient: !Theme.glass ? null
-		: toast.isCritical ? dangerRim : glassRim
-
-	Gradient {
-		id: glassRim
-
-		GradientStop { position: 0.0; color: Theme.glassRimTop }
-		GradientStop { position: 0.35; color: Theme.glassRimMid }
-		GradientStop { position: 1.0; color: Theme.glassRimBottom }
-	}
-
-	Gradient {
-		id: dangerRim
-
-		GradientStop { position: 0.0; color: Theme.glassRimDangerTop }
-		GradientStop { position: 0.35; color: Theme.glassRimDangerMid }
-		GradientStop { position: 1.0; color: Theme.glassRimDangerBottom }
-	}
-
-	// Ambient shadow: concentric rings fading outward, drawn before the pane so
-	// they sit behind it. They deliberately extend past the card, which is why
-	// the window reserves padding around the stack.
-	Repeater {
-		model: Theme.glass ? Theme.glassShadowLayers : 0
-
-		Rectangle {
-			required property int index
-
-			anchors.fill: parent
-			anchors.margins: -(index + 1)
-			radius: parent.radius + index + 1
-			color: "transparent"
-			border.width: 1
-			border.color: Qt.rgba(0, 0, 0,
-				Theme.glassShadowAlpha / (index + 1))
-		}
-	}
-
-	// The pane, inset by the rim width so the gradient shows as an edge.
-	Rectangle {
-		id: pane
-
-		visible: Theme.glass
-		anchors.fill: parent
-		anchors.margins: Theme.glassRimWidth
-		radius: parent.radius - Theme.glassRimWidth
-
-		// A flat fill reads as "a dark box with some alpha". The vertical sheen
-		// is what makes it read as a pane of glass catching the light.
-		gradient: Gradient {
-			GradientStop { position: 0.0; color: Theme.glassSurfaceTop }
-			GradientStop { position: 1.0; color: Theme.glassSurfaceBottom }
-		}
-	}
+	danger: toast.isCritical
 
 	// Notifications carry their own lifetime. A timeout of 0 means "wait for
 	// the user", and urgent ones should not disappear on their own either.

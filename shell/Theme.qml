@@ -63,6 +63,15 @@ Singleton {
 	readonly property color glassSurfaceBottom: Qt.rgba(
 		glassTint.r, glassTint.g, glassTint.b, glassOpacityBottom)
 
+	// Controls on glass - buttons, input fields - are lighter films over the
+	// pane rather than their own opaque surfaces. Opaque controls on a
+	// translucent panel look pasted on.
+	readonly property color glassControl: Qt.rgba(1, 1, 1, 0.10)
+	readonly property color glassControlHover: Qt.rgba(1, 1, 1, 0.18)
+	readonly property color glassControlStrong: Qt.rgba(1, 1, 1, 0.22)
+	readonly property color glassControlStrongHover: Qt.rgba(1, 1, 1, 0.32)
+	readonly property color glassControlBorder: Qt.rgba(1, 1, 1, 0.20)
+
 	// With the fill that transparent, text needs its own contrast rather than
 	// relying on the surface to provide it.
 	readonly property color glassTextShadow: "#b3000000"
