@@ -101,13 +101,21 @@ Singleton {
 	readonly property color glassRimMid: "#26ffffff"
 	readonly property color glassRimBottom: "#0affffff"
 
-	// An ambient shadow, drawn as concentric rings of decreasing opacity
-	// rather than one hard outline. Cheap approximation of a feathered edge:
-	// no shader, and the falloff is what stops the silhouette looking cut out.
-	readonly property int glassShadowLayers: 4
-	readonly property real glassShadowAlpha: 0.13
-	// Room the window must leave around a card for the shadow to bleed into.
-	readonly property int glassShadowPadding: 6
+	// The design floats its panels on `0 16px 40px rgba(0,0,0,.30)`: a wide,
+	// offset, blurred shadow. This approximates it with concentric rings whose
+	// opacity falls off on a curve - enough of them, over enough distance, to
+	// read as a gradient rather than as an outline.
+	//
+	// A real gaussian would mean MultiEffect, which renders the panel to an
+	// offscreen texture every frame. Rings are plain rectangles.
+	readonly property int glassShadowLayers: 18
+	readonly property real glassShadowAlpha: 0.11
+	// How sharply the rings fade. Higher concentrates them near the edge.
+	readonly property real glassShadowFalloff: 1.8
+	// Shadows fall downward, so the rings drift as they widen.
+	readonly property real glassShadowDrift: 0.38
+	// Room the window must leave around a panel for the shadow to bleed into.
+	readonly property int glassShadowPadding: 22
 
 	// Same idea, tinted, so an urgent card still reads as urgent.
 	readonly property color glassRimDangerTop: "#e6cc3333"
@@ -140,6 +148,12 @@ Singleton {
 	// The lens is nearly white, so anything drawn on it has to be dark.
 	readonly property color glassOnLens: "#1d6b3f"
 	readonly property color glassTextOnLens: "#16161c"
+
+	// Depth cues the design carries as inset box-shadows. Without them a panel
+	// is a flat translucent rectangle and the lens is a pale disc.
+	readonly property color glassInnerHighlight: Qt.rgba(1, 1, 1, 0.45)
+	readonly property color glassLensShade: Qt.rgba(0, 0, 0, 0.16)
+	readonly property color glassLensGlow: Qt.rgba(1, 1, 1, 0.80)
 
 	readonly property color glassChip: Qt.rgba(1, 1, 1, 0.10)
 	readonly property color glassChipActive: Qt.rgba(1, 1, 1, 0.28)

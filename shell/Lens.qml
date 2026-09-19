@@ -53,6 +53,41 @@ Item {
 		}
 	}
 
+	// `inset -3px -4px 8px rgba(0,0,0,.12)` and `inset 2px 3px 6px
+	// rgba(255,255,255,.8)`: shading on the inside of the sphere, dark where
+	// it turns away from the light and bright where it faces it. Without these
+	// the radial fill alone reads as a pale disc.
+	//
+	// Both are radial gradients offset from centre, clipped to the lens by
+	// being circles themselves.
+	Rectangle {
+		anchors.fill: parent
+		radius: width / 2
+		rotation: 315
+
+		gradient: Gradient {
+			orientation: Gradient.Horizontal
+
+			GradientStop { position: 0.0; color: "#00000000" }
+			GradientStop { position: 0.62; color: "#00000000" }
+			GradientStop { position: 1.0; color: Theme.glassLensShade }
+		}
+	}
+
+	Rectangle {
+		anchors.fill: parent
+		radius: width / 2
+		rotation: 315
+
+		gradient: Gradient {
+			orientation: Gradient.Horizontal
+
+			GradientStop { position: 0.0; color: Theme.glassLensGlow }
+			GradientStop { position: 0.28; color: "#00ffffff" }
+			GradientStop { position: 1.0; color: "#00ffffff" }
+		}
+	}
+
 	// A rotated circle clips the sweeping band to the lens for free - a
 	// rotated circle is still a circle, so no mask is needed.
 	Rectangle {
