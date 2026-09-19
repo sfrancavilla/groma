@@ -25,7 +25,16 @@ Item {
 
 	readonly property bool charging: root.state === UPowerDeviceState.Charging
 	readonly property bool full: root.state === UPowerDeviceState.FullyCharged
-	readonly property bool low: !root.charging && !root.full && root.level <= 0.20
+	readonly property bool low: !root.onPower && root.level <= 0.20
+
+	// Green means "on mains", not "electrons currently moving". A battery
+	// already at 100% goes straight to FullyCharged when you plug in - it
+	// never passes through Charging - so keying the colour off charging alone
+	// means the state you sit in most of the time looks like being unplugged.
+	//
+	// UPower's system-level flag rather than the device state, because it also
+	// covers the pending-charge cases.
+	readonly property bool onPower: root.ready && !UPower.onBattery
 
 	property bool open: false
 
@@ -67,7 +76,7 @@ Item {
 		styleColor: Theme.glassTextShadow
 
 		color: root.low ? Theme.danger
-			: root.charging ? Theme.success
+			: root.onPower ? Theme.success
 			: Theme.glassTextPrimary
 
 		text: !root.ready ? "--%"
@@ -179,7 +188,7 @@ Item {
 
 				// The fill carries the state: green while charging, amber when
 				// it is time to worry, plain otherwise.
-				fillColor: root.charging ? Theme.glassFillCharging
+				fillColor: root.onPower ? Theme.glassFillCharging
 					: root.low ? Theme.glassFillWarning
 					: Theme.glassTrackFill
 
@@ -240,9 +249,7 @@ Item {
 						const w = Math.abs(root.device.changeRate);
 						const rate = w > 0.1 ? " · " + w.toFixed(1) + " W" : "";
 
-						return (root.charging ? "Power adapter"
-							: root.full ? "Power adapter"
-							: "On battery") + rate;
+						return (root.onPower ? "Power adapter" : "On battery") + rate;
 					}
 				}
 
