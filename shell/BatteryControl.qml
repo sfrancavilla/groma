@@ -240,7 +240,6 @@ Item {
 
 					text: Math.round(root.level * 100) + "%"
 					font.pixelSize: Theme.fontBody
-					font.bold: true
 
 					// A full battery puts the lens right under this.
 					color: batterySlider.knobRight > batteryValue.x
@@ -263,7 +262,6 @@ Item {
 
 					anchors.left: parent.left
 					font.pixelSize: Theme.fontCaption
-					font.weight: Font.DemiBold
 					opacity: 0.85
 					color: Theme.glassTextPrimary
 
@@ -287,7 +285,6 @@ Item {
 						anchors.verticalCenter: parent.verticalCenter
 						text: "Health " + Math.round(root.health) + "%"
 						font.pixelSize: Theme.fontCaption
-						font.weight: Font.DemiBold
 						opacity: 0.85
 						color: Theme.glassTextPrimary
 					}

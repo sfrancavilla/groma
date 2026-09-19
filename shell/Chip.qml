@@ -33,7 +33,7 @@ Rectangle {
 		verticalAlignment: Text.AlignVCenter
 		elide: Text.ElideRight
 		font.pixelSize: Theme.fontCaption
-		font.bold: chip.active
+		// The chosen chip is marked by its brighter fill, not by its weight.
 		opacity: chip.active ? 1.0 : 0.8
 		color: Theme.glassTextPrimary
 	}

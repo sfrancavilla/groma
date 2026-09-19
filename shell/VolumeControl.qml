@@ -198,7 +198,6 @@ Item {
 
 					text: root.muted ? "Muted" : Math.round(root.volume * 100)
 					font.pixelSize: Theme.fontBody
-					font.bold: true
 
 					color: volumeSlider.knobRight > volumeValue.x
 						? Theme.glassTextOnLens : Theme.glassTextPrimary

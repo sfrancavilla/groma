@@ -53,7 +53,6 @@ GlassPanel {
 				elide: Text.ElideRight
 				text: tile.trailing
 				font.pixelSize: Theme.fontBody
-				font.weight: Font.DemiBold
 				opacity: 0.8
 				color: Theme.glassTextPrimary
 			}
