@@ -58,6 +58,15 @@ Scope {
 		// Unlike the polkit dialog, toasts must never take keyboard focus.
 		WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
+		// Ask the compositor to blur what is behind the cards. This is the one
+		// part of the glass we cannot draw ourselves - a client never sees its
+		// own backdrop. Declaring it here rather than as a Hyprland layer rule
+		// keeps Groma self-contained.
+		BackgroundEffect.blurRegion: Region {
+			item: toastColumn
+			radius: Theme.radiusMedium
+		}
+
 		Column {
 			id: toastColumn
 

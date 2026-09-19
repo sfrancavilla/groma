@@ -35,6 +35,25 @@ Singleton {
 	// Status. One red, used everywhere something is wrong.
 	readonly property color danger: "#cc3333"
 
+	// --- Liquid glass (experimental) ---
+	//
+	// The blur behind these surfaces is done by the compositor; everything
+	// here is what we draw on top of it. Apple's version also refracts the
+	// backdrop at the edges, which we cannot do: a Wayland client cannot read
+	// the pixels behind its own surface. The gradient and the bright border
+	// below are standing in for that lensing.
+	readonly property bool glass: true
+
+	// Two stops rather than one flat fill - the sheen is what stops it
+	// reading as "a dark box with some transparency".
+	readonly property color glassSurfaceTop: "#cc3a3a40"
+	readonly property color glassSurfaceBottom: "#a61e1e22"
+	readonly property color glassBorder: "#4dffffff"
+
+	readonly property color glassTextPrimary: "#ffffff"
+	readonly property color glassTextSecondary: "#d9ffffff"
+	readonly property color glassTextMuted: "#8cffffff"
+
 	// Corner radii, by element size.
 	readonly property int radiusSmall: 6
 	readonly property int radiusMedium: 10

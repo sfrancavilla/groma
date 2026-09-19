@@ -11,6 +11,16 @@ Rectangle {
 	readonly property bool isCritical:
 		toast.modelData.urgency === NotificationUrgency.Critical
 
+	// Resolved once here rather than branching on Theme.glass at every use.
+	readonly property color cardBorder: toast.isCritical ? Theme.danger
+		: Theme.glass ? Theme.glassBorder : Theme.borderSubtle
+	readonly property color cardText:
+		Theme.glass ? Theme.glassTextPrimary : Theme.textPrimary
+	readonly property color cardTextBody:
+		Theme.glass ? Theme.glassTextSecondary : Theme.textSecondary
+	readonly property color cardTextMuted:
+		Theme.glass ? Theme.glassTextMuted : Theme.textMuted
+
 	// Clients supply artwork two different ways: an `image` hint (album art, an
 	// avatar) or an `app_icon`, which is usually a themed icon name that has to
 	// be looked up rather than a path.
@@ -32,9 +42,20 @@ Rectangle {
 	height: implicitHeight
 	radius: Theme.radiusMedium
 
-	color: Theme.surface
+	color: Theme.glass ? "transparent" : Theme.surface
 	border.width: toast.isCritical ? 2 : 1
-	border.color: toast.isCritical ? Theme.danger : Theme.borderSubtle
+	border.color: toast.cardBorder
+
+	// A flat fill reads as "a dark box with some alpha". The vertical sheen is
+	// what makes it read as a pane of glass catching the light.
+	gradient: Theme.glass ? glassFill : null
+
+	Gradient {
+		id: glassFill
+
+		GradientStop { position: 0.0; color: Theme.glassSurfaceTop }
+		GradientStop { position: 1.0; color: Theme.glassSurfaceBottom }
+	}
 
 	// Notifications carry their own lifetime. A timeout of 0 means "wait for
 	// the user", and urgent ones should not disappear on their own either.
@@ -93,14 +114,14 @@ Rectangle {
 					anchors.left: parent.left
 					text: toast.modelData.appName
 					font.pixelSize: 11
-					color: toast.isCritical ? Theme.danger : Theme.textMuted
+					color: toast.isCritical ? Theme.danger : toast.cardTextMuted
 				}
 
 				Text {
 					anchors.right: parent.right
 					text: "×"
 					font.pixelSize: 14
-					color: closeMouse.containsMouse ? Theme.textPrimary : Theme.textMuted
+					color: closeMouse.containsMouse ? toast.cardText : toast.cardTextMuted
 
 					MouseArea {
 						id: closeMouse
@@ -122,7 +143,7 @@ Rectangle {
 				font.pixelSize: 13
 				font.bold: true
 				elide: Text.ElideRight
-				color: Theme.textPrimary
+				color: toast.cardText
 			}
 
 			Text {
@@ -134,7 +155,7 @@ Rectangle {
 				elide: Text.ElideRight
 				// Clients may send limited markup in the body.
 				textFormat: Text.StyledText
-				color: Theme.textSecondary
+				color: toast.cardTextBody
 			}
 
 			Row {
