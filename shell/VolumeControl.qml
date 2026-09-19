@@ -202,14 +202,18 @@ Item {
 					id: track
 
 					// The knob travels between the insets rather than across
-					// the full width, so it never overhangs either end. The
-					// fill then runs to the knob's centre, not to the raw
-					// percentage - otherwise the track's edge cuts through the
-					// middle of the lens at full volume.
+					// the full width, so it never overhangs either end.
 					readonly property int knobSize: 40
 					readonly property int inset: 2
 					readonly property real travel:
 						width - track.knobSize - track.inset * 2
+
+					// How far past the lens centre the fill runs. At 0 the fill
+					// edge cuts through the middle of the lens, which is what
+					// the design does and what looked wrong on screen. At
+					// knobSize / 2 the fill edge meets the lens's right edge.
+					// Half the radius sits between the two.
+					readonly property int knobBias: 10
 
 					width: parent.width
 					height: 44
@@ -228,7 +232,8 @@ Item {
 							bottom: parent.bottom
 						}
 
-						width: knob.x + knob.width / 2
+						width: Math.min(track.width,
+							knob.x + knob.width / 2 + track.knobBias)
 						radius: track.radius
 						color: Theme.glassTrackFill
 
