@@ -67,8 +67,8 @@ Singleton {
 	// White, as in the design. This only works with something behind it - see
 	// Wallpaper.qml. White glass over an empty dark desktop is grey.
 	readonly property color glassTint: "#ffffff"
-	readonly property real glassOpacityTop: 0.18
-	readonly property real glassOpacityBottom: 0.12
+	readonly property real glassOpacityTop: 0.14
+	readonly property real glassOpacityBottom: 0.10
 
 	// Two stops rather than one flat fill - the sheen is what stops it
 	// reading as "a dark box with some transparency".

@@ -147,7 +147,14 @@ hl.config({
             -- Vibrancy boosts the saturation of the blurred backdrop. At the
             -- default 0.1696 a translucent surface goes grey; this is what
             -- keeps the colour of whatever is behind it.
+            --
+            -- On its own it only adds: with brightness at 1.0 and no
+            -- vibrancy_darkness, saturated areas get lifted and nothing gets
+            -- pulled down, so the glass ends up brighter than the design it
+            -- was drawn for. These two put the light back.
             vibrancy  = 0.5,
+            vibrancy_darkness = 0.35,
+            brightness = 0.75,
         },
     },
 
