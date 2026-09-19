@@ -135,9 +135,14 @@ unregisters and the in-flight request dies with `Request dismissed`. Stop
 editing before you test authentication.
 
 Cancelling a polkit prompt **counts as a failed attempt** for `pam_faillock`.
-Three of them and the account locks for ten minutes, after which every password
-is rejected unread — including correct ones. Check `faillock --user "$USER"`
-before concluding the dialog is broken.
+Abandoning the prompt makes `pam_unix` fail and faillock counts that; nothing
+in the shell can prevent it. Three of them and the account locks for ten
+minutes — on TTYs too — after which every password is rejected unread,
+including correct ones. Check `faillock --user "$USER"` before concluding the
+dialog is broken.
+
+The dialog therefore confirms the first cancel rather than acting on it, so a
+stray Escape does not spend one of the three.
 
 Moving this directory while the shell is running kills the process. Restart with
 `qs -c groma`.

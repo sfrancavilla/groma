@@ -29,7 +29,10 @@ Scope {
 		property var supplementaryLines: []
 
 		// A new request starts with a clean slate.
-		onFlowChanged: dialogWindow.supplementaryLines = []
+		onFlowChanged: {
+			dialogWindow.supplementaryLines = [];
+			dialogWindow.confirmingCancel = false;
+		}
 
 		Connections {
 			target: dialogWindow.flow
@@ -44,6 +47,29 @@ Scope {
 				dialogWindow.supplementaryLines =
 					dialogWindow.supplementaryLines.concat(message).slice(-4);
 			}
+		}
+
+		// Abandoning a polkit prompt makes pam_unix fail, and pam_faillock
+		// counts that: three stray Escapes and the account is locked for ten
+		// minutes, on TTYs too. Nothing here can stop a cancel reaching PAM -
+		// so the first one only arms the second.
+		property bool confirmingCancel: false
+
+		function requestCancel() {
+			if (dialogWindow.confirmingCancel) {
+				dialogWindow.flow?.cancelAuthenticationRequest();
+				return;
+			}
+
+			dialogWindow.confirmingCancel = true;
+			cancelTimeout.restart();
+		}
+
+		Timer {
+			id: cancelTimeout
+
+			interval: 5000
+			onTriggered: dialogWindow.confirmingCancel = false
 		}
 
 		function submitPassword() {
@@ -96,7 +122,7 @@ Scope {
 			body: dialogWindow.flow?.message ?? ""
 
 			focus: true
-			Keys.onEscapePressed: dialogWindow.flow?.cancelAuthenticationRequest()
+			Keys.onEscapePressed: dialogWindow.requestCancel()
 
 			GlassField {
 				id: password
@@ -112,6 +138,18 @@ Scope {
 
 				onVisibleChanged: if (visible) focusInput()
 				onAccepted: dialogWindow.submitPassword()
+			}
+
+			// Why cancelling is not free.
+			Text {
+				width: parent.width
+				wrapMode: Text.WordWrap
+				visible: dialogWindow.confirmingCancel
+				text: "Cancelling counts as a failed attempt. "
+					+ "Press Cancel again to abandon."
+				font.pixelSize: Theme.fontCaption
+				lineHeight: 1.4
+				color: Theme.warning
 			}
 
 			// Retry counts, lockout warnings and other feedback from PAM.
@@ -132,8 +170,10 @@ Scope {
 				spacing: Theme.spacingS
 
 				DialogButton {
-					text: "Cancel"
-					onClicked: dialogWindow.flow?.cancelAuthenticationRequest()
+					text: dialogWindow.confirmingCancel ? "Cancel anyway" : "Cancel"
+					variant: dialogWindow.confirmingCancel
+						? "destructive" : "secondary"
+					onClicked: dialogWindow.requestCancel()
 				}
 
 				DialogButton {
