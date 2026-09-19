@@ -212,10 +212,16 @@ Item {
 					}
 
 					// Dark once the lens has reached it, since the lens is
-					// nearly white and so is this.
+					// nearly white and so is this - and dimmed when there is
+					// nothing coming out, matching the bar's glyph.
 					color: volumeSlider.knobLeft < speaker.x + speaker.width
-						? Theme.glassTextOnLens : Theme.glassTextPrimary
-					waves: root.muted ? 0 : root.volume > 0.5 ? 2 : 1
+						? Theme.glassTextOnLens
+						: root.muted || root.volume <= 0
+							? Theme.glassTextMuted
+							: Theme.glassTextPrimary
+					// Silent is silent: zero gets the crossed glyph too.
+					waves: root.muted || root.volume <= 0 ? 0
+						: root.volume > 0.5 ? 2 : 1
 				}
 
 				Text {
