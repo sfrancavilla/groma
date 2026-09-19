@@ -28,15 +28,6 @@ Rectangle {
 	// The bar sits against a screen edge and has nowhere to cast into.
 	property int shadowLayers: Theme.glassShadowLayers
 
-	// Paint the desktop's colour inside the surface, since we cannot sample
-	// it. The caller supplies where this panel sits, so the colour lines up
-	// with the wallpaper behind it.
-	property bool wash: false
-	property real washOriginX: 0
-	property real washOriginY: 0
-	property real washFieldWidth: width
-	property real washFieldHeight: height
-
 	default property alias content: contentHolder.data
 
 	radius: Theme.radiusMedium
@@ -76,16 +67,6 @@ Rectangle {
 			border.color: Qt.rgba(0, 0, 0, Theme.glassShadowAlpha
 				* Math.pow(1 - ring.index / ring.reach, Theme.glassShadowFalloff))
 		}
-	}
-
-	GlassWash {
-		anchors.fill: parent
-		visible: Theme.glass && panel.wash
-		radius: panel.radius
-		originX: panel.washOriginX
-		originY: panel.washOriginY
-		fieldWidth: panel.washFieldWidth
-		fieldHeight: panel.washFieldHeight
 	}
 
 	// Declared last, so caller content sits above the glass.
