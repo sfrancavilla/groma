@@ -27,6 +27,12 @@ Scope {
 	readonly property int lockAfter: root.onBattery ? 240 : 600
 	readonly property int screenOffAfter: root.onBattery ? 300 : 660
 
+	// Blanking the screen is not sleeping: the machine stays fully awake with
+	// the display off, which on battery is most of the cost and none of the
+	// benefit. Zero disables the stage, which is what mains gets - a plugged
+	// in machine left alone should stay reachable.
+	readonly property int suspendAfter: root.onBattery ? 900 : 0
+
 	// The panel backlight, named explicitly: with no device brightnessctl walks
 	// everything it can find, which here includes two keyboard LEDs.
 	readonly property string backlight: "amdgpu_bl1"
@@ -61,5 +67,16 @@ Scope {
 
 		onIsIdleChanged: Quickshell.execDetached(
 			["hyprctl", "dispatch", "dpms", isIdle ? "off" : "on"])
+	}
+
+	// logind allows the active session to suspend itself without asking, so
+	// this needs no privileges. The sleep hook locks on the way down, and this
+	// is already past the lock stage anyway.
+	IdleMonitor {
+		enabled: root.suspendAfter > 0
+		timeout: Math.max(1, root.suspendAfter)
+		respectInhibitors: true
+
+		onIsIdleChanged: if (isIdle) Quickshell.execDetached(["systemctl", "suspend"])
 	}
 }
