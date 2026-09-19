@@ -134,12 +134,20 @@ hl.config({
 
         blur = {
             enabled   = true,
-            size      = 5,
-            passes    = 2,
+            -- The shell's glass is designed against a 28px blur at 170%
+            -- saturation. Hyprland's size is a kernel width rather than a
+            -- pixel radius, so this is the rough equivalent: a wide, soft
+            -- field rather than a recognisable desktop seen through frost.
+            --
+            -- passes is the expensive part - each one is another pass over
+            -- the blurred region every frame. Drop to 2, or size to 5, in
+            -- ~/.config/hypr/machine.lua if battery matters more than looks.
+            size      = 10,
+            passes    = 3,
             -- Vibrancy boosts the saturation of the blurred backdrop. At the
             -- default 0.1696 a translucent surface goes grey; this is what
             -- keeps the colour of whatever is behind it.
-            vibrancy  = 0.35,
+            vibrancy  = 0.5,
         },
     },
 
