@@ -74,12 +74,11 @@ Singleton {
 	readonly property real glassOpacityTop: 0.14
 	readonly property real glassOpacityBottom: 0.10
 
-	// Two stops rather than one flat fill - the sheen is what stops it
-	// reading as "a dark box with some transparency".
-	readonly property color glassSurfaceTop: Qt.rgba(
+	// Flat, as in the design. An earlier version graded this from lighter at
+	// the top to darker at the bottom, which is what made panels read as
+	// "white at the top, grey underneath" rather than as one surface.
+	readonly property color glassSurface: Qt.rgba(
 		glassTint.r, glassTint.g, glassTint.b, glassOpacityTop)
-	readonly property color glassSurfaceBottom: Qt.rgba(
-		glassTint.r, glassTint.g, glassTint.b, glassOpacityBottom)
 
 	// Controls on glass - buttons, input fields - are lighter films over the
 	// pane rather than their own opaque surfaces. Opaque controls on a
@@ -93,13 +92,12 @@ Singleton {
 	// With the fill that transparent, text needs its own contrast rather than
 	// relying on the surface to provide it.
 	readonly property color glassTextShadow: "#b3000000"
-	// The edge is not a stroke. A uniform 1px outline is the most obviously
-	// drawn thing about a glass panel; a real one catches light along one side
-	// and disappears along the rest. These are the stops of that falloff.
-	readonly property int glassRimWidth: 1
-	readonly property color glassRimTop: "#73ffffff"
-	readonly property color glassRimMid: "#26ffffff"
-	readonly property color glassRimBottom: "#0affffff"
+	// A uniform edge, as in the design: `1px solid rgba(255,255,255,.32)`.
+	// Grading it top-to-bottom seemed more like real glass, and was in fact
+	// the second half of the "white at the top, grey underneath" problem.
+	readonly property color glassEdge: Qt.rgba(1, 1, 1, 0.32)
+	readonly property color glassEdgeDanger:
+		Qt.rgba(danger.r, danger.g, danger.b, 0.70)
 
 	// The design floats its panels on `0 16px 40px rgba(0,0,0,.30)`: a wide,
 	// offset, blurred shadow. This approximates it with concentric rings whose
@@ -116,11 +114,6 @@ Singleton {
 	readonly property real glassShadowDrift: 0.38
 	// Room the window must leave around a panel for the shadow to bleed into.
 	readonly property int glassShadowPadding: 22
-
-	// Same idea, tinted, so an urgent card still reads as urgent.
-	readonly property color glassRimDangerTop: "#e6cc3333"
-	readonly property color glassRimDangerMid: "#80cc3333"
-	readonly property color glassRimDangerBottom: "#33cc3333"
 
 	readonly property color glassTextPrimary: "#ffffff"
 	readonly property color glassTextSecondary: "#d9ffffff"

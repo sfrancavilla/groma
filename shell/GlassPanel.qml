@@ -1,18 +1,28 @@
 import QtQuick
 
-// A pane of glass: gradient rim, inset body, feathered ambient shadow.
+// A pane of glass.
 //
-// The construction is fiddly enough that a second copy would drift from the
-// first, and it is wanted in three places - notification cards, the
-// authentication dialog and the bar. Falls back to a flat surface when
-// Theme.glass is off, so callers never branch on it themselves.
+// The design's recipe, and nothing more:
 //
-// Anything declared inside a GlassPanel lands on top of the glass.
+//   background:  rgba(255,255,255,.14)                 - flat
+//   border:      1px solid rgba(255,255,255,.32)       - uniform
+//   box-shadow:  inset 0 1px 0 rgba(255,255,255,.45)   - lit top edge
+//                0 16px 40px rgba(0,0,0,.30)           - it floats
+//
+// Earlier versions graded both the fill and the edge from light at the top to
+// dark at the bottom, on the theory that real glass catches light unevenly.
+// On screen that reads as a white-to-grey panel rather than as one surface,
+// which is the opposite of the intent.
+//
+// Falls back to a flat opaque surface when Theme.glass is off, so callers
+// never branch on it themselves. Anything declared inside lands on top.
 Rectangle {
 	id: panel
 
-	// Tints the rim for something urgent, rather than drawing a red outline.
+	// Tints the edge for something urgent, rather than drawing a red outline.
 	property bool danger: false
+	// The bar sits against a screen edge and has nowhere to cast into.
+	property int shadowLayers: Theme.glassShadowLayers
 
 	// Paint the desktop's colour inside the surface, since we cannot sample
 	// it. The caller supplies where this panel sits, so the colour lines up
@@ -22,36 +32,16 @@ Rectangle {
 	property real washOriginY: 0
 	property real washFieldWidth: width
 	property real washFieldHeight: height
-	// The bar sits against a screen edge and has nowhere to cast into.
-	property int shadowLayers: Theme.glassShadowLayers
-
-	radius: Theme.radiusMedium
 
 	default property alias content: contentHolder.data
 
-	// In glass mode this rectangle is only the edge: a gradient fading top to
-	// bottom, with the body inset inside it. In flat mode it is the surface.
-	color: Theme.glass ? "transparent" : Theme.surface
-	border.width: Theme.glass ? 0 : (panel.danger ? 2 : 1)
-	border.color: panel.danger ? Theme.danger : Theme.borderSubtle
+	radius: Theme.radiusMedium
 
-	gradient: !Theme.glass ? null : panel.danger ? dangerRim : plainRim
-
-	Gradient {
-		id: plainRim
-
-		GradientStop { position: 0.0; color: Theme.glassRimTop }
-		GradientStop { position: 0.35; color: Theme.glassRimMid }
-		GradientStop { position: 1.0; color: Theme.glassRimBottom }
-	}
-
-	Gradient {
-		id: dangerRim
-
-		GradientStop { position: 0.0; color: Theme.glassRimDangerTop }
-		GradientStop { position: 0.35; color: Theme.glassRimDangerMid }
-		GradientStop { position: 1.0; color: Theme.glassRimDangerBottom }
-	}
+	color: Theme.glass ? Theme.glassSurface : Theme.surface
+	border.width: 1
+	border.color: Theme.glass
+		? (panel.danger ? Theme.glassEdgeDanger : Theme.glassEdge)
+		: (panel.danger ? Theme.danger : Theme.borderSubtle)
 
 	// Concentric rings of decreasing opacity, standing in for a blurred
 	// shadow. The curve matters more than the count: a linear fade reads as
@@ -65,11 +55,9 @@ Rectangle {
 			required property int index
 
 			readonly property real spread: ring.index + 1
-			readonly property real reach:
-				Math.max(1, panel.shadowLayers)
+			readonly property real reach: Math.max(1, panel.shadowLayers)
 			// Shadows fall downward.
-			readonly property real drift:
-				ring.spread * Theme.glassShadowDrift
+			readonly property real drift: ring.spread * Theme.glassShadowDrift
 
 			anchors.fill: parent
 			anchors.leftMargin: -ring.spread
@@ -86,37 +74,6 @@ Rectangle {
 		}
 	}
 
-	// The body, inset by the rim width so the gradient reads as an edge.
-	Rectangle {
-		visible: Theme.glass
-		anchors.fill: parent
-		anchors.margins: Theme.glassRimWidth
-		radius: parent.radius - Theme.glassRimWidth
-
-		gradient: Gradient {
-			GradientStop { position: 0.0; color: Theme.glassSurfaceTop }
-			GradientStop { position: 1.0; color: Theme.glassSurfaceBottom }
-		}
-	}
-
-	// `inset 0 1px 0` in the design: a lit line along the top inside edge. The
-	// rim gradient fades over the whole panel, which is a different thing -
-	// this is the hard edge that makes it look like a lit surface.
-	Rectangle {
-		visible: Theme.glass
-		anchors {
-			left: parent.left
-			right: parent.right
-			top: parent.top
-			leftMargin: parent.radius * 0.5
-			rightMargin: parent.radius * 0.5
-			topMargin: Theme.glassRimWidth
-		}
-
-		height: 1
-		color: Theme.glassInnerHighlight
-	}
-
 	GlassWash {
 		anchors.fill: parent
 		visible: Theme.glass && panel.wash
@@ -125,6 +82,23 @@ Rectangle {
 		originY: panel.washOriginY
 		fieldWidth: panel.washFieldWidth
 		fieldHeight: panel.washFieldHeight
+	}
+
+	// `inset 0 1px 0`: a lit line along the top inside edge. This is the one
+	// place the panel is brighter than itself.
+	Rectangle {
+		visible: Theme.glass
+		anchors {
+			left: parent.left
+			right: parent.right
+			top: parent.top
+			leftMargin: parent.radius * 0.5
+			rightMargin: parent.radius * 0.5
+			topMargin: 1
+		}
+
+		height: 1
+		color: Theme.glassInnerHighlight
 	}
 
 	// Declared last, so caller content sits above the glass.
