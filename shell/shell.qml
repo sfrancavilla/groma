@@ -107,18 +107,8 @@ ShellRoot {
 			}
 			spacing: 16
 
-			Text {
+			VolumeControl {
 				anchors.verticalCenter: parent.verticalCenter
-				color: bar.barText
-				style: Theme.glass ? Text.Raised : Text.Normal
-				styleColor: Theme.glassTextShadow
-				text: {
-					const sink = Pipewire.defaultAudioSink;
-					if (!sink?.ready || !sink.audio)
-						return "Vol --";
-					return sink.audio.muted ? "Muted"
-						: "Vol " + Math.round(sink.audio.volume * 100) + "%";
-				}
 			}
 
 			Text {
