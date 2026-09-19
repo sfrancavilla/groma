@@ -110,8 +110,11 @@ Singleton {
 	readonly property real glassShadowAlpha: 0.11
 	// How sharply the rings fade. Higher concentrates them near the edge.
 	readonly property real glassShadowFalloff: 1.8
-	// Shadows fall downward, so the rings drift as they widen.
-	readonly property real glassShadowDrift: 0.38
+	// Shadows fall downward. The design offsets its by 16px against a 40px
+	// blur, so almost nothing lands above the panel. At a low drift the
+	// innermost rings sit a fraction of a pixel above the top edge - a dark
+	// line immediately above the lit one, which reads as a doubled border.
+	readonly property real glassShadowDrift: 0.85
 	// Room the window must leave around a panel for the shadow to bleed into.
 	readonly property int glassShadowPadding: 22
 

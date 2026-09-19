@@ -12,7 +12,9 @@ Item {
 	id: root
 
 	readonly property var sink: Pipewire.defaultAudioSink
-	readonly property bool ready: root.sink?.ready && root.sink?.audio
+	// !! because both sides are undefined until PipeWire reports in, and
+	// undefined is not a bool.
+	readonly property bool ready: !!(root.sink?.ready && root.sink?.audio)
 	readonly property bool muted: root.ready && root.sink.audio.muted
 	readonly property real volume: root.ready ? root.sink.audio.volume : 0
 

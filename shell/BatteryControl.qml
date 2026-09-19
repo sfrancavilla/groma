@@ -18,7 +18,8 @@ Item {
 	readonly property var physical:
 		UPower.devices.values.find(d => d.isLaptopBattery) ?? null
 	readonly property real health: root.physical?.healthPercentage ?? 0
-	readonly property bool ready: root.device?.ready && root.device?.isPresent
+	// !! because both sides are undefined until UPower reports in.
+	readonly property bool ready: !!(root.device?.ready && root.device?.isPresent)
 	readonly property real level: root.ready ? root.device.percentage : 0
 	readonly property int state: root.ready ? root.device.state
 		: UPowerDeviceState.Unknown
