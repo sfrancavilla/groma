@@ -97,7 +97,7 @@ Scope {
 
 			anchors.centerIn: parent
 			width: 420
-			height: content.implicitHeight + 40
+			height: content.implicitHeight + Theme.tilePadding * 2
 			radius: Theme.radiusLarge
 
 			// Resolved once rather than branching on Theme.glass at every use.
@@ -119,8 +119,8 @@ Scope {
 					left: parent.left
 					right: parent.right
 					verticalCenter: parent.verticalCenter
-					leftMargin: 20
-					rightMargin: 20
+					leftMargin: Theme.tilePadding
+					rightMargin: Theme.tilePadding
 				}
 
 				spacing: Theme.spacingM
@@ -164,8 +164,8 @@ Scope {
 
 						anchors {
 							fill: parent
-							leftMargin: 10
-							rightMargin: 10
+							leftMargin: Theme.spacingM
+							rightMargin: Theme.spacingM
 						}
 
 						verticalAlignment: TextInput.AlignVCenter

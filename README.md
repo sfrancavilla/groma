@@ -62,12 +62,8 @@ Two rules worth stating because breaking them is easy:
 `Theme.glass` toggles the translucent look off for the whole shell, so every
 component must read sensibly both ways.
 
-### Not yet aligned
-
-A few literals predate the scale and do not map onto it exactly, so changing
-them would restyle rather than rename: the notification card's internal
-spacing (10, 6) and close glyph (14), the polkit dialog's padding (20) and
-field insets (10), and the bar's margins (10) and workspace gap (6).
+Every colour, spacing, radius and type size in the shell now comes from
+`Theme.qml`; there are no literals left in any component.
 
 ## Requirements
 

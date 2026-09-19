@@ -50,11 +50,11 @@ ShellRoot {
 		Row {
 			anchors {
 				left: parent.left
-				leftMargin: 10
+				leftMargin: Theme.spacingM
 				verticalCenter: parent.verticalCenter	
 			}	
 	
-			spacing: 6
+			spacing: Theme.spacingS
 
 			Repeater {
 				model: Hyprland.workspaces
@@ -102,7 +102,7 @@ ShellRoot {
 		Row {
 			anchors {
 				right: parent.right
-				rightMargin: 10
+				rightMargin: Theme.spacingM
 				verticalCenter: parent.verticalCenter
 			}
 			spacing: Theme.spacingL

@@ -36,7 +36,7 @@ GlassPanel {
 	}
 
 	width: parent.width
-	implicitHeight: layout.implicitHeight + 24
+	implicitHeight: layout.implicitHeight + Theme.spacingM * 2
 	height: implicitHeight
 	radius: Theme.radiusMedium
 	danger: toast.isCritical
@@ -62,7 +62,7 @@ GlassPanel {
 			rightMargin: Theme.spacingM
 		}
 
-		spacing: 10
+		spacing: Theme.spacingM
 
 		// Whatever artwork the client attached, if we could resolve it.
 		Image {
@@ -106,7 +106,7 @@ GlassPanel {
 				Text {
 					anchors.right: parent.right
 					text: "×"
-					font.pixelSize: 14
+					font.pixelSize: Theme.fontTitle
 					color: closeMouse.containsMouse ? toast.cardText : toast.cardTextMuted
 
 					MouseArea {
@@ -149,7 +149,7 @@ GlassPanel {
 			}
 
 			Row {
-				spacing: 6
+				spacing: Theme.spacingS
 				visible: toast.modelData.actions.length > 0
 
 				Repeater {
