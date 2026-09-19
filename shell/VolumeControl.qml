@@ -53,17 +53,15 @@ Item {
 		objects: root.sinks
 	}
 
-	Text {
+	SpeakerIcon {
 		id: label
 
 		anchors.centerIn: parent
-		color: root.muted ? Theme.glassTextMuted : Theme.glassTextPrimary
-		style: Theme.glass ? Text.Raised : Text.Normal
-		styleColor: Theme.glassTextShadow
 
-		text: !root.ready ? "Vol --"
-			: root.muted ? "Muted"
-			: "Vol " + Math.round(root.volume * 100) + "%"
+		// The glyph is the readout: no waves when muted, one below half, two
+		// above. A pack would need three separate icons to say this.
+		waves: root.muted ? 0 : root.volume > 0.5 ? 2 : 1
+		color: root.muted ? Theme.glassTextMuted : Theme.glassTextPrimary
 
 		opacity: trigger.containsMouse || root.open ? 1.0 : 0.85
 

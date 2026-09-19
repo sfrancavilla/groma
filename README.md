@@ -53,6 +53,21 @@ whole shell instead of leaving one widget behind.
 | `DialogButton.qml` | Buttons in dialogs and notification actions. `variant`: secondary, primary, destructive |
 | `SpeakerIcon.qml` / `BatteryIcon.qml` / `BoltIcon.qml` | Drawn glyphs, as paths rather than an icon font |
 
+### Why no icon pack
+
+Shell glyphs are drawn as `QtQuick.Shapes` paths, not taken from a font or an
+SVG set. They carry state: the speaker's waves follow the level, the battery's
+cell fills with the charge, and a bolt appears over it when charging. A pack
+would need a separate icon for each of those and code to swap between them.
+
+It also means no font to install, which matters for something meant to be
+cloned, and the glyphs match the panels because they are built the same way.
+
+This does not scale to dozens of icons. When something needs a large set - a
+launcher, a settings panel - use SVGs from Material Symbols or Lucide (qt6-svg
+is present, so `Image` renders them), and `Quickshell.iconPath` for
+*application* icons, which the notification toasts already do.
+
 Tokens are named by **role**, never by value: `Theme.danger` rather than
 `Theme.red`, `Theme.surface` rather than `Theme.white`. A component asking for
 `danger` keeps working when danger stops being red.

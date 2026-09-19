@@ -98,25 +98,32 @@ Item {
 		return t ? t + " remaining" : "On battery";
 	}
 
-	Text {
+	BatteryIcon {
 		id: label
 
 		anchors.centerIn: parent
-		style: Theme.glass ? Text.Raised : Text.Normal
-		styleColor: Theme.glassTextShadow
+
+		// The cell fills with the charge, so the number is not needed to read
+		// it at a glance.
+		level: root.ready ? root.level : -1
 
 		color: root.low ? Theme.danger
 			: root.onPower ? Theme.success
 			: Theme.glassTextPrimary
 
-		text: !root.ready ? "--%"
-			: (root.charging ? "⚡ " : "")
-				+ Math.round(root.level * 100) + "%"
-
 		opacity: trigger.containsMouse || root.open ? 1.0 : 0.85
 
 		Behavior on opacity {
 			NumberAnimation { duration: 120 }
+		}
+
+		BoltIcon {
+			anchors.centerIn: parent
+			width: 7
+			height: 11
+			visible: root.charging
+			// On top of a filled cell, so it has to hold its own against both.
+			color: Theme.glassTextOnLens
 		}
 	}
 
