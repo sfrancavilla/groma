@@ -122,6 +122,7 @@ Singleton {
 		Qt.rgba(warning.r, warning.g, warning.b, 0.70)
 	// The lens is nearly white, so anything drawn on it has to be dark.
 	readonly property color glassOnLens: "#1d6b3f"
+	readonly property color glassTextOnLens: "#16161c"
 
 	readonly property color glassChip: Qt.rgba(1, 1, 1, 0.10)
 	readonly property color glassChipActive: Qt.rgba(1, 1, 1, 0.28)

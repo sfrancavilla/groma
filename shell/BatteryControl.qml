@@ -192,6 +192,8 @@ Item {
 			}
 
 			Slider {
+				id: batterySlider
+
 				width: parent.width
 				value: root.level
 				animateValue: tile.settled
@@ -215,16 +217,21 @@ Item {
 				}
 
 				BatteryIcon {
+					id: batteryIcon
+
 					anchors {
 						left: parent.left
 						leftMargin: Theme.spacingM
 						verticalCenter: parent.verticalCenter
 					}
 
-					color: Theme.glassTextPrimary
+					color: batterySlider.knobLeft < batteryIcon.x + batteryIcon.width
+						? Theme.glassTextOnLens : Theme.glassTextPrimary
 				}
 
 				Text {
+					id: batteryValue
+
 					anchors {
 						right: parent.right
 						rightMargin: Theme.spacingL
@@ -234,7 +241,12 @@ Item {
 					text: Math.round(root.level * 100) + "%"
 					font.pixelSize: Theme.fontBody
 					font.bold: true
-					color: root.low ? Theme.warning : Theme.glassTextPrimary
+
+					// A full battery puts the lens right under this.
+					color: batterySlider.knobRight > batteryValue.x
+						? Theme.glassTextOnLens
+						: root.low ? Theme.warning
+						: Theme.glassTextPrimary
 				}
 			}
 

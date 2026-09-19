@@ -27,6 +27,12 @@ Rectangle {
 
 	// Anything to place inside the lens itself, such as a charging bolt.
 	property alias knobContent: knobOverlay.data
+
+	// Where the lens currently is, in track coordinates. Content laid over the
+	// track draws above the lens, so a label the lens has reached has to know
+	// to switch to a colour that reads against it.
+	readonly property real knobLeft: knob.x
+	readonly property real knobRight: knob.x + knob.width
 	// Suppressed while a panel is opening, where the first layout would
 	// otherwise animate from zero.
 	property bool animateValue: true
@@ -107,12 +113,6 @@ Rectangle {
 			enabled: control.animateValue && !drag.pressed
 			NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
 		}
-	}
-
-	Item {
-		id: overlay
-
-		anchors.fill: parent
 	}
 
 	Item {
@@ -214,6 +214,14 @@ Rectangle {
 				duration: 2000; easing.type: Easing.InOutSine
 			}
 		}
+	}
+
+	// Declared after the lens, so content laid over the track is not hidden by
+	// it when the two meet.
+	Item {
+		id: overlay
+
+		anchors.fill: parent
 	}
 
 	MouseArea {

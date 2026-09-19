@@ -163,6 +163,8 @@ Item {
 			}
 
 			Slider {
+				id: volumeSlider
+
 				width: parent.width
 				value: root.volume
 				active: !root.muted
@@ -170,17 +172,24 @@ Item {
 				onMoved: v => root.setVolume(v)
 
 				SpeakerIcon {
+					id: speaker
+
 					anchors {
 						left: parent.left
 						leftMargin: Theme.spacingL
 						verticalCenter: parent.verticalCenter
 					}
 
-					color: Theme.glassTextPrimary
+					// Dark once the lens has reached it, since the lens is
+					// nearly white and so is this.
+					color: volumeSlider.knobLeft < speaker.x + speaker.width
+						? Theme.glassTextOnLens : Theme.glassTextPrimary
 					waves: root.muted ? 0 : root.volume > 0.5 ? 2 : 1
 				}
 
 				Text {
+					id: volumeValue
+
 					anchors {
 						right: parent.right
 						rightMargin: Theme.spacingL
@@ -190,7 +199,9 @@ Item {
 					text: root.muted ? "Muted" : Math.round(root.volume * 100)
 					font.pixelSize: Theme.fontBody
 					font.bold: true
-					color: Theme.glassTextPrimary
+
+					color: volumeSlider.knobRight > volumeValue.x
+						? Theme.glassTextOnLens : Theme.glassTextPrimary
 				}
 			}
 
