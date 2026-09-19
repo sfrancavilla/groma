@@ -3,6 +3,9 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import QtQuick
+import ".."
+import "../icons"
+import "../ui"
 
 // The bar's volume readout, and the control-center tile it opens.
 //

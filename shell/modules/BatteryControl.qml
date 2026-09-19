@@ -3,6 +3,9 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.UPower
 import QtQuick
+import ".."
+import "../icons"
+import "../ui"
 
 // The bar's battery readout, and the tile it opens.
 //

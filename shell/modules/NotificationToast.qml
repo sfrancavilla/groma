@@ -1,6 +1,8 @@
 import Quickshell
 import Quickshell.Services.Notifications
 import QtQuick
+import ".."
+import "../ui"
 
 // One notification card. Repeater hands each delegate its element as
 // `modelData`, which `required property` makes explicit.

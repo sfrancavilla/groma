@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 
 // The shell's slider: a track the lens sits inside, not on.
 //

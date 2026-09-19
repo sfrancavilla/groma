@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 
 // A panel of glass with the shell's standard padding, and an optional header
 // naming what it is and what it is acting on.

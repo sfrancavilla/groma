@@ -1,6 +1,8 @@
 import Quickshell
 import Quickshell.Services.Pam
 import QtQuick
+import ".."
+import "../ui"
 
 // The unlock face: clock, prompt, and the PAM conversation behind it.
 //

@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 
 // A pane of glass.
 //

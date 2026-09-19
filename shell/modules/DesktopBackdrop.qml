@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import ".."
 
 // The desktop's colour field, as drawn by the design's mockups.
 //

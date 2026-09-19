@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 
 // A text field as a glass track, with a focus ring rather than a thicker
 // border - a border that grows on focus nudges everything beside it.

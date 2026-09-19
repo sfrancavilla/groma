@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import ".."
 
 // A sphere of glass catching light: off-centre highlight, radial falloff, and
 // a sheen that sweeps across it.

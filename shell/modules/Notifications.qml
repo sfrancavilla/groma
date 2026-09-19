@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import QtQuick
+import ".."
 
 // The notification daemon. Creating a NotificationServer claims
 // org.freedesktop.Notifications on the session bus, which is what makes this

@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Wayland
 import QtQuick
+import ".."
 
 // The desktop background. Drawn rather than loaded, so there is something
 // behind the glass out of the box - glass over an empty dark desktop is grey,

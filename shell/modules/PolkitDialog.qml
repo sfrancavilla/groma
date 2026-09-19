@@ -2,6 +2,8 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Polkit
 import QtQuick
+import ".."
+import "../ui"
 
 // A polkit authentication agent: the password prompt that appears when an
 // application asks to do something administrative.

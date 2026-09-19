@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 
 // A pill: one option among a few, the chosen one brighter.
 Rectangle {

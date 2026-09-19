@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 
 // A modal sheet: dimmed, blurred desktop with a pane of glass centred on it.
 //

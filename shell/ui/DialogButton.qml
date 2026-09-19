@@ -1,5 +1,6 @@
 import Quickshell
 import QtQuick
+import ".."
 
 // A dialog button: the same chip the tiles use, in three weights.
 //

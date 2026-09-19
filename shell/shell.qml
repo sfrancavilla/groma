@@ -3,6 +3,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
 import QtQuick
+import "modules"
 
 ShellRoot {
 	SystemClock {
