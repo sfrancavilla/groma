@@ -21,6 +21,7 @@ One long-running process provides the whole desktop shell:
 | `shell/PolkitDialog.qml` | Polkit authentication agent and its password dialog |
 | `shell/VolumeControl.qml` | Bar readout and the Sound tile: slider, output-device chips |
 | `shell/BatteryControl.qml` | Bar readout and the Battery tile: charge, time, health |
+| `shell/LockScreen.qml` | Session lock (SUPER+L). `LockContent.qml` is the unlock face |
 | `shell/Notifications.qml` | Notification daemon; owns `org.freedesktop.Notifications` |
 | `shell/NotificationToast.qml` | A single notification card |
 | `shell/DialogButton.qml` | Shared button used by dialogs and notification actions |
@@ -141,6 +142,24 @@ hyprctl layers | grep 'namespace: groma'
 Layer ...: xywh: 0 0 1440 32, a: 1, namespace: groma:bar, pid: 3652
 Layer ...: xywh: 1048 40 380 74, a: 1, namespace: groma:notifications, pid: 3652
 ```
+
+### If the lock screen ever holds
+
+Under `ext-session-lock` the compositor keeps the session shut if the locking
+client dies or never authenticates. That is the protocol working — a crashed
+lock screen must not expose the desktop — but it means the way out is not on
+the desktop:
+
+```bash
+qs -c groma ipc call lock unlock    # from another shell, if you have one
+```
+
+Otherwise Ctrl+Alt+F2 to a TTY and `hyprctl dispatch exit`, which ends the
+session. Do not save a QML file while locked.
+
+Authentication goes through PAM's `system-auth`. A service name with no file in
+`/etc/pam.d` falls through to `other`, which is `pam_deny` — every password
+would fail, inside something with no way out.
 
 ### Two things that will waste your time
 

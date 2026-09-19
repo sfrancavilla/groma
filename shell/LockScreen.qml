@@ -26,10 +26,21 @@ Scope {
 		property bool locked: false
 	}
 
+	// Lock and unlock by assignment, not by binding `locked` to the stored
+	// state. Quickshell writes to `locked` itself when it acquires the lock,
+	// and an imperative write destroys a binding on the same property - after
+	// which changing the stored state has no effect at all, which is exactly
+	// what "correct password, still locked" looks like.
+	function setLocked(value) {
+		state.locked = value;
+		sessionLock.locked = value;
+	}
+
+	// Restore across a config reload, since the binding is gone.
+	Component.onCompleted: sessionLock.locked = state.locked
+
 	WlSessionLock {
 		id: sessionLock
-
-		locked: state.locked
 
 		surface: WlSessionLockSurface {
 			color: "transparent"
@@ -51,7 +62,7 @@ Scope {
 
 				// No Escape. There is deliberately no way out of here except
 				// authenticating.
-				onAuthenticated: state.locked = false
+				onAuthenticated: root.setLocked(false)
 
 				Component.onCompleted: focusInput()
 			}
@@ -62,13 +73,22 @@ Scope {
 		target: "lock"
 
 		function lock(): void {
-			state.locked = true;
+			root.setLocked(true);
 		}
 
 		// Whether the session is currently locked, for scripts and for
 		// checking from a TTY.
 		function status(): string {
-			return state.locked ? "locked" : "unlocked";
+			return state.locked ? "locked" : "unlocked"
+				+ " (sessionLock=" + sessionLock.locked + ")";
+		}
+
+		// An escape hatch that does not need a TTY. Anyone who can run this
+		// already has a shell as you, so it gives away nothing that was not
+		// already given away.
+		function unlock(): void {
+			console.log("LOCK: forced unlock over ipc");
+			root.setLocked(false);
 		}
 	}
 }
