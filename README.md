@@ -157,6 +157,11 @@ qs -c groma ipc call lock unlock    # from another shell, if you have one
 Otherwise Ctrl+Alt+F2 to a TTY and `hyprctl dispatch exit`, which ends the
 session. Do not save a QML file while locked.
 
+Three wrong passwords locks the account for a while, and during it a *correct*
+password is rejected too. This machine sets `unlock_time = 120` in
+`/etc/security/faillock.conf` rather than the 600s default — that file is
+outside this repo and will not come back with a reinstall.
+
 Authentication goes through PAM's `system-auth`. A service name with no file in
 `/etc/pam.d` falls through to `other`, which is `pam_deny` — every password
 would fail, inside something with no way out.
