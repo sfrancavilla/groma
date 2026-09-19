@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Shapes
 
-// A sun: filled centre, eight rays. The rays shorten as the level drops, so
-// the glyph reads as bright or dim on its own.
+// A sun: filled centre, eight rays that lengthen with the level, so the glyph
+// reads as bright or dim without a label.
 Item {
 	id: icon
 
@@ -13,6 +13,13 @@ Item {
 	readonly property real baseWidth: 18
 	readonly property real baseHeight: 18
 	readonly property real aspect: 1
+
+	// Geometry, from the centre outward. The longest ray has to stay inside
+	// the box: gap + the longest length must not exceed half the width.
+	readonly property real centre: icon.baseWidth / 2
+	readonly property real discRadius: 3.5
+	readonly property real rayGap: 5
+	readonly property real rayLength: 1.5 + 1.5 * Math.max(0, Math.min(1, icon.level))
 
 	implicitWidth: icon.baseWidth
 	implicitHeight: icon.baseHeight
@@ -35,9 +42,12 @@ Item {
 				fillColor: icon.color
 
 				PathAngleArc {
-					centerX: 9; centerY: 9
-					radiusX: 4; radiusY: 4
-					startAngle: 0; sweepAngle: 360
+					centerX: icon.centre
+					centerY: icon.centre
+					radiusX: icon.discRadius
+					radiusY: icon.discRadius
+					startAngle: 0
+					sweepAngle: 360
 				}
 			}
 		}
@@ -46,23 +56,26 @@ Item {
 			model: 8
 
 			Rectangle {
+				id: ray
+
 				required property int index
 
-				readonly property real len: 2 + 2.5 * Math.max(0.2, icon.level)
-
 				width: 1.6
-				height: len
-				radius: 0.8
+				height: icon.rayLength
+				radius: width / 2
 				color: icon.color
 
-				x: 9 - width / 2
-				y: 9 - 6 - len
-				transformOrigin: Item.Bottom
+				// Drawn pointing up from the centre, then rotated into place.
+				// Every reference here is qualified: inside the Rotation below,
+				// an unqualified `parent` is this rectangle's parent, not the
+				// rectangle, which is what scattered the rays the first time.
+				x: icon.centre - ray.width / 2
+				y: icon.centre - icon.rayGap - ray.height
 
 				transform: Rotation {
-					origin.x: 0.8
-					origin.y: 6 + parent.len
-					angle: index * 45
+					origin.x: ray.width / 2
+					origin.y: icon.rayGap + ray.height
+					angle: ray.index * 45
 				}
 			}
 		}
