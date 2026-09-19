@@ -84,8 +84,12 @@ Rectangle {
 		fieldHeight: panel.washFieldHeight
 	}
 
-	// `inset 0 1px 0`: a lit line along the top inside edge. This is the one
-	// place the panel is brighter than itself.
+	// `inset 0 1px 0`: the top of the edge, lit.
+	//
+	// It sits *on* the border rather than below it. Drawn one pixel down, it
+	// is a second line beside the border - two bright rows, which on a scaled
+	// display reads as a doubled edge. Overlapping makes the top of the rim
+	// brighter than its sides, which is the whole intent.
 	Rectangle {
 		visible: Theme.glass
 		anchors {
@@ -94,7 +98,6 @@ Rectangle {
 			top: parent.top
 			leftMargin: parent.radius * 0.5
 			rightMargin: parent.radius * 0.5
-			topMargin: 1
 		}
 
 		height: 1
