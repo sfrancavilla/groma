@@ -13,6 +13,15 @@ Rectangle {
 
 	// Tints the rim for something urgent, rather than drawing a red outline.
 	property bool danger: false
+
+	// Paint the desktop's colour inside the surface, since we cannot sample
+	// it. The caller supplies where this panel sits, so the colour lines up
+	// with the wallpaper behind it.
+	property bool wash: false
+	property real washOriginX: 0
+	property real washOriginY: 0
+	property real washFieldWidth: width
+	property real washFieldHeight: height
 	// The bar sits against a screen edge and has nowhere to cast into.
 	property int shadowLayers: Theme.glassShadowLayers
 
@@ -72,6 +81,16 @@ Rectangle {
 			GradientStop { position: 0.0; color: Theme.glassSurfaceTop }
 			GradientStop { position: 1.0; color: Theme.glassSurfaceBottom }
 		}
+	}
+
+	GlassWash {
+		anchors.fill: parent
+		visible: Theme.glass && panel.wash
+		radius: panel.radius
+		originX: panel.washOriginX
+		originY: panel.washOriginY
+		fieldWidth: panel.washFieldWidth
+		fieldHeight: panel.washFieldHeight
 	}
 
 	// Declared last, so caller content sits above the glass.

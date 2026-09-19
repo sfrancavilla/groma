@@ -42,6 +42,14 @@ Item {
 		height: column.implicitHeight + Theme.dialogPadding * 2
 		radius: Theme.radiusPanel
 
+		// The dialog window is fullscreen, so the sheet's position inside it
+		// is its position on screen - the wash lines up with the wallpaper.
+		wash: true
+		washOriginX: sheet.x
+		washOriginY: sheet.y
+		washFieldWidth: dialog.width
+		washFieldHeight: dialog.height
+
 		opacity: dialog.open ? 1 : 0
 		scale: dialog.open ? 1 : 0.96
 		y: dialog.open ? 0 : -6
