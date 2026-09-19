@@ -19,6 +19,9 @@ ShellRoot {
 	// The notification daemon and its toast stack.
 	Notifications {}
 
+	// Not a lock screen yet - a harness for proving the PAM conversation.
+	LockScreen {}
+
 	PwObjectTracker {
 		objects: [Pipewire.defaultAudioSink]
 	}

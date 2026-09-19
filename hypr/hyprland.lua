@@ -293,6 +293,12 @@ hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
+
+-- Lock the session. The shell holds it shut until PAM says otherwise; if the
+-- shell dies while locked the compositor keeps it shut, which is the point.
+-- Recovery, if it ever comes to that: Ctrl+Alt+F2 to a TTY, then
+-- `hyprctl dispatch exit` to end the session.
+hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("qs -c groma ipc call lock lock"))
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))    -- dwindle only
 
 -- Move focus with mainMod + arrow keys
