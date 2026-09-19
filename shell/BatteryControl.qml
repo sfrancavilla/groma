@@ -39,6 +39,22 @@ Item {
 
 	property bool open: false
 
+	// The bar spans the screen, so this item's position inside it is its
+	// position on screen.
+	//
+	// mapToItem is a function call, and QML cannot know when to re-run one -
+	// bound naively it evaluates once during early layout, before the row has
+	// positioned anything, and keeps that answer forever. Reading the geometry
+	// it depends on first registers those as dependencies.
+	readonly property real triggerRight: {
+		void [root.width, root.x, root.parent?.x, root.parent?.width,
+			root.barWidth];
+
+		return root.mapToItem(null, root.width, 0).x;
+	}
+
+	readonly property real barWidth: root.QsWindow?.window?.width ?? 0
+
 	implicitWidth: label.implicitWidth
 	implicitHeight: label.implicitHeight
 
@@ -147,9 +163,15 @@ Item {
 		}
 
 		exclusionMode: ExclusionMode.Ignore
+
+		// Sit under the bar, and line the panel's right edge up with the
+		// readout that opened it rather than with the screen edge.
+		//
+		// The shadow padding is inside the window, so it has to come out of
+		// both margins or the panel appears that much further from the bar.
 		margins {
-			top: 40
-			right: Theme.spacingS
+			top: Math.max(0, Theme.barHeight + Theme.barPopupGap - panel.pad)
+			right: Math.max(0, root.barWidth - root.triggerRight - panel.pad)
 		}
 
 		readonly property int pad: Theme.glass ? Theme.glassShadowPadding : 0

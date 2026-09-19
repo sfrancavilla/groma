@@ -191,6 +191,12 @@ Singleton {
 
 	readonly property int chipHeight: 29
 
+	readonly property int barHeight: 32
+	// Gap between the bar and a panel it opens. The panel's own shadow padding
+	// is subtracted from the window margin, or the visible gap is that much
+	// bigger than this.
+	readonly property int barPopupGap: 6
+
 	readonly property int dialogWidth: 320
 	readonly property int dialogPadding: 20
 

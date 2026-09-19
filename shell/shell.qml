@@ -34,7 +34,7 @@ ShellRoot {
 
 		WlrLayershell.namespace: "groma:bar"
 
-		implicitHeight: 32
+		implicitHeight: Theme.barHeight
 
 		// The bar has no surface of its own: the widgets float directly over
 		// the desktop. It still reserves its 32px, so nothing is ever behind
