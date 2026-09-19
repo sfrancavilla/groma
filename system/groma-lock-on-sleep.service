@@ -1,0 +1,32 @@
+# Lock the session before the machine sleeps.
+#
+# Closing the lid suspends (logind's HandleLidSwitch=suspend) and the idle
+# chain cannot help, because suspending stops the clock - without this, closing
+# the lid and reopening it lands straight on an unlocked desktop.
+#
+# A system unit rather than a user one: systemd 261 still has no sleep.target
+# in the user manager, so there is nothing there to hook.
+#
+# Install:
+#   sudo ln -s ~/groma/system/groma-lock-on-sleep.service /etc/systemd/system/
+#   sudo systemctl enable groma-lock-on-sleep.service
+#
+# The three variables below are what `qs ipc` needs to find a running instance:
+# HOME to resolve the config, XDG_RUNTIME_DIR for the socket, and
+# WAYLAND_DISPLAY because it filters instances by display. Adjust the user,
+# uid and display for another machine.
+
+[Unit]
+Description=Lock the Groma session before sleep
+Before=sleep.target
+
+[Service]
+Type=oneshot
+User=stefano
+Environment=HOME=/home/stefano
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=WAYLAND_DISPLAY=wayland-1
+ExecStart=/usr/bin/qs -c groma ipc call lock lock
+
+[Install]
+WantedBy=sleep.target
