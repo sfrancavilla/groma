@@ -48,7 +48,26 @@ Singleton {
 	// reading as "a dark box with some transparency".
 	readonly property color glassSurfaceTop: "#cc3a3a40"
 	readonly property color glassSurfaceBottom: "#a61e1e22"
-	readonly property color glassBorder: "#4dffffff"
+	// The edge is not a stroke. A uniform 1px outline is the most obviously
+	// drawn thing about a glass panel; a real one catches light along one side
+	// and disappears along the rest. These are the stops of that falloff.
+	readonly property int glassRimWidth: 1
+	readonly property color glassRimTop: "#73ffffff"
+	readonly property color glassRimMid: "#26ffffff"
+	readonly property color glassRimBottom: "#0affffff"
+
+	// An ambient shadow, drawn as concentric rings of decreasing opacity
+	// rather than one hard outline. Cheap approximation of a feathered edge:
+	// no shader, and the falloff is what stops the silhouette looking cut out.
+	readonly property int glassShadowLayers: 4
+	readonly property real glassShadowAlpha: 0.13
+	// Room the window must leave around a card for the shadow to bleed into.
+	readonly property int glassShadowPadding: 6
+
+	// Same idea, tinted, so an urgent card still reads as urgent.
+	readonly property color glassRimDangerTop: "#e6cc3333"
+	readonly property color glassRimDangerMid: "#80cc3333"
+	readonly property color glassRimDangerBottom: "#33cc3333"
 
 	readonly property color glassTextPrimary: "#ffffff"
 	readonly property color glassTextSecondary: "#d9ffffff"

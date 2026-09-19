@@ -49,8 +49,13 @@ Scope {
 			right: 12
 		}
 
-		implicitWidth: 380
+		// Cards are 380 wide; the extra room is for the ambient shadow to
+		// bleed into, since anything drawn outside the window is clipped.
+		readonly property int pad: Theme.glass ? Theme.glassShadowPadding : 0
+
+		implicitWidth: 380 + toastWindow.pad * 2
 		implicitHeight: Math.max(1, toastColumn.implicitHeight)
+			+ toastWindow.pad * 2
 		color: "transparent"
 
 		WlrLayershell.layer: WlrLayer.Overlay
@@ -71,6 +76,7 @@ Scope {
 			id: toastColumn
 
 			anchors.fill: parent
+			anchors.margins: toastWindow.pad
 			spacing: 8
 
 			Repeater {
