@@ -100,8 +100,26 @@ Singleton {
 	readonly property color glassTextSecondary: "#d9ffffff"
 	readonly property color glassTextMuted: "#8cffffff"
 
+	// Values taken from the "Refractive lens knob" design: a track the knob
+	// sits inside rather than on, a fill brighter than the track, and a lens
+	// that is a sphere catching light rather than a flat dot.
+	readonly property color glassTrack: Qt.rgba(1, 1, 1, 0.14)
+	readonly property color glassTrackBorder: Qt.rgba(1, 1, 1, 0.25)
+	readonly property color glassTrackFill: Qt.rgba(1, 1, 1, 0.40)
+
+	readonly property color glassKnobCore: Qt.rgba(1, 1, 1, 0.95)
+	readonly property color glassKnobMid: Qt.rgba(1, 1, 1, 0.55)
+	readonly property color glassKnobRim: Qt.rgba(1, 1, 1, 0.25)
+	readonly property color glassKnobEdge: Qt.rgba(1, 1, 1, 0.70)
+	readonly property color glassSheen: Qt.rgba(1, 1, 1, 0.80)
+
+	readonly property color glassChip: Qt.rgba(1, 1, 1, 0.10)
+	readonly property color glassChipActive: Qt.rgba(1, 1, 1, 0.28)
+
 	// Corner radii, by element size.
 	readonly property int radiusSmall: 6
 	readonly property int radiusMedium: 10
 	readonly property int radiusLarge: 12
+	readonly property int radiusPill: 12
+	readonly property int radiusPanel: 24
 }
