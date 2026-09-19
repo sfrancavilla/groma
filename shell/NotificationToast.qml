@@ -162,6 +162,8 @@ Rectangle {
 					anchors.left: parent.left
 					text: toast.modelData.appName
 					font.pixelSize: 11
+					style: Theme.glass ? Text.Raised : Text.Normal
+					styleColor: Theme.glassTextShadow
 					color: toast.isCritical ? Theme.danger : toast.cardTextMuted
 				}
 
@@ -190,6 +192,8 @@ Rectangle {
 				text: toast.modelData.summary
 				font.pixelSize: 13
 				font.bold: true
+				style: Theme.glass ? Text.Raised : Text.Normal
+				styleColor: Theme.glassTextShadow
 				elide: Text.ElideRight
 				color: toast.cardText
 			}
@@ -198,6 +202,8 @@ Rectangle {
 				width: parent.width
 				text: toast.modelData.body
 				visible: text !== ""
+				style: Theme.glass ? Text.Raised : Text.Normal
+				styleColor: Theme.glassTextShadow
 				wrapMode: Text.WordWrap
 				maximumLineCount: 4
 				elide: Text.ElideRight

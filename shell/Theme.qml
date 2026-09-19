@@ -44,10 +44,28 @@ Singleton {
 	// below are standing in for that lensing.
 	readonly property bool glass: true
 
+	// Tint and opacity are kept separate so the transparency can be tuned
+	// without picking new hex values. This matters: at 80% opacity the card was
+	// a grey box, because only a fifth of the blurred backdrop came through.
+	// Glass should take its colour from what is behind it, which means most of
+	// what you see has to actually be what is behind it.
+	//
+	// The tint is near-black rather than grey. Its job is to darken whatever
+	// shows through for contrast, not to add a colour of its own.
+	readonly property color glassTint: "#101018"
+	readonly property real glassOpacityTop: 0.46
+	readonly property real glassOpacityBottom: 0.30
+
 	// Two stops rather than one flat fill - the sheen is what stops it
 	// reading as "a dark box with some transparency".
-	readonly property color glassSurfaceTop: "#cc3a3a40"
-	readonly property color glassSurfaceBottom: "#a61e1e22"
+	readonly property color glassSurfaceTop: Qt.rgba(
+		glassTint.r, glassTint.g, glassTint.b, glassOpacityTop)
+	readonly property color glassSurfaceBottom: Qt.rgba(
+		glassTint.r, glassTint.g, glassTint.b, glassOpacityBottom)
+
+	// With the fill that transparent, text needs its own contrast rather than
+	// relying on the surface to provide it.
+	readonly property color glassTextShadow: "#b3000000"
 	// The edge is not a stroke. A uniform 1px outline is the most obviously
 	// drawn thing about a glass panel; a real one catches light along one side
 	// and disappears along the rest. These are the stops of that falloff.
