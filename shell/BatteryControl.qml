@@ -46,6 +46,12 @@ Item {
 		if (!seconds || seconds <= 0)
 			return "";
 
+		// Time remaining is energy divided by current draw, so a near-idle
+		// machine at a high charge produces days - 4700 hours, in one case.
+		// Past a couple of days the number is arithmetic, not information.
+		if (seconds > 48 * 3600)
+			return "";
+
 		const mins = Math.round(seconds / 60);
 		const h = Math.floor(mins / 60);
 		const m = mins % 60;
@@ -56,13 +62,20 @@ Item {
 	readonly property string summary: {
 		if (!root.ready)
 			return "No battery";
-		if (root.full)
-			return "Fully charged";
 
+		// Charging first, so charging at 100% still says how long is left.
 		if (root.charging) {
 			const t = root.humanDuration(root.device.timeToFull);
 			return t ? "Full in " + t : "Charging";
 		}
+
+		if (root.full)
+			return "Fully charged";
+
+		// On mains but neither charging nor full - a firmware charge limit,
+		// or the pending-charge states.
+		if (root.onPower)
+			return "Plugged in";
 
 		const t = root.humanDuration(root.device.timeToEmpty);
 		return t ? t + " remaining" : "On battery";
