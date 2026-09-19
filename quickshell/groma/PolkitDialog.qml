@@ -65,7 +65,7 @@ Scope {
 		color: "transparent"
 
 		WlrLayershell.layer: WlrLayer.Overlay
-		WlrLayershell.namespace: "quickshell:polkit"
+		WlrLayershell.namespace: "groma:polkit"
 		// Exclusive focus: while the prompt is up, keystrokes come here and
 		// not to whatever was focused before.
 		WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive

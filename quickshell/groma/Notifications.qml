@@ -54,7 +54,7 @@ Scope {
 		color: "transparent"
 
 		WlrLayershell.layer: WlrLayer.Overlay
-		WlrLayershell.namespace: "quickshell:notifications"
+		WlrLayershell.namespace: "groma:notifications"
 		// Unlike the polkit dialog, toasts must never take keyboard focus.
 		WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 

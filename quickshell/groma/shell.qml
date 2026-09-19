@@ -1,4 +1,5 @@
 import Quickshell
+import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Services.UPower
 import Quickshell.Services.Pipewire
@@ -26,6 +27,8 @@ ShellRoot {
 			left: true
 			right: true
 		}
+
+		WlrLayershell.namespace: "groma:bar"
 
 		implicitHeight: 32
 

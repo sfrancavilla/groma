@@ -1,11 +1,17 @@
 # dotfiles
 
-Configuration for an Arch Linux / Hyprland desktop on a Framework laptop.
+Configuration for **Groma**, an Arch Linux / Hyprland desktop built from
+scratch on a Framework laptop.
+
+Named for the Roman surveying instrument used to lay out a camp or a new city:
+sight along it and you get the two axes everything else is built from. Every
+camp was laid out identically with one, anywhere in the empire — which is the
+point of this repository.
 
 ## Layout
 
 ```
-quickshell/framework/    the desktop shell: bar, polkit agent, notifications
+quickshell/groma/        the desktop shell: bar, polkit agent, notifications
 ```
 
 Directories are symlinked into place rather than copied, so the live config and
@@ -15,11 +21,11 @@ the repository are the same files:
 ln -s ~/dotfiles/quickshell ~/.config/quickshell
 ```
 
-## quickshell/framework
+## quickshell/groma
 
 One long-running Quickshell process provides the whole desktop shell. It is
 started by Hyprland (`hl.on("hyprland.start", ...)` in `hyprland.lua`) and runs
-as `qs -c framework`.
+as `qs -c groma`.
 
 | File | Role |
 |---|---|
@@ -29,10 +35,13 @@ as `qs -c framework`.
 | `NotificationToast.qml` | A single notification card |
 | `DialogButton.qml` | Shared button used by dialogs and notification actions |
 
+Each window sets a layer-shell namespace (`groma:bar`, `groma:polkit`,
+`groma:notifications`), so `hyprctl layers` identifies them individually.
+
 Because it is one process, restarting it restarts all of those at once.
 
 ```bash
-qs -c framework log      # read its log, including QML console output
+qs -c groma log          # read its log, including QML console output
 ```
 
 ### Caution
@@ -42,4 +51,4 @@ save a QML file while a polkit prompt is open: the agent unregisters and the
 in-flight request dies with "Request dismissed".
 
 Moving this directory while the shell is running will kill the process. Restart
-it with `qs -c framework` afterwards.
+it with `qs -c groma` afterwards.
