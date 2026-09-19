@@ -50,9 +50,6 @@ Item {
 		cursorShape: Qt.PointingHandCursor
 		acceptedButtons: Qt.LeftButton | Qt.MiddleButton
 
-		onEntered: closeTimer.stop()
-		onExited: if (root.open) closeTimer.restart()
-
 		onClicked: mouse => {
 			if (mouse.button === Qt.MiddleButton)
 				root.sink.audio.muted = !root.sink.audio.muted;
@@ -67,6 +64,34 @@ Item {
 
 			const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
 			root.sink.audio.volume = Math.max(0, Math.min(1, root.volume + step));
+		}
+	}
+
+	PanelWindow {
+		id: clickCatcher
+
+		visible: root.open
+
+		anchors {
+			top: true
+			bottom: true
+			left: true
+			right: true
+		}
+
+		exclusionMode: ExclusionMode.Ignore
+		color: "transparent"
+
+		// Below the panel, which is on Overlay, and above the bar - so
+		// clicking the readout again lands here and closes, which looks the
+		// same as toggling.
+		WlrLayershell.layer: WlrLayer.Top
+		WlrLayershell.namespace: "groma:volume-catcher"
+		WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+		MouseArea {
+			anchors.fill: parent
+			onClicked: root.open = false
 		}
 	}
 
@@ -123,15 +148,6 @@ Item {
 			}
 			Behavior on y {
 				NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
-			}
-
-			// Closes shortly after the pointer leaves, so it does not vanish
-			// the instant you overshoot the slider on the way to it.
-			MouseArea {
-				anchors.fill: parent
-				hoverEnabled: true
-				onEntered: closeTimer.stop()
-				onExited: closeTimer.restart()
 			}
 
 			Column {
@@ -231,13 +247,6 @@ Item {
 					}
 				}
 			}
-		}
-
-		Timer {
-			id: closeTimer
-
-			interval: 500
-			onTriggered: root.open = false
 		}
 	}
 
