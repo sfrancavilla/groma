@@ -26,14 +26,10 @@ ShellRoot {
 	// Dim, then lock, then turn the screen off.
 	IdleChain { lock: lockScreen }
 
-	// Asks for a password when joining a network we do not know.
-	NetworkJoinDialog {
-		id: networkJoin
-	}
-
-	// Every network in range, when four is not enough.
-	NetworkListDialog {
-		id: networkList
+	// Every network in range, and the form for joining one: two pages of the
+	// same sheet.
+	NetworkDialog {
+		id: networkDialog
 
 		controller: networkControl
 	}
@@ -135,8 +131,7 @@ ShellRoot {
 				id: networkControl
 
 				anchors.verticalCenter: parent.verticalCenter
-				joinDialog: networkJoin
-				listDialog: networkList
+				dialog: networkDialog
 			}
 
 			VolumeControl {

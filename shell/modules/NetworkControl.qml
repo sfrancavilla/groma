@@ -29,10 +29,10 @@ BarPopup {
 	// scan fills in what the model does not carry.
 	property var detail: ({})
 
-	// The modal that asks for a password, supplied by whoever built the bar so
-	// this does not have to own a second window.
-	property var joinDialog: null
-	property var listDialog: null
+	// The network sheet - the full list and the join form, which are two pages
+	// of one modal. Supplied by whoever built the bar, so this does not have
+	// to own a window.
+	property var dialog: null
 
 	function barsFor(name) {
 		const signal = root.detail[name]?.signal ?? -1;
@@ -64,6 +64,11 @@ BarPopup {
 			return "WEP";
 
 		return raw;
+	}
+
+	// Fastest first, for picking between a network's two bands.
+	function bandRank(band) {
+		return band === "6 GHz" ? 3 : band === "5 GHz" ? 2 : 1;
 	}
 
 	// FREQ is in MHz. 6 GHz starts at 5955, which is above the 5 GHz band but
@@ -101,20 +106,31 @@ BarPopup {
 			if (name === "")
 				continue;
 
-			// The same network is usually on both bands. Keep the one we are
-			// actually joined to when there is one - it is often the weaker
-			// of the two, and reporting the stronger would put the wrong band
-			// under "Connected".
-			const better = !found[name]
+			// The same network is usually on both bands, and only one entry
+			// survives. Prefer the one we are actually joined to - it is often
+			// the weaker of the two, and reporting the stronger would put the
+			// wrong band under "Connected".
+			//
+			// Otherwise prefer the faster band. "Whichever is stronger" was
+			// tried and is not stable: the two bands trade places between
+			// scans, and in a list grouped by band that makes rows jump from
+			// one heading to another while they are being read.
+			const band = root.bandFor(freq);
+			const previous = found[name];
+
+			const better = !previous
 				|| (inUse === "*")
-				|| (!found[name].inUse && found[name].signal < signal);
+				|| (!previous.inUse
+					&& (root.bandRank(band) > root.bandRank(previous.band)
+						|| (band === previous.band
+							&& previous.signal < signal)));
 
 			if (better) {
 				found[name] = {
 					signal: signal,
 					secured: security.trim() !== "",
 					security: root.securityLabel(security),
-					band: root.bandFor(freq),
+					band: band,
 					inUse: inUse === "*"
 				};
 			}
@@ -164,7 +180,7 @@ BarPopup {
 
 	readonly property int publicIpMaxAge: 5 * 60 * 1000
 
-	// Known networks connect; the rest need a password, which means a dialog.
+	// Known networks connect; the rest need a password, which means the sheet.
 	// Open it before closing the tile: this runs inside the tile's window, and
 	// closing first tears down the surface the click arrived on.
 	function activate(network) {
@@ -174,7 +190,7 @@ BarPopup {
 			return;
 		}
 
-		root.joinDialog?.ask(network.name, root.barsFor(network.name),
+		root.dialog?.askJoin(network.name, root.barsFor(network.name),
 			root.detail[network.name]?.secured ?? true);
 
 		root.open = false;
@@ -251,8 +267,10 @@ BarPopup {
 	// scanner off the device reports only the network it is already on, which
 	// is why tying this to the tile alone emptied the full list: the button
 	// closes the tile on its way to opening the dialog.
-	readonly property bool scanning:
-		root.enabled && (root.open || (root.listDialog?.open ?? false))
+	readonly property bool scanning: root.enabled
+		&& (root.open
+			|| ((root.dialog?.open ?? false)
+				&& root.dialog?.page === "list"))
 
 	Binding {
 		target: root.wifi
@@ -322,31 +340,40 @@ BarPopup {
 			root.open = false;
 		}
 
-		// Opens the password dialog for a network by name, without having to
+		// Buttons in the tile and the sheet do all of these. The IPC is for
+		// driving them without a pointer, and for getting out of a sheet that
+		// holds the keyboard.
+		function list(): void {
+			root.dialog?.showList();
+			root.open = false;
+		}
+
+		// Straight to the join form for a network by name, without having to
 		// find and click its row.
 		function join(ssid: string): void {
 			root.open = false;
-			root.joinDialog?.ask(ssid, root.barsFor(ssid),
+			root.dialog?.askJoin(ssid, root.barsFor(ssid),
 				root.detail[ssid]?.secured ?? true);
 		}
 
-		// A way out that is not a keypress, for the same reason the lock screen
-		// has one: this dialog holds the keyboard.
-		function cancelJoin(): void {
-			if (root.joinDialog)
-				root.joinDialog.open = false;
+		function hidden(): void {
+			root.open = false;
+			root.dialog?.askHidden();
 		}
 
-		// Buttons in the tile do these; the IPC is for driving them without a
-		// pointer, and for getting out of a dialog that holds the keyboard.
-		function list(): void {
-			root.listDialog?.show();
-			root.open = false;
+		// The way out. Named closeList as well because that is what the
+		// keyboard-trap escape hatch has been called since the list was its
+		// own window.
+		function close(): void {
+			root.dialog?.close();
 		}
 
 		function closeList(): void {
-			if (root.listDialog)
-				root.listDialog.open = false;
+			root.dialog?.close();
+		}
+
+		function search(term: string): void {
+			root.dialog?.setSearch(term);
 		}
 
 		// The tile has a switch for this; the IPC is for scripting it.
@@ -554,7 +581,7 @@ BarPopup {
 
 			onClicked: {
 				// Before closing the tile, for the same reason as a row.
-				root.listDialog?.show();
+				root.dialog?.showList();
 				root.open = false;
 			}
 		}
@@ -564,7 +591,7 @@ BarPopup {
 			text: "Join by name"
 
 			onClicked: {
-				root.joinDialog?.askManual();
+				root.dialog?.askHidden();
 				root.open = false;
 			}
 		}
