@@ -25,17 +25,37 @@ Scope {
 
 	signal joined
 
+	// Opened from a row: the name is known, so it is filled in but still
+	// editable - a typo in a list is easier to fix than to work around.
 	function ask(name, signalBars, isSecured) {
-		root.network = name;
 		root.bars = signalBars;
 		root.secured = isSecured;
+		root.hidden = false;
 		root.error = "";
 		root.joining = false;
 		root.open = true;
+		ssid.text = name ?? "";
 	}
 
+	// Opened from the button: nothing is known, which is the case for a
+	// network that does not broadcast its name.
+	function askManual() {
+		root.bars = 0;
+		root.secured = true;
+		root.hidden = true;
+		root.error = "";
+		root.joining = false;
+		root.open = true;
+		ssid.text = "";
+	}
+
+	property bool hidden: false
+
 	function join() {
-		if (root.joining || password.text === "")
+		if (root.joining || ssid.text === "")
+			return;
+
+		if (root.secured && password.text === "")
 			return;
 
 		root.joining = true;
@@ -50,7 +70,12 @@ Scope {
 	Process {
 		id: connect
 
-		command: ["nmcli", "--ask", "device", "wifi", "connect", root.network ?? ""]
+		// `hidden yes` tells NetworkManager to probe for a network that does
+		// not announce itself, which is the only reason to type a name in.
+		command: root.hidden
+			? ["nmcli", "--ask", "device", "wifi", "connect", ssid.text,
+				"hidden", "yes"]
+			: ["nmcli", "--ask", "device", "wifi", "connect", ssid.text]
 		stdinEnabled: true
 
 		onStarted: {
@@ -107,7 +132,12 @@ Scope {
 		onVisibleChanged: {
 			if (window.visible) {
 				password.clear();
-				password.focusInput();
+				// Typing the name first is the point when it is empty;
+				// otherwise the password is what is missing.
+				if (ssid.text === "")
+					ssid.focusInput();
+				else
+					password.focusInput();
 			}
 		}
 
@@ -134,10 +164,20 @@ Scope {
 				}
 			}
 
-			title: `Join “${root.network ?? ""}”`
-			body: root.secured
-				? "This network is secured. Enter its password to connect."
-				: "This network is open. No password is needed."
+			title: root.hidden ? "Join a network" : `Join “${ssid.text}”`
+			body: root.hidden
+				? "Type the name exactly. A network that does not broadcast "
+					+ "its name will not appear in the list."
+				: "This network is secured. Enter its password to connect."
+
+			GlassField {
+				id: ssid
+
+				width: parent.width
+				placeholder: "Network name"
+				enabled: !root.joining
+				onAccepted: password.focusInput()
+			}
 
 			GlassField {
 				id: password

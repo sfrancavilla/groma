@@ -31,6 +31,13 @@ ShellRoot {
 		id: networkJoin
 	}
 
+	// Every network in range, when four is not enough.
+	NetworkListDialog {
+		id: networkList
+
+		controller: networkControl
+	}
+
 	// Feedback for the volume and brightness keys.
 	Osd {}
 
@@ -125,8 +132,11 @@ ShellRoot {
 			spacing: Theme.spacingL
 
 			NetworkControl {
+				id: networkControl
+
 				anchors.verticalCenter: parent.verticalCenter
 				joinDialog: networkJoin
+				listDialog: networkList
 			}
 
 			VolumeControl {

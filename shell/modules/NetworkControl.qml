@@ -32,6 +32,7 @@ BarPopup {
 	// The modal that asks for a password, supplied by whoever built the bar so
 	// this does not have to own a second window.
 	property var joinDialog: null
+	property var listDialog: null
 
 	function barsFor(name) {
 		const signal = root.detail[name]?.signal ?? -1;
@@ -131,6 +132,22 @@ BarPopup {
 	property double publicIpAt: 0
 
 	readonly property int publicIpMaxAge: 5 * 60 * 1000
+
+	// Known networks connect; the rest need a password, which means a dialog.
+	// Open it before closing the tile: this runs inside the tile's window, and
+	// closing first tears down the surface the click arrived on.
+	function activate(network) {
+		if (network.known) {
+			network.requestConnect();
+			root.open = false;
+			return;
+		}
+
+		root.joinDialog?.ask(network.name, root.barsFor(network.name),
+			root.detail[network.name]?.secured ?? true);
+
+		root.open = false;
+	}
 
 	function refreshPublicIp() {
 		if (!Settings.publicAddressLookup || !root.online)
@@ -280,6 +297,18 @@ BarPopup {
 		function cancelJoin(): void {
 			if (root.joinDialog)
 				root.joinDialog.open = false;
+		}
+
+		// Buttons in the tile do these; the IPC is for driving them without a
+		// pointer, and for getting out of a dialog that holds the keyboard.
+		function list(): void {
+			root.listDialog?.show();
+			root.open = false;
+		}
+
+		function closeList(): void {
+			if (root.listDialog)
+				root.listDialog.open = false;
 		}
 
 		// The tile has a switch for this; the IPC is for scripting it.
@@ -461,99 +490,45 @@ BarPopup {
 		Repeater {
 			model: Math.min(root.listLimit, root.others.length)
 
-			Rectangle {
-				id: row
-
+			NetworkRow {
 				required property int index
-				readonly property var network: root.others[row.index]
+				readonly property var entry: root.others[index]
 
 				width: parent.width
-				height: 32
-				radius: 14
+				network: entry
+				detail: root.detail[entry.name] ?? null
+				bars: root.barsFor(entry.name)
 
-				color: rowMouse.containsMouse
-					? Theme.glassControlHover : Theme.glassControl
-				border.width: 1
-				border.color: Theme.glassControlBorder
-
-				Behavior on color {
-					ColorAnimation { duration: 120 }
-				}
-
-				Row {
-					anchors {
-						left: parent.left
-						leftMargin: Theme.spacingM
-						verticalCenter: parent.verticalCenter
-					}
-
-					spacing: Theme.spacingS - 2
-
-					Text {
-						anchors.verticalCenter: parent.verticalCenter
-						text: row.network.name
-						elide: Text.ElideRight
-						width: Math.min(implicitWidth, 150)
-						font.pixelSize: Theme.fontCaption
-						// A saved network is one click away; the rest need a
-						// password there is nowhere to type yet.
-						opacity: 1.0
-						color: Theme.glassTextPrimary
-					}
-
-					LockIcon {
-						anchors.verticalCenter: parent.verticalCenter
-						visible: root.detail[row.network.name]?.secured ?? false
-						opacity: 0.6
-						color: Theme.glassTextPrimary
-					}
-				}
-
-				SignalBars {
-					anchors {
-						right: parent.right
-						rightMargin: Theme.spacingM
-						verticalCenter: parent.verticalCenter
-					}
-
-					level: root.barsFor(row.network.name)
-					color: Theme.glassTextPrimary
-				}
-
-				MouseArea {
-					id: rowMouse
-
-					anchors.fill: parent
-					hoverEnabled: true
-					cursorShape: Qt.PointingHandCursor
-					onClicked: {
-						if (row.network.known) {
-							row.network.requestConnect();
-							return;
-						}
-
-						// Unknown networks need a password, which means a
-						// dialog. Open it *before* closing the tile: this
-						// handler lives inside the tile's window, and closing
-						// it first tears down the surface the click arrived on
-						// while the rest of the handler is still running.
-						root.joinDialog?.ask(row.network.name,
-							root.barsFor(row.network.name),
-							root.detail[row.network.name]?.secured ?? true);
-
-						root.open = false;
-					}
-				}
+				onActivated: root.activate(entry)
 			}
 		}
 	}
 
-	Text {
+	Row {
 		width: parent.width
-		visible: root.enabled && root.others.length > root.listLimit
-		text: (root.others.length - root.listLimit) + " more in range"
-		font.pixelSize: Theme.fontCaption
-		opacity: 0.6
-		color: Theme.glassTextPrimary
+		spacing: Theme.spacingS
+		visible: root.enabled
+
+		DialogButton {
+			width: (parent.width - Theme.spacingS) / 2
+			text: root.others.length > root.listLimit
+				? `All ${root.others.length} networks` : "All networks"
+
+			onClicked: {
+				// Before closing the tile, for the same reason as a row.
+				root.listDialog?.show();
+				root.open = false;
+			}
+		}
+
+		DialogButton {
+			width: (parent.width - Theme.spacingS) / 2
+			text: "Join by name"
+
+			onClicked: {
+				root.joinDialog?.askManual();
+				root.open = false;
+			}
+		}
 	}
 }
