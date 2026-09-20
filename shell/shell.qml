@@ -119,6 +119,10 @@ ShellRoot {
 			}
 			spacing: Theme.spacingL
 
+			NetworkControl {
+				anchors.verticalCenter: parent.verticalCenter
+			}
+
 			VolumeControl {
 				anchors.verticalCenter: parent.verticalCenter
 			}
