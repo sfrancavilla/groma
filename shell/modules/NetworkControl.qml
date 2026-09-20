@@ -133,7 +133,7 @@ BarPopup {
 	readonly property int publicIpMaxAge: 5 * 60 * 1000
 
 	function refreshPublicIp() {
-		if (!root.online)
+		if (!Settings.publicAddressLookup || !root.online)
 			return;
 
 		if (root.publicIp !== ""
@@ -141,6 +141,17 @@ BarPopup {
 			return;
 
 		publicIpQuery.running = true;
+	}
+
+	Connections {
+		target: Settings
+
+		function onPublicAddressLookupChanged() {
+			if (Settings.publicAddressLookup)
+				root.refreshPublicIp();
+			else
+				root.publicIp = "";
+		}
 	}
 
 	Process {
@@ -271,6 +282,11 @@ BarPopup {
 				root.joinDialog.open = false;
 		}
 
+		// The tile has a switch for this; the IPC is for scripting it.
+		function publicLookup(on: string): void {
+			Settings.setPublicAddressLookup(on !== "off");
+		}
+
 		function radio(on: string): void {
 			Networking.wifiEnabled = on !== "off";
 		}
@@ -381,15 +397,18 @@ BarPopup {
 		}
 	}
 
+	// The switch stays visible whether or not the lookup is on, or there would
+	// be no way to turn it back on.
 	Item {
 		width: parent.width
-		height: publicLabel.implicitHeight
-		visible: root.enabled && root.online && root.publicIp !== ""
+		height: publicSwitch.height
+		visible: root.enabled && root.online
 
 		Text {
 			id: publicLabel
 
 			anchors.left: parent.left
+			anchors.verticalCenter: parent.verticalCenter
 			text: "Public address"
 			font.pixelSize: Theme.fontCaption
 			opacity: 0.6
@@ -397,11 +416,29 @@ BarPopup {
 		}
 
 		Text {
-			anchors.right: parent.right
-			text: root.publicIp
+			anchors {
+				right: publicSwitch.left
+				rightMargin: Theme.spacingS
+				verticalCenter: parent.verticalCenter
+			}
+
+			text: Settings.publicAddressLookup
+				? (root.publicIp !== "" ? root.publicIp : "asking…")
+				: "not checked"
+
 			font.pixelSize: Theme.fontCaption
-			opacity: 0.85
+			opacity: Settings.publicAddressLookup ? 0.85 : 0.5
 			color: Theme.glassTextPrimary
+		}
+
+		Switch {
+			id: publicSwitch
+
+			anchors.right: parent.right
+			anchors.verticalCenter: parent.verticalCenter
+			checked: Settings.publicAddressLookup
+			onToggled: Settings.setPublicAddressLookup(
+				!Settings.publicAddressLookup)
 		}
 	}
 

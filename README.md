@@ -23,12 +23,19 @@ One long-running process provides the whole desktop shell:
 | `shell/icons/` | Drawn glyphs, as paths rather than an icon font |
 | `shell/modules/` | The features: volume, battery, network, notifications, polkit, lock, idle, OSD, wallpaper |
 
-The network tile shows a public address, which is the one thing in this shell
-that contacts a third party — nothing local knows it, since the router
-translates on the way out. It is requested from `api.ipify.org` only while the
-tile is open, only when there is a route out, and at most once every five
-minutes. Delete that block if you would rather the shell never reached the
-internet on its own.
+The network tile can show a public address — the one thing in this shell that
+contacts a third party, since nothing local knows it: the router translates on
+the way out. **It is off by default** and has a switch beside it in the tile.
+Turned on, it asks `api.ipify.org` only while the tile is open, only with a
+route out, and at most once every five minutes.
+
+A DNS lookup would avoid the web service and was tried; on this connection the
+ISP intercepts port 53, so the nameserver reports its own resolver rather than
+this machine. The comment in `NetworkControl.qml` has the numbers.
+
+That choice lives in `Settings.qml`, which is the one place holding what the
+user decided rather than what the shell looks like. It is written to
+`Quickshell.statePath("settings.json")` whenever it changes.
 
 The volume and brightness keys call the shell (`ipc call keys …`) rather than
 running `wpctl` and `brightnessctl` themselves, so the change and its on-screen
