@@ -56,6 +56,7 @@ whole shell instead of leaving one widget behind.
 | `ui/BarPopup.qml` | A readout in the bar and the tile it opens: window, click-catcher, animation, positioning |
 | `ui/Chip.qml` | One option among a few, the chosen one brighter |
 | `ui/Switch.qml` | Two states and no third: the lens as a knob on a track |
+| `ui/Checkbox.qml` | A box and its label, clickable as one thing |
 | `ui/DialogButton.qml` | Buttons in dialogs and notification actions. `variant`: secondary, primary, destructive |
 | `SpeakerIcon.qml` / `BatteryIcon.qml` / `BoltIcon.qml` | Drawn glyphs, as paths rather than an icon font |
 

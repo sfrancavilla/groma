@@ -29,6 +29,10 @@ BarPopup {
 	// scan fills in what the model does not carry.
 	property var detail: ({})
 
+	// The modal that asks for a password, supplied by whoever built the bar so
+	// this does not have to own a second window.
+	property var joinDialog: null
+
 	function barsFor(name) {
 		const signal = root.detail[name]?.signal ?? -1;
 		if (signal < 0)
@@ -174,6 +178,21 @@ BarPopup {
 
 		function closed(): void {
 			root.open = false;
+		}
+
+		// Opens the password dialog for a network by name, without having to
+		// find and click its row.
+		function join(ssid: string): void {
+			root.open = false;
+			root.joinDialog?.ask(ssid, root.barsFor(ssid),
+				root.detail[ssid]?.secured ?? true);
+		}
+
+		// A way out that is not a keypress, for the same reason the lock screen
+		// has one: this dialog holds the keyboard.
+		function cancelJoin(): void {
+			if (root.joinDialog)
+				root.joinDialog.open = false;
 		}
 
 		function radio(on: string): void {
@@ -337,7 +356,7 @@ BarPopup {
 						font.pixelSize: Theme.fontCaption
 						// A saved network is one click away; the rest need a
 						// password there is nowhere to type yet.
-						opacity: row.network.known ? 1.0 : 0.65
+						opacity: 1.0
 						color: Theme.glassTextPrimary
 					}
 
@@ -366,7 +385,20 @@ BarPopup {
 					anchors.fill: parent
 					hoverEnabled: true
 					cursorShape: Qt.PointingHandCursor
-					onClicked: if (row.network.known) row.network.requestConnect()
+					onClicked: {
+						if (row.network.known) {
+							row.network.requestConnect();
+							return;
+						}
+
+						// Unknown networks need a password, which means a
+						// dialog. The tile steps out of the way rather than
+						// leaving its click-catcher under a modal.
+						root.open = false;
+						root.joinDialog?.ask(row.network.name,
+							root.barsFor(row.network.name),
+							root.detail[row.network.name]?.secured ?? true);
+					}
 				}
 			}
 		}

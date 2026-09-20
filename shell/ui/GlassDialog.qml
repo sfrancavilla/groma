@@ -12,6 +12,8 @@ Item {
 	property bool open: false
 	property string title: ""
 	property string body: ""
+	// An optional disc beside the text, as in the design's 3b and 5c.
+	property Component icon: null
 
 	default property alias content: column.data
 
@@ -71,10 +73,21 @@ Item {
 
 			spacing: Theme.spacingM
 
-			Column {
+			Row {
 				width: parent.width
-				spacing: Theme.spacingXs
+				spacing: Theme.spacingM
 				visible: dialog.title !== "" || dialog.body !== ""
+
+				Loader {
+					width: 44
+					height: 44
+					visible: dialog.icon !== null
+					sourceComponent: dialog.icon
+				}
+
+			Column {
+				width: parent.width - (dialog.icon ? 44 + Theme.spacingM : 0)
+				spacing: Theme.spacingXs
 
 				Text {
 					width: parent.width
@@ -96,6 +109,7 @@ Item {
 					opacity: 0.82
 					color: Theme.glassTextPrimary
 				}
+			}
 			}
 		}
 	}

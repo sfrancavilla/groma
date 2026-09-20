@@ -1,4 +1,5 @@
 import QtQuick
+import "../icons"
 import ".."
 
 // A text field as a glass track, with a focus ring rather than a thicker
@@ -9,6 +10,10 @@ Item {
 	property alias text: input.text
 	property alias echoMode: input.echoMode
 	property string placeholder: ""
+	// Offers an eye to show what was typed. A password field you cannot check
+	// is a password field you retype.
+	property bool revealable: false
+	property bool revealed: false
 
 	signal accepted
 
@@ -54,17 +59,43 @@ Item {
 			color: Theme.glassTextPrimary
 		}
 
+		EyeIcon {
+			anchors {
+				right: parent.right
+				rightMargin: Theme.spacingL
+				verticalCenter: parent.verticalCenter
+			}
+
+			visible: field.revealable
+			crossed: field.revealed
+			opacity: revealMouse.containsMouse ? 1.0 : 0.7
+			color: Theme.glassTextPrimary
+
+			MouseArea {
+				id: revealMouse
+
+				anchors.fill: parent
+				anchors.margins: -6
+				hoverEnabled: true
+				cursorShape: Qt.PointingHandCursor
+				onClicked: field.revealed = !field.revealed
+			}
+		}
+
 		TextInput {
 			id: input
 
 			anchors {
 				fill: parent
 				leftMargin: Theme.spacingL + 2
-				rightMargin: Theme.spacingL + 2
+				rightMargin: field.revealable
+					? Theme.spacingL * 2 + 16 : Theme.spacingL + 2
 			}
 
 			verticalAlignment: TextInput.AlignVCenter
 			clip: true
+			echoMode: field.revealable && field.revealed
+				? TextInput.Normal : field.echoMode
 			font.pixelSize: Theme.fontTitle
 			font.weight: Font.DemiBold
 			color: Theme.glassTextPrimary

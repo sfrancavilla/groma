@@ -26,6 +26,11 @@ ShellRoot {
 	// Dim, then lock, then turn the screen off.
 	IdleChain { lock: lockScreen }
 
+	// Asks for a password when joining a network we do not know.
+	NetworkJoinDialog {
+		id: networkJoin
+	}
+
 	// Feedback for the volume and brightness keys.
 	Osd {}
 
@@ -121,6 +126,7 @@ ShellRoot {
 
 			NetworkControl {
 				anchors.verticalCenter: parent.verticalCenter
+				joinDialog: networkJoin
 			}
 
 			VolumeControl {
