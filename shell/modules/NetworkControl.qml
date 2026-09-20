@@ -204,7 +204,7 @@ BarPopup {
 
 	// Only while the tile is open, and only often enough to feel live.
 	Timer {
-		running: root.open && root.enabled
+		running: root.scanning
 		interval: 5000
 		triggeredOnStart: true
 		repeat: true
@@ -215,12 +215,19 @@ BarPopup {
 		}
 	}
 
-	// Scan only while the tile is open. A wifi scan costs power and airtime,
-	// and the list is worthless when nobody is looking - with the scanner off
-	// the device reports just the network it is already on.
-	onOpenChanged: {
-		if (root.wifi)
-			root.wifi.scannerEnabled = root.open;
+	// Scan while anything that shows networks is open. A wifi scan costs power
+	// and airtime, and the list is worthless when nobody is looking - with the
+	// scanner off the device reports only the network it is already on, which
+	// is why tying this to the tile alone emptied the full list: the button
+	// closes the tile on its way to opening the dialog.
+	readonly property bool scanning:
+		root.enabled && (root.open || (root.listDialog?.open ?? false))
+
+	Binding {
+		target: root.wifi
+		property: "scannerEnabled"
+		value: root.scanning
+		when: root.wifi !== null
 	}
 
 	readonly property int listLimit: 4
