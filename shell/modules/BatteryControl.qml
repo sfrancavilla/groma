@@ -1,6 +1,5 @@
 import Quickshell
 import Quickshell.Io
-import Quickshell.Wayland
 import Quickshell.Services.UPower
 import QtQuick
 import ".."
@@ -11,7 +10,7 @@ import "../ui"
 //
 // Same grammar as the volume tile - title row, glass track, status line - but
 // the track is a readout rather than a control: you cannot drag a battery.
-Item {
+BarPopup {
 	id: root
 
 	// displayDevice is a synthetic aggregate: right for percentage, state and
@@ -21,6 +20,7 @@ Item {
 	readonly property var physical:
 		UPower.devices.values.find(d => d.isLaptopBattery) ?? null
 	readonly property real health: root.physical?.healthPercentage ?? 0
+
 	// !! because both sides are undefined until UPower reports in.
 	readonly property bool ready: !!(root.device?.ready && root.device?.isPresent)
 	readonly property real level: root.ready ? root.device.percentage : 0
@@ -40,26 +40,9 @@ Item {
 	// covers the pending-charge cases.
 	readonly property bool onPower: root.ready && !UPower.onBattery
 
-	property bool open: false
-
-	// The bar spans the screen, so this item's position inside it is its
-	// position on screen.
-	//
-	// mapToItem is a function call, and QML cannot know when to re-run one -
-	// bound naively it evaluates once during early layout, before the row has
-	// positioned anything, and keeps that answer forever. Reading the geometry
-	// it depends on first registers those as dependencies.
-	readonly property real triggerRight: {
-		void [root.width, root.x, root.parent?.x, root.parent?.width,
-			root.barWidth];
-
-		return root.mapToItem(null, root.width, 0).x;
-	}
-
-	readonly property real barWidth: root.QsWindow?.window?.width ?? 0
-
-	implicitWidth: label.implicitWidth
-	implicitHeight: label.implicitHeight
+	name: "battery"
+	title: "Battery"
+	trailing: root.summary
 
 	// UPower reports seconds; nobody reads a battery in seconds.
 	function humanDuration(seconds) {
@@ -101,13 +84,9 @@ Item {
 		return t ? t + " remaining" : "On battery";
 	}
 
-	BatteryIcon {
-		id: label
-
-		anchors.centerIn: parent
-
+	trigger: BatteryIcon {
 		height: Theme.barIconHeight
-		width: height * label.aspect
+		width: height * aspect
 
 		// The cell fills with the charge, so the number is not needed to read
 		// it at a glance.
@@ -117,7 +96,7 @@ Item {
 			: root.onPower ? Theme.success
 			: Theme.glassTextPrimary
 
-		opacity: trigger.containsMouse || root.open ? 1.0 : 0.85
+		opacity: root.active ? 1.0 : 0.85
 
 		Behavior on opacity {
 			NumberAnimation { duration: 120 }
@@ -133,213 +112,6 @@ Item {
 		}
 	}
 
-	MouseArea {
-		id: trigger
-
-		anchors.fill: parent
-		hoverEnabled: true
-		cursorShape: Qt.PointingHandCursor
-		onClicked: root.open = !root.open
-	}
-
-	PanelWindow {
-		visible: root.open
-
-		anchors {
-			top: true
-			bottom: true
-			left: true
-			right: true
-		}
-
-		exclusionMode: ExclusionMode.Ignore
-		color: "transparent"
-
-		WlrLayershell.layer: WlrLayer.Top
-		WlrLayershell.namespace: "groma:battery-catcher"
-		WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-
-		MouseArea {
-			anchors.fill: parent
-			onClicked: root.open = false
-		}
-	}
-
-	PanelWindow {
-		id: panel
-
-		visible: root.open || tile.opacity > 0.01
-
-		anchors {
-			top: true
-			right: true
-		}
-
-		exclusionMode: ExclusionMode.Ignore
-
-		// Sit under the bar, and line the panel's right edge up with the
-		// readout that opened it rather than with the screen edge.
-		//
-		// The shadow padding is inside the window, so it has to come out of
-		// both margins or the panel appears that much further from the bar.
-		margins {
-			top: Math.max(0, Theme.barHeight + Theme.barPopupGap - panel.pad)
-			right: Math.max(0, root.barWidth - root.triggerRight - panel.pad)
-		}
-
-		readonly property int pad: Theme.glass ? Theme.glassShadowPadding : 0
-
-		implicitWidth: Theme.tileWidth + panel.pad * 2
-		implicitHeight: tile.implicitHeight + panel.pad * 2
-		color: "transparent"
-
-		WlrLayershell.layer: WlrLayer.Overlay
-		WlrLayershell.namespace: "groma:battery"
-		WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-
-		BackgroundEffect.blurRegion: Region {
-			item: tile
-			radius: Theme.radiusPanel
-		}
-
-		GlassTile {
-			id: tile
-
-			anchors.fill: parent
-			anchors.margins: panel.pad
-
-			title: "Battery"
-			trailing: root.summary
-
-			readonly property bool settled: root.open && tile.opacity > 0.99
-
-			opacity: root.open ? 1 : 0
-			scale: root.open ? 1 : 0.96
-			y: root.open ? 0 : -6
-
-			Behavior on opacity {
-				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
-			}
-			Behavior on scale {
-				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
-			}
-			Behavior on y {
-				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
-			}
-
-			Slider {
-				id: batterySlider
-
-				width: parent.width
-				value: root.level
-				animateValue: tile.settled
-
-				// Shown, not set.
-				interactive: false
-
-				// The fill carries the state: green while charging, amber when
-				// it is time to worry, plain otherwise.
-				fillColor: root.onPower ? Theme.glassFillCharging
-					: root.low ? Theme.glassFillWarning
-					: Theme.glassTrackFill
-
-				// Something is happening, so the fill says so.
-				shimmer: root.charging
-
-				knobContent: BoltIcon {
-					anchors.centerIn: parent
-					visible: root.charging
-					color: Theme.glassOnLens
-				}
-
-				BatteryIcon {
-					id: batteryIcon
-
-					anchors {
-						left: parent.left
-						leftMargin: Theme.spacingM
-						verticalCenter: parent.verticalCenter
-					}
-
-					color: batterySlider.knobLeft < batteryIcon.x + batteryIcon.width
-						? Theme.glassTextOnLens : Theme.glassTextPrimary
-				}
-
-				Text {
-					id: batteryValue
-
-					anchors {
-						right: parent.right
-						rightMargin: Theme.spacingL
-						verticalCenter: parent.verticalCenter
-					}
-
-					text: Math.round(root.level * 100) + "%"
-					font.pixelSize: Theme.fontBody
-
-					// A full battery puts the lens right under this.
-					color: batterySlider.knobRight > batteryValue.x
-						? Theme.glassTextOnLens
-						: root.low ? Theme.warning
-						: Theme.glassTextPrimary
-				}
-			}
-
-			// Status line. The design puts the power adapter and a profile
-			// here; there is no power-profiles-daemon on this machine, so the
-			// right-hand slot shows battery health instead - which is real,
-			// and the thing worth knowing about a laptop battery anyway.
-			Item {
-				width: parent.width
-				height: source.implicitHeight
-
-				Text {
-					id: source
-
-					anchors.left: parent.left
-					font.pixelSize: Theme.fontCaption
-					opacity: 0.85
-					color: Theme.glassTextPrimary
-
-					text: {
-						if (!root.ready)
-							return "No battery";
-
-						const w = Math.abs(root.device.changeRate);
-						const rate = w > 0.1 ? " · " + w.toFixed(1) + " W" : "";
-
-						return (root.onPower ? "Power adapter" : "On battery") + rate;
-					}
-				}
-
-				Row {
-					anchors.right: parent.right
-					spacing: Theme.spacingS / 2 + 3
-					visible: root.health > 0
-
-					Text {
-						anchors.verticalCenter: parent.verticalCenter
-						text: "Health " + Math.round(root.health) + "%"
-						font.pixelSize: Theme.fontCaption
-						opacity: 0.85
-						color: Theme.glassTextPrimary
-					}
-
-					Rectangle {
-						anchors.verticalCenter: parent.verticalCenter
-						width: 6
-						height: 6
-						radius: 3
-
-						color: root.health >= 80 ? Theme.success
-							: root.health >= 60 ? Theme.warning
-							: Theme.danger
-					}
-				}
-			}
-		}
-	}
-
 	IpcHandler {
 		target: "battery"
 
@@ -347,6 +119,8 @@ Item {
 			root.open = !root.open;
 		}
 
+		// Not named show/hide: `show` collides with the `qs ipc show`
+		// subcommand, and the call silently lists the functions instead.
 		function opened(): void {
 			root.open = true;
 		}
@@ -355,4 +129,116 @@ Item {
 			root.open = false;
 		}
 	}
+
+	Slider {
+		id: batterySlider
+
+		width: parent.width
+		value: root.level
+		animateValue: root.settled
+
+		// Shown, not set.
+		interactive: false
+
+		// The fill carries the state: green while charging, amber when it is
+		// time to worry, plain otherwise.
+		fillColor: root.onPower ? Theme.glassFillCharging
+			: root.low ? Theme.glassFillWarning
+			: Theme.glassTrackFill
+
+		// Something is happening, so the fill says so.
+		shimmer: root.charging
+
+		knobContent: BoltIcon {
+			anchors.centerIn: parent
+			visible: root.charging
+			color: Theme.glassOnLens
+		}
+
+		BatteryIcon {
+			id: batteryIcon
+
+			anchors {
+				left: parent.left
+				leftMargin: Theme.spacingM
+				verticalCenter: parent.verticalCenter
+			}
+
+			color: batterySlider.knobLeft < batteryIcon.x + batteryIcon.width
+				? Theme.glassTextOnLens : Theme.glassTextPrimary
+		}
+
+		Text {
+			id: batteryValue
+
+			anchors {
+				right: parent.right
+				rightMargin: Theme.spacingL
+				verticalCenter: parent.verticalCenter
+			}
+
+			text: Math.round(root.level * 100) + "%"
+			font.pixelSize: Theme.fontBody
+
+			// A full battery puts the lens right under this.
+			color: batterySlider.knobRight > batteryValue.x
+				? Theme.glassTextOnLens
+				: root.low ? Theme.warning
+				: Theme.glassTextPrimary
+		}
+	}
+
+	// Status line. The design puts the power adapter and a profile here; there
+	// is no power-profiles-daemon on this machine, so the right-hand slot shows
+	// battery health instead - real, and the thing actually worth knowing about
+	// a laptop battery.
+	Item {
+		width: parent.width
+		height: source.implicitHeight
+
+		Text {
+			id: source
+
+			anchors.left: parent.left
+			font.pixelSize: Theme.fontCaption
+			opacity: 0.85
+			color: Theme.glassTextPrimary
+
+			text: {
+				if (!root.ready)
+					return "No battery";
+
+				const w = Math.abs(root.device.changeRate);
+				const rate = w > 0.1 ? " · " + w.toFixed(1) + " W" : "";
+
+				return (root.onPower ? "Power adapter" : "On battery") + rate;
+			}
+		}
+
+		Row {
+			anchors.right: parent.right
+			spacing: Theme.spacingS / 2 + 3
+			visible: root.health > 0
+
+			Text {
+				anchors.verticalCenter: parent.verticalCenter
+				text: "Health " + Math.round(root.health) + "%"
+				font.pixelSize: Theme.fontCaption
+				opacity: 0.85
+				color: Theme.glassTextPrimary
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 6
+				height: 6
+				radius: 3
+
+				color: root.health >= 80 ? Theme.success
+					: root.health >= 60 ? Theme.warning
+					: Theme.danger
+			}
+		}
+	}
 }
+

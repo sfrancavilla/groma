@@ -53,6 +53,7 @@ whole shell instead of leaving one widget behind.
 | `ui/Lens.qml` | The sphere of glass. The slider's knob and a dialog's icon disc are this at different sizes |
 | `ui/GlassDialog.qml` | Modal sheet: dimmed, blurred desktop with a centred pane. The caller owns the window |
 | `ui/GlassField.qml` | Text entry as a glass track, with a focus ring rather than a thicker border |
+| `ui/BarPopup.qml` | A readout in the bar and the tile it opens: window, click-catcher, animation, positioning |
 | `ui/Chip.qml` | One option among a few, the chosen one brighter |
 | `ui/DialogButton.qml` | Buttons in dialogs and notification actions. `variant`: secondary, primary, destructive |
 | `SpeakerIcon.qml` / `BatteryIcon.qml` / `BoltIcon.qml` | Drawn glyphs, as paths rather than an icon font |
