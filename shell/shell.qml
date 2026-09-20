@@ -26,6 +26,11 @@ ShellRoot {
 	// Dim, then lock, then turn the screen off.
 	IdleChain { lock: lockScreen }
 
+	// Every Bluetooth device in range, and what to do with it.
+	BluetoothDialog {
+		id: bluetoothDialog
+	}
+
 	// Every network in range, and the form for joining one: two pages of the
 	// same sheet.
 	NetworkDialog {
@@ -126,6 +131,11 @@ ShellRoot {
 				verticalCenter: parent.verticalCenter
 			}
 			spacing: Theme.spacingL
+
+			BluetoothControl {
+				anchors.verticalCenter: parent.verticalCenter
+				dialog: bluetoothDialog
+			}
 
 			NetworkControl {
 				id: networkControl

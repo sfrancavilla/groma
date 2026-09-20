@@ -71,22 +71,38 @@ to any surface.
 
 Never two marks. A back chevron replaces the X; it does not join it.
 
-**The buttons in the footer.** First row that matches:
+**The buttons in the footer.** The footer has two slots. On the right, the
+answer - first row that matches:
 
-| Surface | Footer |
+| Surface | Right |
 | --- | --- |
 | Asks a question you can decline | `Cancel` and the affirmative |
 | Asks a question with only one answer | No footer - `Enter` submits |
 | Offers a choice | The affirmative alone |
 | Asks nothing | No footer |
 
+On the left, at most one **secondary action** - something other than answering.
+`Join Hidden Network…` on the network picker, `Forget` on the Bluetooth one.
+This is not a loophole for a second way out: a secondary action does something,
+where `Cancel` and the X only leave.
+
+An action that discards saved state takes `variant: "destructive"`. An action
+that is merely the main one takes `variant: "primary"`, and there is at most
+one of those on a surface.
+
+The affirmative says what it will do to what is selected - `Join Home Wi-Fi`,
+`Pair Echo Pop-EX7` - and falls back to the bare verb when nothing is selected,
+where it is disabled anyway.
+
 Which puts every surface built so far in exactly one place:
 
 | | Header | Footer |
 | --- | --- | --- |
 | Volume, battery, Wi-Fi tiles | none | none |
-| Network picker | X | `Join` |
+| Network picker | X | `Join Hidden Network…` · `Join` |
 | Its join page | back | `Cancel` `Join` |
+| Bluetooth tile | none | none |
+| Bluetooth devices sheet | X | `Forget` · `Pair`/`Connect` |
 | Polkit prompt | none | `Cancel` `Authenticate` |
 | Lock screen | none | none - `Enter` submits |
 
