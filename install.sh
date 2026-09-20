@@ -12,6 +12,7 @@ GROMA="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # What the shell actually calls. Anything here is reached from QML or from a
 # keybinding; nothing is included on the grounds that it is probably useful.
+# The one exception is marked as such.
 PACKAGES=(
 	quickshell          # the shell itself
 	hyprland            # the compositor, which starts it
@@ -37,6 +38,11 @@ PACKAGES=(
 
 	foot                # the terminal the keybinding opens
 	libnotify           # notify-send, for testing the notification daemon
+
+	# Not called by the shell: this is how the shell gets compared against the
+	# design it is built from. A screenshot keybinding would want slurp and
+	# hyprshot as well.
+	grim
 )
 
 say() { printf '\n\033[1m%s\033[0m\n' "$1"; }
