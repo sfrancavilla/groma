@@ -591,7 +591,11 @@ BarPopup {
 
 		DialogButton {
 			width: (parent.width - Theme.spacingS) / 2
-			text: "Join by name"
+
+			// The sheet's own button says "Join Hidden Network…", which does
+			// not fit half a tile. Dropping the verb is allowed; calling it
+			// something else is not.
+			text: "Hidden Network…"
 
 			onClicked: {
 				root.dialog?.askHidden();

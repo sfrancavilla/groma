@@ -34,6 +34,12 @@ labels, and buttons that act.
 
 Captions that are full sentences take a full stop. Fragments do not.
 
+Two buttons that do the same thing say the same words. Where one of them has
+less room, **drop the verb, never change the noun**: the network sheet's
+`Join Hidden Network…` is the tile's `Hidden Network…`, not `Join by name`.
+A label that will not fit is a `DialogButton` concern - it elides - not a
+reason to invent a synonym.
+
 An **ellipsis** - the character `…`, never three periods - marks a label that
 opens a further step instead of acting. `Join Hidden Network…` opens a form;
 `Join` joins. `Joining…` is the exception: there, it marks work in progress.
@@ -52,10 +58,20 @@ Which dismissal a surface offers follows from what kind of surface it is.
 
 A prompt gets no X because `Cancel` already is one, and two ways to say no
 invites the question of whether they differ. A browse surface gets an X because
-leaving without choosing anything is a normal outcome rather than a refusal.
+leaving without choosing anything is a normal outcome rather than a refusal -
+and for the same reason it gets **no `Cancel`**, which would be that second way
+to say no. The design draws both on the network picker; the rule wins here,
+because on screen the two chips sat side by side doing the same thing.
+
+A later page of a sheet may still carry `Cancel` alongside its back chevron.
+Those are not two ways to say no: back returns to the previous page, `Cancel`
+closes the sheet. The join page has both, correctly.
 
 There is **one** close mark: `ui/DiscButton.qml`, `glyph: "close"`. Not a text
 `×`, which renders at whatever the font decides and cannot be hit reliably.
+Its marks scale with the button, so a toast's 20px close and a sheet's 36px one
+are the same control at two sizes. Pass `markColor` where the surface resolves
+its own text colour, as the notification toast does from urgency.
 
 Any surface that takes the keyboard exclusively - a lock screen, a modal sheet -
 **must** also be dismissable by `Escape` *and* by an IPC call. A keyboard grab
@@ -93,15 +109,13 @@ The panel is 2880×1920 at scale 2, so one logical pixel is two physical ones.
 A component is extracted on its **second** use, not in anticipation of one.
 
 
-## Open and inconsistent
+## Known deviations
 
-Known deviations. Each is either a decision waiting to be made or a small fix.
+None outstanding. The three this document was written to surface - two
+spellings of one action, two ways of drawing a close mark, and a picker
+carrying both an X and a `Cancel` - are fixed, and the rules above say which
+way each went.
 
-- **The network picker has both an X and `Cancel`**, which by the rule above is
-  one too many. The design draws both, so the rule may be wrong rather than the
-  screen. Undecided.
-- **`NotificationToast` closes with a text `×`** rather than a `DiscButton`. It
-  predates the component. A disc is too heavy for a toast's corner, so this
-  probably wants a small `DiscButton` size rather than a different mark.
-- **The same action is named twice**: `Join by name` on the Wi-Fi tile,
-  `Join Hidden Network…` in the sheet it opens.
+Add to this list rather than to the rules when something has to differ for a
+reason. A deviation that is written down is a decision; one that is not is how
+the three above happened.

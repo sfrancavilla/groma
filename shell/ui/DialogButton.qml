@@ -42,6 +42,19 @@ Rectangle {
 		id: label
 
 		anchors.centerIn: parent
+
+		// Without a width a Text renders at its implicit size wherever it is
+		// anchored, so a label too long for its chip spilled out of both ends
+		// of it rather than being cut.
+		//
+		// The clamp is tighter than the padding implicitWidth asks for. A
+		// button left to size itself gets a generous inset; one given a width
+		// it has to live inside should use that width before eliding, rather
+		// than cutting the label to preserve padding nobody asked for.
+		width: Math.min(implicitWidth, button.width - Theme.spacingS * 2)
+		elide: Text.ElideRight
+		horizontalAlignment: Text.AlignHCenter
+
 		font.pixelSize: Theme.fontBody
 		font.bold: button.isPrimary || button.isDestructive
 		font.weight: button.isPrimary || button.isDestructive

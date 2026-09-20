@@ -679,11 +679,6 @@ Scope {
 							spacing: Theme.spacingS + 2
 
 							DialogButton {
-								text: "Cancel"
-								onClicked: root.close()
-							}
-
-							DialogButton {
 								text: root.picked !== ""
 									? `Join ${root.pickedShort}` : "Join"
 

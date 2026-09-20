@@ -105,23 +105,20 @@ GlassPanel {
 					color: toast.isCritical ? Theme.danger : toast.cardTextMuted
 				}
 
-				Text {
+				// The same mark the sheets close with, at a toast's size. It
+				// was a text "×", which renders at whatever the font decides.
+				DiscButton {
 					anchors.right: parent.right
-					text: "×"
-					font.pixelSize: Theme.fontTitle
-					color: closeMouse.containsMouse ? toast.cardText : toast.cardTextMuted
+					anchors.verticalCenter: parent.verticalCenter
 
-					MouseArea {
-						id: closeMouse
+					width: 20
+					height: 20
+					glyph: "close"
+					markColor: toast.cardTextMuted
 
-						anchors.fill: parent
-						anchors.margins: -6
-						hoverEnabled: true
-						cursorShape: Qt.PointingHandCursor
-						// dismiss() reports that the user closed it, which is
-						// not the same as the notification timing out.
-						onClicked: toast.modelData.dismiss()
-					}
+					// dismiss() reports that the user closed it, which is not
+					// the same as the notification timing out.
+					onClicked: toast.modelData.dismiss()
 				}
 			}
 
