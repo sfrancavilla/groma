@@ -4,8 +4,11 @@ Rules for the shell's surfaces. Most of these are not preferences - they are
 decisions already made in `Theme.qml` and in the design project, written down
 so the next surface does not quietly make a different one.
 
-Where a rule and the design disagree, the design wins and the rule gets
-amended. Where a rule and a *guess about* the design disagree, read the CSS.
+Where a rule and the design disagree, look at the screen. Usually the design
+is right and the rule gets amended; occasionally it is the other way, as with
+the picker's `Cancel` below. Either way the answer is written down here.
+
+Where a rule and a *guess about* the design disagree, read the CSS.
 
 
 ## Capitalisation
@@ -107,15 +110,3 @@ The panel is 2880×1920 at scale 2, so one logical pixel is two physical ones.
 | `modules/` | One feature each: its data, its IPC and its layout. |
 
 A component is extracted on its **second** use, not in anticipation of one.
-
-
-## Known deviations
-
-None outstanding. The three this document was written to surface - two
-spellings of one action, two ways of drawing a close mark, and a picker
-carrying both an X and a `Cancel` - are fixed, and the rules above say which
-way each went.
-
-Add to this list rather than to the rules when something has to differ for a
-reason. A deviation that is written down is a decision; one that is not is how
-the three above happened.
