@@ -91,6 +91,25 @@ BarPopup {
 		root.detail = found;
 	}
 
+	// NetworkDevice.address is the hardware address - aa:bb:cc:dd:ee:ff - not
+	// the one anyone means by "the IP". NetworkManager has that too.
+	property string ipAddress: ""
+
+	Process {
+		id: ipQuery
+
+		command: ["nmcli", "-t", "-f", "IP4.ADDRESS", "device", "show",
+			root.wifi?.name ?? ""]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				// IP4.ADDRESS[1]:192.168.1.29/24
+				const found = text.match(/IP4\.ADDRESS\[1\]:\s*([0-9.]+)/);
+				root.ipAddress = found ? found[1] : "";
+			}
+		}
+	}
+
 	Process {
 		id: scan
 
@@ -108,7 +127,10 @@ BarPopup {
 		interval: 5000
 		triggeredOnStart: true
 		repeat: true
-		onTriggered: scan.running = true
+		onTriggered: {
+			scan.running = true;
+			ipQuery.running = true;
+		}
 	}
 
 	// Scan only while the tile is open. A wifi scan costs power and airtime,
@@ -259,8 +281,12 @@ BarPopup {
 					if (!root.online)
 						return "Connected · no route out";
 
+					// The green dot already says "connected", so the line is
+					// better spent on the address and the band.
 					const band = root.detail[root.current?.name ?? ""]?.band;
-					return band ? "Connected · " + band : "Connected";
+					const parts = [root.ipAddress, band].filter(part => part);
+
+					return parts.length > 0 ? parts.join(" · ") : "Connected";
 				}
 
 				font.pixelSize: Theme.fontCaption
