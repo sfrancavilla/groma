@@ -23,6 +23,13 @@ Rectangle {
 	property bool compact: true
 	property bool selected: false
 
+	// Shown, but dimmed: nmcli's `device wifi connect` can only build open,
+	// WEP and WPA-PSK profiles, so an enterprise network is visible and not
+	// joinable. Hiding it would be worse - it is in range, and someone looking
+	// for it deserves to be told why it will not work rather than left
+	// wondering why their network is missing.
+	property bool unsupported: false
+
 	// The search term, marked in the name wherever it occurs.
 	property string highlight: ""
 
@@ -60,6 +67,8 @@ Rectangle {
 
 	height: row.compact ? 32 : 42
 	radius: row.compact ? 14 : Theme.radiusRow
+
+	opacity: row.unsupported ? 0.55 : 1.0
 
 	color: row.selected ? Theme.glassChipSelected
 		: row.connected ? Theme.glassChipActive

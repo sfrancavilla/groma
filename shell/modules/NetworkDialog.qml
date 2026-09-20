@@ -138,7 +138,7 @@ Scope {
 	// where they stand; the rest go to page two.
 	function commit() {
 		const network = root.ordered.find(entry => entry.name === root.picked);
-		if (!network)
+		if (!network || !root.supported(network.name))
 			return;
 
 		if (network.known) {
@@ -302,6 +302,17 @@ Scope {
 
 		root.picked = entries[next].name;
 	}
+
+	// nmcli's `device wifi connect` documents that it supports only open, WEP
+	// and WPA-PSK where no profile exists. An 802.1X network needs an identity
+	// and an EAP method - a connection editor, which this is not - so it can
+	// be listed but not joined from here.
+	function supported(name) {
+		return (root.controller?.detail[name]?.security ?? "") !== "Enterprise";
+	}
+
+	readonly property bool pickedSupported:
+		root.picked === "" || root.supported(root.picked)
 
 	// The button says what it will join. An SSID may be 32 characters and the
 	// footer has room for about half that.
@@ -544,6 +555,8 @@ Scope {
 													modelData.name] ?? null
 												bars: root.controller?.barsFor(
 													modelData.name) ?? 0
+												unsupported: !root.supported(
+													modelData.name)
 
 												onChosen:
 													root.picked = modelData.name
@@ -610,6 +623,22 @@ Scope {
 						}
 					}
 
+					// A disabled Join with no explanation is the silent failure
+					// moved rather than fixed.
+					Text {
+						width: parent.width
+						horizontalAlignment: Text.AlignHCenter
+						visible: !root.pickedSupported
+						wrapMode: Text.WordWrap
+
+						text: "Enterprise networks need an identity and a "
+							+ "certificate. Groma cannot join one yet."
+
+						font.pixelSize: Theme.fontCaption
+						opacity: 0.75
+						color: Theme.warning
+					}
+
 					// How much of the list the search is hiding. Without this a
 					// filter left in the box looks like a network that has gone.
 					Text {
@@ -658,12 +687,12 @@ Scope {
 								text: root.picked !== ""
 									? `Join ${root.pickedShort}` : "Join"
 
-								enabled: root.picked !== ""
+								enabled: root.picked !== "" && root.pickedSupported
 
 								// Dim glass with faded text until there is
 								// something to join, then the bright chip - which
 								// needs dark text, so the variant changes with it.
-								variant: root.picked !== ""
+								variant: root.picked !== "" && root.pickedSupported
 									? "primary" : "secondary"
 
 								onClicked: root.commit()
