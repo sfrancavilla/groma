@@ -116,6 +116,17 @@ BarPopup {
 	//
 	// Throttled hard: it changes rarely, the tile is the only thing that wants
 	// it, and every query tells that service where you are.
+	//
+	// A DNS query would avoid contacting a web service, and was tried:
+	//
+	//   dig -t txt +short o-o.myaddr.l.google.com @ns1.google.com  -> 203.0.113.7
+	//   curl https://api.ipify.org                                 -> 203.0.113.42
+	//
+	// Two independent HTTPS services agree on the second, so the first is not
+	// this machine's address. The ISP intercepts port 53 and relays the query,
+	// so the nameserver sees its resolver rather than us - the DNS method is
+	// answering a different question. OpenDNS's equivalent returns no answer
+	// at all here.
 	property string publicIp: ""
 	property double publicIpAt: 0
 
