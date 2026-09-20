@@ -11,6 +11,9 @@ GlassPanel {
 
 	property string title: ""
 	property string trailing: ""
+	// The trailing text is usually just context, but it is also where a tile
+	// says something is wrong.
+	property color trailingColor: Theme.glassTextPrimary
 
 	default property alias content: column.data
 
@@ -55,8 +58,9 @@ GlassPanel {
 				text: tile.trailing
 				font.pixelSize: Theme.fontBody
 				opacity: 0.8
-				color: Theme.glassTextPrimary
+				color: tile.trailingColor
 			}
 		}
 	}
 }
+

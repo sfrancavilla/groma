@@ -7,6 +7,9 @@ import "../icons"
 import "../ui"
 
 // The bar's network readout, and the tile it opens.
+//
+// Follows the design's network list: the connected network as a card of its
+// own with a subtitle, then the rest as rows with strength and a lock.
 BarPopup {
 	id: root
 
@@ -20,43 +23,129 @@ BarPopup {
 	readonly property bool online:
 		Networking.connectivity === NetworkConnectivity.Full
 
-	// Connected first, then ones we have credentials for, then the rest by
-	// name. Capped, because a tile is not a network manager and there are
-	// usually more networks in range than anyone wants listed.
-	readonly property int listLimit: 5
+	// Quickshell's Network says whether we are connected and whether we know
+	// the network, but not how strong it is, whether it is secured, or which
+	// band. NetworkManager knows all three and is already the backend, so the
+	// scan fills in what the model does not carry.
+	property var detail: ({})
 
-	readonly property var candidates: {
-		const all = root.wifi?.networks?.values ?? [];
+	function barsFor(name) {
+		const signal = root.detail[name]?.signal ?? -1;
+		if (signal < 0)
+			return 0;
 
-		return all.slice().sort((a, b) =>
-			(b.connected - a.connected)
-			|| (b.known - a.known)
-			|| a.name.localeCompare(b.name));
+		// Four bars over a 0-100 scale, with the bottom one lit for anything
+		// audible at all.
+		return signal >= 75 ? 4 : signal >= 50 ? 3 : signal >= 25 ? 2 : 1;
+	}
+
+	function parseScan(text) {
+		const found = {};
+
+		for (const line of text.split("\n")) {
+			if (line.trim() === "")
+				continue;
+
+			// nmcli -t escapes colons inside values, so the SSID cannot be
+			// found by splitting naively. A lookbehind would express that
+			// neatly and Qt's JS engine does not support it - it matches
+			// nothing and throws nothing, so the parse silently returns one
+			// field. Swap the escaped colons out first instead.
+			const parts = line.replace(/\\:/g, "\u0000")
+				.split(":")
+				.map(part => part.replace(/\u0000/g, ":"));
+			if (parts.length < 5)
+				continue;
+
+			const inUse = parts[0];
+			const freq = parts[parts.length - 1];
+			const security = parts[parts.length - 2];
+			const signal = parseInt(parts[parts.length - 3]);
+			const name = parts.slice(1, parts.length - 3).join(":");
+
+			if (name === "")
+				continue;
+
+			// The same network is usually on both bands. Keep the one we are
+			// actually joined to when there is one - it is often the weaker
+			// of the two, and reporting the stronger would put the wrong band
+			// under "Connected".
+			const better = !found[name]
+				|| (inUse === "*")
+				|| (!found[name].inUse && found[name].signal < signal);
+
+			if (better) {
+				found[name] = {
+					signal: signal,
+					secured: security.trim() !== "",
+					band: parseInt(freq) >= 5000 ? "5 GHz" : "2.4 GHz",
+					inUse: inUse === "*"
+				};
+			}
+		}
+
+		root.detail = found;
+	}
+
+	Process {
+		id: scan
+
+		command: ["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY,FREQ",
+			"device", "wifi", "list"]
+
+		stdout: StdioCollector {
+			onStreamFinished: root.parseScan(text)
+		}
+	}
+
+	// Only while the tile is open, and only often enough to feel live.
+	Timer {
+		running: root.open && root.enabled
+		interval: 5000
+		triggeredOnStart: true
+		repeat: true
+		onTriggered: scan.running = true
 	}
 
 	// Scan only while the tile is open. A wifi scan costs power and airtime,
-	// and the list is worthless when nobody is looking at it - with the
-	// scanner off the device reports just the network it is already on.
+	// and the list is worthless when nobody is looking - with the scanner off
+	// the device reports just the network it is already on.
 	onOpenChanged: {
 		if (root.wifi)
 			root.wifi.scannerEnabled = root.open;
 	}
 
-	name: "network"
-	title: "Network"
+	readonly property int listLimit: 4
 
-	trailing: !root.enabled ? "Wi-Fi off"
-		: root.current ? root.current.name
-		: "Disconnected"
+	// Everything except the one we are on, known first, then by strength.
+	readonly property var others: {
+		const all = root.wifi?.networks?.values ?? [];
+
+		return all.filter(n => !n.connected).sort((a, b) =>
+			(b.known - a.known)
+			|| ((root.detail[b.name]?.signal ?? 0)
+				- (root.detail[a.name]?.signal ?? 0))
+			|| a.name.localeCompare(b.name));
+	}
+
+	name: "network"
+	title: "Wi-Fi"
+
+	trailing: !root.enabled ? "Off"
+		: !root.current ? "Not connected"
+		: root.online ? root.detail[root.current.name]?.band ?? "Connected"
+		: "No internet connection"
+
+	trailingColor: root.enabled && root.current && !root.online
+		? Theme.warning : Theme.glassTextPrimary
 
 	trigger: WifiIcon {
 		height: Theme.barIconHeight
 		width: height * aspect
 
 		crossed: !root.enabled
-		// Two arcs when connected, none when not: the arcs are state, since
-		// nothing here reports signal strength.
-		level: root.enabled && root.current ? 2 : 0
+		level: !root.enabled || !root.current ? 0
+			: root.barsFor(root.current.name) >= 3 ? 2 : 1
 
 		// Connected but no route out is worth flagging - a captive portal
 		// looks exactly like a working connection otherwise.
@@ -87,96 +176,187 @@ BarPopup {
 			root.open = false;
 		}
 
-		function wifi(on: string): void {
+		function radio(on: string): void {
 			Networking.wifiEnabled = on !== "off";
 		}
 	}
 
-	// The radio itself, above the list: turning it off is a different kind of
-	// action from joining a network.
+	// The radio itself. A switch rather than a chip: two states, no third.
 	Item {
 		width: parent.width
-		height: radioLabel.implicitHeight
+		height: radioSwitch.height
 
 		Text {
-			id: radioLabel
-
 			anchors.left: parent.left
 			anchors.verticalCenter: parent.verticalCenter
-			text: "Wi-Fi"
+			text: "Wi-Fi radio"
 			font.pixelSize: Theme.fontBody
 			color: Theme.glassTextPrimary
 		}
 
-		Chip {
+		Switch {
+			id: radioSwitch
+
 			anchors.right: parent.right
-			anchors.verticalCenter: parent.verticalCenter
-			width: 64
-			text: root.enabled ? "On" : "Off"
-			active: root.enabled
-			onClicked: Networking.wifiEnabled = !Networking.wifiEnabled
+			checked: root.enabled
+			onToggled: Networking.wifiEnabled = !Networking.wifiEnabled
 		}
+	}
+
+	// The connected network, given a card of its own: it is the answer to the
+	// question the tile was opened to ask.
+	Rectangle {
+		width: parent.width
+		height: 46
+		radius: 14
+		visible: root.enabled && root.current !== null
+
+		color: root.online ? Theme.glassChipActive : Theme.glassFillWarning
+		border.width: 1
+		border.color: root.online
+			? Theme.glassTrackBorderFocus
+			: Qt.rgba(Theme.warning.r, Theme.warning.g, Theme.warning.b, 0.5)
+
+		Column {
+			anchors {
+				left: parent.left
+				leftMargin: Theme.spacingM
+				verticalCenter: parent.verticalCenter
+			}
+
+			spacing: 2
+
+			Text {
+				text: root.current?.name ?? ""
+				font.pixelSize: Theme.fontBody
+				font.bold: true
+				color: Theme.glassTextPrimary
+			}
+
+			Text {
+				text: {
+					if (root.current?.stateChanging)
+						return "Connecting…";
+					if (!root.online)
+						return "Connected · no route out";
+
+					const band = root.detail[root.current?.name ?? ""]?.band;
+					return band ? "Connected · " + band : "Connected";
+				}
+
+				font.pixelSize: Theme.fontCaption
+				opacity: 0.75
+				color: Theme.glassTextPrimary
+			}
+		}
+
+		Row {
+			anchors {
+				right: parent.right
+				rightMargin: Theme.spacingM
+				verticalCenter: parent.verticalCenter
+			}
+
+			spacing: Theme.spacingS
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 6
+				height: 6
+				radius: 3
+				visible: root.online
+				color: Theme.success
+			}
+
+			SignalBars {
+				anchors.verticalCenter: parent.verticalCenter
+				level: root.barsFor(root.current?.name ?? "")
+				color: Theme.glassTextPrimary
+			}
+		}
+
+		MouseArea {
+			anchors.fill: parent
+			cursorShape: Qt.PointingHandCursor
+			onClicked: root.wifi.requestDisconnect()
+		}
+	}
+
+	Text {
+		width: parent.width
+		visible: root.enabled && root.others.length > 0
+		text: "OTHER NETWORKS"
+		font.pixelSize: 10
+		font.bold: true
+		font.letterSpacing: 0.6
+		opacity: 0.6
+		color: Theme.glassTextPrimary
 	}
 
 	Column {
 		width: parent.width
-		spacing: Theme.spacingXs
-		visible: root.enabled && root.candidates.length > 0
+		spacing: Theme.spacingXs + 2
+		visible: root.enabled && root.others.length > 0
 
 		Repeater {
-			model: Math.min(root.listLimit, root.candidates.length)
+			model: Math.min(root.listLimit, root.others.length)
 
 			Rectangle {
 				id: row
 
 				required property int index
-				readonly property var network: root.candidates[row.index]
+				readonly property var network: root.others[row.index]
 
 				width: parent.width
-				height: Theme.chipHeight
-				radius: Theme.radiusPill
+				height: 32
+				radius: 14
 
-				color: row.network.connected ? Theme.glassChipActive
-					: rowMouse.containsMouse ? Theme.glassControlHover
-					: "transparent"
+				color: rowMouse.containsMouse
+					? Theme.glassControlHover : Theme.glassControl
+				border.width: 1
+				border.color: Theme.glassControlBorder
 
 				Behavior on color {
 					ColorAnimation { duration: 120 }
 				}
 
-				Text {
+				Row {
 					anchors {
 						left: parent.left
-						right: state.left
 						leftMargin: Theme.spacingM
-						rightMargin: Theme.spacingS
 						verticalCenter: parent.verticalCenter
 					}
 
-					text: row.network.name
-					elide: Text.ElideRight
-					font.pixelSize: Theme.fontCaption
-					// A network we have credentials for is one click away; the
-					// rest would need a password we cannot ask for yet.
-					opacity: row.network.known || row.network.connected ? 1.0 : 0.6
-					color: Theme.glassTextPrimary
+					spacing: Theme.spacingS - 2
+
+					Text {
+						anchors.verticalCenter: parent.verticalCenter
+						text: row.network.name
+						elide: Text.ElideRight
+						width: Math.min(implicitWidth, 150)
+						font.pixelSize: Theme.fontCaption
+						// A saved network is one click away; the rest need a
+						// password there is nowhere to type yet.
+						opacity: row.network.known ? 1.0 : 0.65
+						color: Theme.glassTextPrimary
+					}
+
+					LockIcon {
+						anchors.verticalCenter: parent.verticalCenter
+						visible: root.detail[row.network.name]?.secured ?? false
+						opacity: 0.6
+						color: Theme.glassTextPrimary
+					}
 				}
 
-				Text {
-					id: state
-
+				SignalBars {
 					anchors {
 						right: parent.right
 						rightMargin: Theme.spacingM
 						verticalCenter: parent.verticalCenter
 					}
 
-					text: row.network.connected ? "connected"
-						: row.network.stateChanging ? "…"
-						: row.network.known ? "saved" : ""
-
-					font.pixelSize: Theme.fontCaption
-					opacity: 0.7
+					level: root.barsFor(row.network.name)
 					color: Theme.glassTextPrimary
 				}
 
@@ -186,13 +366,7 @@ BarPopup {
 					anchors.fill: parent
 					hoverEnabled: true
 					cursorShape: Qt.PointingHandCursor
-
-					onClicked: {
-						if (row.network.connected)
-							root.wifi.requestDisconnect();
-						else if (row.network.known)
-							row.network.requestConnect();
-					}
+					onClicked: if (row.network.known) row.network.requestConnect()
 				}
 			}
 		}
@@ -200,8 +374,8 @@ BarPopup {
 
 	Text {
 		width: parent.width
-		visible: root.enabled && root.candidates.length > root.listLimit
-		text: (root.candidates.length - root.listLimit) + " more in range"
+		visible: root.enabled && root.others.length > root.listLimit
+		text: (root.others.length - root.listLimit) + " more in range"
 		font.pixelSize: Theme.fontCaption
 		opacity: 0.6
 		color: Theme.glassTextPrimary

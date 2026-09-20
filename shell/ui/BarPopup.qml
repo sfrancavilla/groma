@@ -21,6 +21,7 @@ Item {
 
 	property string title: ""
 	property string trailing: ""
+	property color trailingColor: Theme.glassTextPrimary
 
 	// Names this popup's layer-shell surfaces, so `hyprctl layers` can tell
 	// them apart. IPC is deliberately not here: only one handler may claim a
@@ -156,6 +157,7 @@ Item {
 
 			title: root.title
 			trailing: root.trailing
+			trailingColor: root.trailingColor
 
 			opacity: root.open ? 1 : 0
 			scale: root.open ? 1 : 0.96
