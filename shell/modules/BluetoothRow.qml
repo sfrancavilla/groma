@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Bluetooth
 import ".."
+import "../icons"
 import "../ui"
 
 // One device in a list: its name, and what it is currently doing.
@@ -43,13 +44,44 @@ Rectangle {
 			return row.batteryText !== "" ? row.batteryText : "Connected";
 		}
 
-		return row.known ? "Paired" : "";
+		// 8a's wording for a device we know, 8c's for one we do not.
+		return row.known ? "Not connected" : "Ready to pair";
+	}
+
+	// Bluez reports a freedesktop icon name. Only the family matters here.
+	readonly property string kind: {
+		const name = row.device?.icon ?? "";
+
+		if (name.includes("headset") || name.includes("headphone"))
+			return "headphones";
+		if (name.startsWith("audio") || name.includes("speaker"))
+			return "speaker";
+		if (name.startsWith("input") || name.includes("mouse")
+				|| name.includes("keyboard"))
+			return "input";
+		if (name.includes("phone") || name.includes("watch"))
+			return "phone";
+
+		return "unknown";
+	}
+
+	readonly property string kindLabel: {
+		switch (row.kind) {
+		case "headphones": return "Headphones";
+		case "speaker": return "Speaker";
+		case "input": return "Input device";
+		case "phone": return "Phone";
+		}
+
+		// 8c names the address where it cannot name the thing. Three octets
+		// is enough to tell two of them apart.
+		return (row.device?.address ?? "").split(":").slice(0, 3).join(":");
 	}
 
 	readonly property string batteryText: (row.device?.batteryAvailable ?? false)
 		? `${Math.round((row.device?.battery ?? 0) * 100)}%` : ""
 
-	height: row.compact ? 32 : 42
+	height: row.compact ? 32 : 60
 	radius: row.compact ? 14 : Theme.radiusRow
 
 	color: row.selected ? Theme.glassChipSelected
@@ -75,20 +107,83 @@ Rectangle {
 		visible: row.selected
 	}
 
+	// The tile's row: one line, no disc.
 	Text {
 		anchors {
 			left: parent.left
 			right: trailing.left
-			leftMargin: row.compact ? Theme.spacingM : Theme.spacingL - 2
+			leftMargin: Theme.spacingM
 			rightMargin: Theme.spacingS
 			verticalCenter: parent.verticalCenter
 		}
 
+		visible: row.compact
 		text: row.label
 		elide: Text.ElideRight
-		font.pixelSize: row.compact ? Theme.fontCaption : Theme.fontLead
-		font.weight: row.selected ? Font.Bold : Font.DemiBold
+		font.pixelSize: Theme.fontCaption
+		font.weight: Font.DemiBold
 		color: Theme.glassTextPrimary
+	}
+
+	// The sheet's row: what it is, then its name over what it is and what it
+	// is doing.
+	Row {
+		anchors {
+			left: parent.left
+			right: trailing.left
+			leftMargin: Theme.spacingM
+			rightMargin: Theme.spacingS
+			verticalCenter: parent.verticalCenter
+		}
+
+		visible: !row.compact
+		spacing: Theme.spacingM
+
+		Lens {
+			id: disc
+
+			anchors.verticalCenter: parent.verticalCenter
+			width: 36
+			height: 36
+
+			// The bright lens is for the picked row; the rest are plain glass,
+			// so the disc carries the selection as well as the fill does.
+			plain: !row.selected
+			sheen: false
+
+			DeviceIcon {
+				anchors.centerIn: parent
+				width: 18
+				height: 18
+				kind: row.kind
+				color: row.selected
+					? Theme.glassTextOnLens : Theme.glassTextPrimary
+			}
+		}
+
+		Column {
+			anchors.verticalCenter: parent.verticalCenter
+			spacing: 2
+
+			Text {
+				text: row.label
+				elide: Text.ElideRight
+				width: Math.min(implicitWidth,
+					disc.parent.width - disc.width - Theme.spacingM)
+				font.pixelSize: Theme.fontLead
+				font.weight: row.selected ? Font.Bold : Font.DemiBold
+				color: Theme.glassTextPrimary
+			}
+
+			Text {
+				text: row.status !== ""
+					? `${row.kindLabel} · ${row.status}` : row.kindLabel
+				font.pixelSize: Theme.fontBody
+				font.weight: Font.DemiBold
+				opacity: row.selected ? 0.8 : 0.75
+				color: Theme.glassTextPrimary
+			}
+		}
 	}
 
 	Row {
@@ -105,10 +200,10 @@ Rectangle {
 		Text {
 			anchors.verticalCenter: parent.verticalCenter
 			text: row.status
-			visible: text !== ""
-			font.pixelSize: row.compact ? Theme.fontCaption : Theme.fontBody
+			visible: row.compact && text !== ""
+			font.pixelSize: Theme.fontCaption
 			font.weight: Font.DemiBold
-			opacity: row.selected ? 0.8 : 0.7
+			opacity: 0.7
 			color: Theme.glassTextPrimary
 		}
 

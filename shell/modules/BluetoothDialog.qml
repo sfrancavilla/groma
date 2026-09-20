@@ -21,6 +21,8 @@ Scope {
 	id: root
 
 	property var controller: null
+	// The pairing agent, which owns the conversation with bluez.
+	property var agent: null
 	property bool open: false
 
 	// Held by address rather than by object: discovery replaces the objects.
@@ -94,6 +96,8 @@ Scope {
 	readonly property var ordered: root.groups.reduce(
 		(all, group) => all.concat(group.devices), [])
 
+	readonly property bool grouped: root.groups.length > 1
+
 	readonly property var pickedDevice:
 		root.ordered.find(device => device.address === root.picked) ?? null
 
@@ -104,14 +108,14 @@ Scope {
 	readonly property bool busy:
 		(root.pickedDevice?.pairing ?? false)
 			|| root.pickedDevice?.state === BluetoothDeviceState.Connecting
-			|| pair.running
+			|| (root.agent?.pairing ?? false)
 
 	// What the affirmative does depends on what is picked: a known device is
 	// connected to, an unknown one is paired with first.
 	readonly property string affirmative: {
 		if (root.pickedDevice === null)
-			return "Connect";
-		if (pair.running)
+			return "Pair";
+		if (root.agent?.pairing ?? false)
 			return "Pairing…";
 		if (!root.pickedKnown)
 			return "Pair";
@@ -127,41 +131,29 @@ Scope {
 		root.error = "";
 
 		if (!root.pickedKnown) {
-			pair.running = true;
+			root.agent?.pair(device.address);
 			return;
 		}
 
 		device.connected = !device.connected;
 	}
 
-	Process {
-		id: pair
+	// The agent reports both outcomes, and pairing does not connect - doing
+	// both is what clicking a pair of headphones is understood to mean.
+	Connections {
+		target: root.agent
 
-		command: ["bluetoothctl", "--agent", "NoInputNoOutput",
-			"pair", root.picked]
+		function onPaired(address) {
+			const device = root.devices.find(
+				entry => entry.address === address) ?? null;
 
-		stdout: StdioCollector {}
-
-		stderr: StdioCollector {
-			onStreamFinished: {
-				if (text.trim() !== "")
-					root.error = text.trim();
-			}
+			if (device !== null)
+				device.connected = true;
 		}
 
-		onExited: code => {
-			if (code === 0) {
-				// Pairing does not connect. Doing both is what clicking a pair
-				// of headphones is understood to mean.
-				if (root.pickedDevice)
-					root.pickedDevice.connected = true;
-
-				return;
-			}
-
-			if (root.error === "")
-				root.error = "Could not pair. The device may need a code, "
-					+ "which Groma cannot ask for yet.";
+		function onErrorChanged() {
+			if ((root.agent?.error ?? "") !== "")
+				root.error = root.agent.error;
 		}
 	}
 
@@ -215,7 +207,7 @@ Scope {
 					spacing: Theme.spacingXs
 
 					Text {
-						text: "Bluetooth Devices"
+						text: "Other Devices"
 						font.pixelSize: Theme.fontDisplay
 						font.bold: true
 						font.letterSpacing: -0.2
@@ -243,7 +235,7 @@ Scope {
 									`${root.nearbyDevices.length} nearby`;
 
 								return (root.adapter?.discovering ?? false)
-									? `Scanning · ${found}` : found;
+									? `Searching · ${found}` : found;
 							}
 
 							font.pixelSize: Theme.fontTitle
@@ -295,6 +287,7 @@ Scope {
 
 								Text {
 									leftPadding: 6
+									visible: root.grouped
 									text: modelData.heading
 									font.pixelSize: Theme.fontCaption
 									font.bold: true
@@ -400,6 +393,7 @@ Scope {
 					id: forgetButton
 
 					anchors.left: parent.left
+					anchors.verticalCenter: parent.verticalCenter
 					text: "Forget"
 					variant: "destructive"
 					visible: root.pickedKnown
@@ -409,6 +403,22 @@ Scope {
 						root.pickedDevice?.forget();
 						root.picked = "";
 					}
+				}
+
+				// A device that is not in pairing mode does not advertise, so
+				// the commonest reason for an empty list is worth saying out
+				// loud rather than leaving to be discovered.
+				Text {
+					anchors.left: parent.left
+					anchors.leftMargin: Theme.spacingXs
+					anchors.verticalCenter: parent.verticalCenter
+
+					visible: !forgetButton.visible
+					text: "Put your device in pairing mode."
+					font.pixelSize: Theme.fontBody
+					font.weight: Font.DemiBold
+					opacity: 0.7
+					color: Theme.glassTextPrimary
 				}
 
 				DialogButton {

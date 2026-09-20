@@ -121,6 +121,17 @@ BarPopup {
 		}
 	}
 
+	Text {
+		width: parent.width
+		visible: root.enabled && root.connected.length > 0
+		text: "CONNECTED"
+		font.pixelSize: 10
+		font.bold: true
+		font.letterSpacing: 0.6
+		opacity: 0.6
+		color: Theme.glassTextPrimary
+	}
+
 	// Whatever is connected, given a card each: it is the answer to the
 	// question the tile was opened to ask.
 	Column {
@@ -178,17 +189,32 @@ BarPopup {
 					}
 				}
 
-				Rectangle {
+				Row {
 					anchors {
 						right: parent.right
 						rightMargin: Theme.spacingM
 						verticalCenter: parent.verticalCenter
 					}
 
-					width: 6
-					height: 6
-					radius: 3
-					color: Theme.success
+					spacing: Theme.spacingS
+
+					// Only for devices that report one. A speaker usually does
+					// not, and an empty track would read as a flat battery.
+					LevelPill {
+						anchors.verticalCenter: parent.verticalCenter
+						visible: card.modelData.batteryAvailable
+						value: card.modelData.battery
+						fillColor: card.modelData.battery <= 0.2
+							? Theme.glassFillWarning : Theme.glassTrackFill
+					}
+
+					Rectangle {
+						anchors.verticalCenter: parent.verticalCenter
+						width: 6
+						height: 6
+						radius: 3
+						color: Theme.success
+					}
 				}
 
 				MouseArea {
@@ -203,7 +229,7 @@ BarPopup {
 	Text {
 		width: parent.width
 		visible: root.enabled && root.known.length > 0
-		text: "PAIRED DEVICES"
+		text: "MY DEVICES"
 		font.pixelSize: 10
 		font.bold: true
 		font.letterSpacing: 0.6
@@ -219,65 +245,13 @@ BarPopup {
 		Repeater {
 			model: root.known
 
-			Rectangle {
-				id: row
-
+			BluetoothRow {
 				required property var modelData
 
-				readonly property bool busy: row.modelData.state
-					=== BluetoothDeviceState.Connecting
-
 				width: parent.width
-				height: 32
-				radius: 14
+				device: modelData
 
-				color: rowMouse.containsMouse
-					? Theme.glassControlHover : Theme.glassControl
-				border.width: 1
-				border.color: Theme.glassControlBorder
-
-				Behavior on color {
-					ColorAnimation { duration: 120 }
-				}
-
-				Text {
-					anchors {
-						left: parent.left
-						right: state.left
-						leftMargin: Theme.spacingM
-						rightMargin: Theme.spacingS
-						verticalCenter: parent.verticalCenter
-					}
-
-					text: root.label(row.modelData)
-					elide: Text.ElideRight
-					font.pixelSize: Theme.fontCaption
-					color: Theme.glassTextPrimary
-				}
-
-				Text {
-					id: state
-
-					anchors {
-						right: parent.right
-						rightMargin: Theme.spacingM
-						verticalCenter: parent.verticalCenter
-					}
-
-					text: row.busy ? "Connecting…" : ""
-					font.pixelSize: Theme.fontCaption
-					opacity: 0.7
-					color: Theme.glassTextPrimary
-				}
-
-				MouseArea {
-					id: rowMouse
-
-					anchors.fill: parent
-					hoverEnabled: true
-					cursorShape: Qt.PointingHandCursor
-					onClicked: row.modelData.connected = true
-				}
+				onActivated: modelData.connected = true
 			}
 		}
 	}
@@ -298,7 +272,7 @@ BarPopup {
 	DialogButton {
 		width: parent.width
 		visible: root.enabled
-		text: "All Devices…"
+		text: "Other Devices…"
 
 		onClicked: {
 			// Before closing the tile, for the same reason the Wi-Fi tile

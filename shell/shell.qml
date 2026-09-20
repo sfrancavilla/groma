@@ -26,9 +26,21 @@ ShellRoot {
 	// Dim, then lock, then turn the screen off.
 	IdleChain { lock: lockScreen }
 
+	// Bluez needs an agent to vouch for a pairing, and QML cannot be one.
+	BluetoothAgent {
+		id: bluetoothAgent
+	}
+
 	// Every Bluetooth device in range, and what to do with it.
 	BluetoothDialog {
 		id: bluetoothDialog
+
+		agent: bluetoothAgent
+	}
+
+	// "Does this passkey match the one on the device?"
+	BluetoothPairDialog {
+		agent: bluetoothAgent
 	}
 
 	// Every network in range, and the form for joining one: two pages of the

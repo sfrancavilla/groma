@@ -158,6 +158,9 @@ Singleton {
 	// ringed, because here it means "this is what Join will act on" rather
 	// than "this is the state of things".
 	readonly property color glassChipSelected: Qt.rgba(1, 1, 1, 0.34)
+	// A passkey digit's tile: brighter than a row, because the digits are the
+	// whole point of the sheet they sit in.
+	readonly property color glassChipDigit: Qt.rgba(1, 1, 1, 0.22)
 	readonly property color glassChipSelectedBorder: Qt.rgba(1, 1, 1, 0.60)
 	readonly property color glassRowRing: Qt.rgba(1, 1, 1, 0.14)
 
@@ -214,6 +217,8 @@ Singleton {
 	// question gets 320 - it has to hold a name, a security label and a
 	// strength readout on one line without any of them eliding.
 	readonly property int dialogWidthWide: 520
+	// Between a prompt and a picker: 8d has to hold six passkey tiles.
+	readonly property int dialogWidthPrompt: 440
 	readonly property int dialogListHeight: 344
 
 	// How far a page slides when a sheet steps between them. Equal to the

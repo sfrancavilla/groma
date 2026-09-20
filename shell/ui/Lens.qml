@@ -14,6 +14,12 @@ Item {
 	// static icon.
 	property bool sheen: true
 
+	// Flat glass instead of a sphere. The design's device list uses the lit
+	// lens for the picked row and this for the rest, so the disc carries the
+	// selection as much as the row's fill does - which only works if both are
+	// the same disc.
+	property bool plain: false
+
 	default property alias content: overlay.data
 
 	implicitWidth: Theme.sliderKnobSize
@@ -21,28 +27,34 @@ Item {
 
 	property real sheenPos: 0.5
 
+	RadialGradient {
+		id: sphere
+
+		centerX: lens.width * 0.35
+		centerY: lens.height * 0.30
+		centerRadius: lens.width * 0.8
+		focalX: lens.width * 0.35
+		focalY: lens.height * 0.30
+
+		GradientStop { position: 0.0; color: Theme.glassKnobCore }
+		GradientStop { position: 0.45; color: Theme.glassKnobMid }
+		GradientStop { position: 1.0; color: Theme.glassKnobRim }
+	}
+
 	Shape {
 		anchors.fill: parent
 		preferredRendererType: Shape.CurveRenderer
 
 		ShapePath {
-			strokeColor: Theme.glassKnobEdge
+			strokeColor: lens.plain
+				? Theme.glassTrackBorder : Theme.glassKnobEdge
 			strokeWidth: 1
+
+			fillColor: lens.plain ? Theme.glassTrack : "transparent"
 
 			// Proportional, so the highlight stays in the same place whatever
 			// size the lens is drawn at.
-			fillGradient: RadialGradient {
-				centerX: lens.width * 0.35
-				centerY: lens.height * 0.30
-				centerRadius: lens.width * 0.8
-				focalX: lens.width * 0.35
-				focalY: lens.height * 0.30
-
-				GradientStop { position: 0.0; color: Theme.glassKnobCore }
-				GradientStop { position: 0.45; color: Theme.glassKnobMid }
-				GradientStop { position: 1.0; color: Theme.glassKnobRim }
-			}
-
+			fillGradient: lens.plain ? null : sphere
 			PathAngleArc {
 				centerX: lens.width / 2
 				centerY: lens.height / 2
@@ -65,6 +77,7 @@ Item {
 		anchors.fill: parent
 		radius: width / 2
 		rotation: 315
+		visible: !lens.plain
 
 		gradient: Gradient {
 			orientation: Gradient.Horizontal
@@ -79,6 +92,7 @@ Item {
 		anchors.fill: parent
 		radius: width / 2
 		rotation: 315
+		visible: !lens.plain
 
 		gradient: Gradient {
 			orientation: Gradient.Horizontal
@@ -96,7 +110,7 @@ Item {
 		radius: width / 2
 		rotation: 115
 		opacity: 0.9
-		visible: lens.sheen
+		visible: lens.sheen && !lens.plain
 
 		gradient: Gradient {
 			orientation: Gradient.Horizontal
@@ -117,7 +131,7 @@ Item {
 	}
 
 	SequentialAnimation {
-		running: lens.sheen && lens.visible
+		running: lens.sheen && !lens.plain && lens.visible
 		loops: Animation.Infinite
 
 		NumberAnimation {
