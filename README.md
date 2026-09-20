@@ -23,6 +23,13 @@ One long-running process provides the whole desktop shell:
 | `shell/icons/` | Drawn glyphs, as paths rather than an icon font |
 | `shell/modules/` | The features: volume, battery, network, notifications, polkit, lock, idle, OSD, wallpaper |
 
+The network tile shows a public address, which is the one thing in this shell
+that contacts a third party — nothing local knows it, since the router
+translates on the way out. It is requested from `api.ipify.org` only while the
+tile is open, only when there is a route out, and at most once every five
+minutes. Delete that block if you would rather the shell never reached the
+internet on its own.
+
 The volume and brightness keys call the shell (`ipc call keys …`) rather than
 running `wpctl` and `brightnessctl` themselves, so the change and its on-screen
 readout are one action. The shell does not have to discover what a keybind just

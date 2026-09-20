@@ -110,6 +110,48 @@ BarPopup {
 		}
 	}
 
+	// The address the internet sees. Nothing local knows it - the router
+	// translates on the way out - so it has to be asked of something outside,
+	// which is the only part of this shell that talks to a third party.
+	//
+	// Throttled hard: it changes rarely, the tile is the only thing that wants
+	// it, and every query tells that service where you are.
+	property string publicIp: ""
+	property double publicIpAt: 0
+
+	readonly property int publicIpMaxAge: 5 * 60 * 1000
+
+	function refreshPublicIp() {
+		if (!root.online)
+			return;
+
+		if (root.publicIp !== ""
+				&& Date.now() - root.publicIpAt < root.publicIpMaxAge)
+			return;
+
+		publicIpQuery.running = true;
+	}
+
+	Process {
+		id: publicIpQuery
+
+		command: ["curl", "--silent", "--ipv4", "--max-time", "4",
+			"https://api.ipify.org"]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				const found = text.trim();
+
+				// Anything that is not an address means a captive portal or an
+				// error page; keeping the last good answer beats showing HTML.
+				if (/^[0-9.]+$/.test(found)) {
+					root.publicIp = found;
+					root.publicIpAt = Date.now();
+				}
+			}
+		}
+	}
+
 	Process {
 		id: scan
 
@@ -130,6 +172,7 @@ BarPopup {
 		onTriggered: {
 			scan.running = true;
 			ipQuery.running = true;
+			root.refreshPublicIp();
 		}
 	}
 
@@ -324,6 +367,30 @@ BarPopup {
 			anchors.fill: parent
 			cursorShape: Qt.PointingHandCursor
 			onClicked: root.wifi.requestDisconnect()
+		}
+	}
+
+	Item {
+		width: parent.width
+		height: publicLabel.implicitHeight
+		visible: root.enabled && root.online && root.publicIp !== ""
+
+		Text {
+			id: publicLabel
+
+			anchors.left: parent.left
+			text: "Public address"
+			font.pixelSize: Theme.fontCaption
+			opacity: 0.6
+			color: Theme.glassTextPrimary
+		}
+
+		Text {
+			anchors.right: parent.right
+			text: root.publicIp
+			font.pixelSize: Theme.fontCaption
+			opacity: 0.85
+			color: Theme.glassTextPrimary
 		}
 	}
 
