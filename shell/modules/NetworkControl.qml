@@ -266,11 +266,14 @@ BarPopup {
 	// and airtime, and the list is worthless when nobody is looking - with the
 	// scanner off the device reports only the network it is already on, which
 	// is why tying this to the tile alone emptied the full list: the button
-	// closes the tile on its way to opening the dialog.
+	// closes the tile on its way to opening the sheet.
+	//
+	// The sheet counts even on its join page, which shows no networks. Stopping
+	// there empties the model, and the list page is still on screen at the time
+	// - sliding out, visibly losing its contents as it goes. It also means a
+	// failed join comes back to a list that is already populated.
 	readonly property bool scanning: root.enabled
-		&& (root.open
-			|| ((root.dialog?.open ?? false)
-				&& root.dialog?.page === "list"))
+		&& (root.open || (root.dialog?.open ?? false))
 
 	Binding {
 		target: root.wifi

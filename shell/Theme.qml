@@ -216,6 +216,11 @@ Singleton {
 	readonly property int dialogWidthWide: 520
 	readonly property int dialogListHeight: 344
 
+	// How far a page slides when a sheet steps between them. Equal to the
+	// sheet's padding on purpose: a page at full travel is exactly at the
+	// inside edge of the glass, so nothing has to be clipped to contain it.
+	readonly property int dialogPageSlide: 24
+
 	// --- Type scale ---
 	readonly property int fontCaption: 11
 	readonly property int fontBody: 12

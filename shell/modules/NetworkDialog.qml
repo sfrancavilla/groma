@@ -370,55 +370,360 @@ Scope {
 			// Page one: the picker.
 			// ---------------------------------------------------------------
 
-			Column {
+			// The two pages overlaid rather than stacked, so one can slide out while
+			// the other slides in. Nothing clips them: a page travels exactly the
+			// sheet's padding, so at full travel it sits against the inside edge of
+			// the glass. Clipping here would cut the focus rings off the fields,
+			// which are drawn outside them.
+			Item {
+				id: pager
+
 				width: parent.width
-				visible: root.page === "list"
-				spacing: Theme.spacingL
+				height: root.page === "list"
+					? listPage.implicitHeight : joinPage.implicitHeight
 
-				Item {
+				// Not while the sheet is shut, or opening it would animate the first
+				// page's height up from nothing behind the fade.
+				Behavior on height {
+					enabled: root.open
+					NumberAnimation { duration: 220; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
+				}
+
+				Column {
+					id: listPage
+
 					width: parent.width
-					height: 44
+					spacing: Theme.spacingL
 
+					// Waits off to the left while the join page has the sheet:
+					// forward is rightwards, back is leftwards, as on a phone.
+					x: root.page === "list" ? 0 : -Theme.dialogPageSlide
+					opacity: root.page === "list" ? 1 : 0
+
+					// Both pages are on screen mid-slide; only one takes clicks.
+					visible: opacity > 0.01
+					enabled: root.page === "list"
+
+					Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] } }
+					Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] } }
+
+					Item {
+						width: parent.width
+						height: 44
+
+						Column {
+							anchors.left: parent.left
+							anchors.verticalCenter: parent.verticalCenter
+							spacing: Theme.spacingXs
+
+							Text {
+								text: "Other Networks"
+								font.pixelSize: Theme.fontDisplay
+								font.bold: true
+								font.letterSpacing: -0.2
+								color: Theme.glassTextPrimary
+							}
+
+							Row {
+								spacing: Theme.spacingS
+
+								Spinner {
+									anchors.verticalCenter: parent.verticalCenter
+									visible: root.scanning
+									spinning: root.scanning
+									color: Theme.glassTextPrimary
+								}
+
+								Text {
+									anchors.verticalCenter: parent.verticalCenter
+
+									// An empty list mid-scan and an empty list
+									// after one mean different things, so the
+									// count is never shown without saying which
+									// this is.
+									text: {
+										if (!(root.controller?.enabled ?? false))
+											return "Wi-Fi is off";
+
+										const found =
+											`${root.networks.length} found`;
+
+										return root.scanning
+											? `Scanning · ${found}` : found;
+									}
+
+									font.pixelSize: Theme.fontTitle
+									font.weight: Font.DemiBold
+									opacity: 0.75
+									color: Theme.glassTextPrimary
+								}
+							}
+						}
+
+						// A dialog that owns the keyboard needs a way out that is
+						// not a keypress.
+						DiscButton {
+							anchors.right: parent.right
+							anchors.verticalCenter: parent.verticalCenter
+							glyph: "close"
+							onClicked: root.close()
+						}
+					}
+
+					GlassField {
+						id: searchField
+
+						width: parent.width
+						placeholder: "Search networks"
+
+						leading: SearchIcon {
+							color: Theme.glassTextPrimary
+							opacity: 0.8
+						}
+
+						onAccepted: root.commit()
+					}
+
+					Item {
+						width: parent.width
+						height: Math.min(Theme.dialogListHeight, list.contentHeight)
+						visible: root.ordered.length > 0
+
+						Flickable {
+							id: list
+
+							anchors.fill: parent
+							clip: true
+							contentHeight: rows.implicitHeight
+							boundsBehavior: Flickable.StopAtBounds
+
+							Column {
+								id: rows
+
+								// Held off the edges by the width of a selected
+								// row's ring, which is drawn outside the row and
+								// would otherwise be clipped away.
+								x: 3
+								width: list.width - 6
+								spacing: Theme.spacingS
+
+								Repeater {
+									model: root.groups
+
+									Column {
+										required property var modelData
+
+										width: rows.width
+										spacing: Theme.spacingS
+
+										Text {
+											leftPadding: 6
+											visible: root.grouped
+											text: modelData.band
+											font.pixelSize: Theme.fontCaption
+											font.bold: true
+											font.letterSpacing: 0.66
+											opacity: 0.6
+											color: Theme.glassTextPrimary
+										}
+
+										Repeater {
+											model: modelData.networks
+
+											NetworkRow {
+												required property var modelData
+
+												width: rows.width
+												compact: false
+												network: modelData
+												highlight: root.search.trim()
+												selected:
+													root.picked === modelData.name
+
+												detail: root.controller?.detail[
+													modelData.name] ?? null
+												bars: root.controller?.barsFor(
+													modelData.name) ?? 0
+
+												onChosen:
+													root.picked = modelData.name
+												onActivated: {
+													root.picked = modelData.name;
+													root.commit();
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+
+						// Only worth saying when there is more below.
+						Text {
+							anchors {
+								right: parent.right
+								rightMargin: 6
+								bottom: parent.bottom
+							}
+
+							visible: list.contentHeight > list.height
+								&& list.contentY + list.height
+									< list.contentHeight - 4
+
+							text: "scroll for more"
+							font.pixelSize: 10
+							opacity: 0.5
+							color: Theme.glassTextPrimary
+						}
+					}
+
+					// Nothing to show, for one of two quite different reasons.
 					Column {
-						anchors.left: parent.left
-						anchors.verticalCenter: parent.verticalCenter
-						spacing: Theme.spacingXs
+						width: parent.width
+						visible: root.ordered.length === 0
+						topPadding: 28
+						bottomPadding: 20
+						spacing: Theme.spacingXs + 2
 
 						Text {
-							text: "Other Networks"
-							font.pixelSize: Theme.fontDisplay
-							font.bold: true
-							font.letterSpacing: -0.2
+							width: parent.width
+							horizontalAlignment: Text.AlignHCenter
+							text: root.networks.length === 0
+								? (root.scanning ? "Looking for networks…"
+									: "No networks in range")
+								: `Showing 0 of ${root.networks.length} networks`
+
+							font.pixelSize: Theme.fontTitle
+							font.weight: Font.DemiBold
+							opacity: 0.6
 							color: Theme.glassTextPrimary
 						}
 
-						Row {
-							spacing: Theme.spacingS
+						Text {
+							width: parent.width
+							horizontalAlignment: Text.AlignHCenter
+							visible: root.networks.length > 0
+							text: "Clear the search to see all."
+							font.pixelSize: Theme.fontTitle
+							opacity: 0.6
+							color: Theme.glassTextPrimary
+						}
+					}
 
-							Spinner {
-								anchors.verticalCenter: parent.verticalCenter
-								visible: root.scanning
-								spinning: root.scanning
+					// How much of the list the search is hiding. Without this a
+					// filter left in the box looks like a network that has gone.
+					Text {
+						width: parent.width
+						horizontalAlignment: Text.AlignHCenter
+						visible: root.ordered.length > 0
+							&& root.matching.length < root.networks.length
+
+						text: `Showing ${root.matching.length} of `
+							+ `${root.networks.length} networks · clear the `
+							+ `search to see all.`
+
+						font.pixelSize: Theme.fontCaption
+						opacity: 0.6
+						color: Theme.glassTextPrimary
+					}
+
+					Rectangle {
+						width: parent.width
+						height: 1
+						color: Theme.glassControlBorder
+					}
+
+					Item {
+						width: parent.width
+						height: hiddenButton.height
+
+						DialogButton {
+							id: hiddenButton
+
+							anchors.left: parent.left
+							text: "Join Hidden Network…"
+							onClicked: root.askHidden()
+						}
+
+						Row {
+							anchors.right: parent.right
+							spacing: Theme.spacingS + 2
+
+							DialogButton {
+								text: "Cancel"
+								onClicked: root.close()
+							}
+
+							DialogButton {
+								text: root.picked !== ""
+									? `Join ${root.pickedShort}` : "Join"
+
+								enabled: root.picked !== ""
+
+								// Dim glass with faded text until there is
+								// something to join, then the bright chip - which
+								// needs dark text, so the variant changes with it.
+								variant: root.picked !== ""
+									? "primary" : "secondary"
+
+								onClicked: root.commit()
+							}
+						}
+					}
+				}
+
+				// ---------------------------------------------------------------
+				// Page two: the join form.
+				// ---------------------------------------------------------------
+
+				Column {
+					id: joinPage
+
+					width: parent.width
+					spacing: Theme.spacingL
+
+					// Waits off to the right, and arrives from there.
+					x: root.page === "join" ? 0 : Theme.dialogPageSlide
+					opacity: root.page === "join" ? 1 : 0
+
+					// Both pages are on screen mid-slide; only one takes clicks.
+					visible: opacity > 0.01
+					enabled: root.page === "join"
+
+					Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] } }
+					Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] } }
+
+					Row {
+						width: parent.width
+						spacing: Theme.spacingL - 2
+
+						DiscButton {
+							anchors.verticalCenter: parent.verticalCenter
+							glyph: "back"
+							onClicked: root.back()
+						}
+
+						Column {
+							anchors.verticalCenter: parent.verticalCenter
+							spacing: Theme.spacingXs
+
+							Text {
+								text: root.hidden
+									? "Join Hidden Network" : "Join Network"
+								font.pixelSize: Theme.fontDisplay
+								font.bold: true
+								font.letterSpacing: -0.2
 								color: Theme.glassTextPrimary
 							}
 
 							Text {
-								anchors.verticalCenter: parent.verticalCenter
-
-								// An empty list mid-scan and an empty list
-								// after one mean different things, so the
-								// count is never shown without saying which
-								// this is.
-								text: {
-									if (!(root.controller?.enabled ?? false))
-										return "Wi-Fi is off";
-
-									const found =
-										`${root.networks.length} found`;
-
-									return root.scanning
-										? `Scanning · ${found}` : found;
-								}
+								text: root.hidden
+									? "Enter the network name and security details."
+									: root.secured
+										? "This network is secured. Enter its "
+											+ "password to connect."
+										: "This network is open. No password is "
+											+ "needed."
 
 								font.pixelSize: Theme.fontTitle
 								font.weight: Font.DemiBold
@@ -428,189 +733,106 @@ Scope {
 						}
 					}
 
-					// A dialog that owns the keyboard needs a way out that is
-					// not a keypress.
-					DiscButton {
-						anchors.right: parent.right
-						anchors.verticalCenter: parent.verticalCenter
-						glyph: "close"
-						onClicked: root.close()
-					}
-				}
-
-				GlassField {
-					id: searchField
-
-					width: parent.width
-					placeholder: "Search networks"
-
-					leading: SearchIcon {
-						color: Theme.glassTextPrimary
-						opacity: 0.8
-					}
-
-					onAccepted: root.commit()
-				}
-
-				Item {
-					width: parent.width
-					height: Math.min(Theme.dialogListHeight, list.contentHeight)
-					visible: root.ordered.length > 0
-
-					Flickable {
-						id: list
-
-						anchors.fill: parent
-						clip: true
-						contentHeight: rows.implicitHeight
-						boundsBehavior: Flickable.StopAtBounds
+					Column {
+						width: parent.width
+						spacing: Theme.spacingM
 
 						Column {
-							id: rows
+							width: parent.width
+							spacing: Theme.spacingXs + 2
 
-							// Held off the edges by the width of a selected
-							// row's ring, which is drawn outside the row and
-							// would otherwise be clipped away.
-							x: 3
-							width: list.width - 6
-							spacing: Theme.spacingS
+							FieldLabel { text: "NETWORK NAME" }
 
-							Repeater {
-								model: root.groups
+							GlassField {
+								id: ssid
 
-								Column {
-									required property var modelData
+								width: parent.width
+								placeholder: "Network name"
+								enabled: !root.joining
 
-									width: rows.width
-									spacing: Theme.spacingS
+								onAccepted: root.needsPassword
+									? password.focusInput() : root.join()
+							}
+						}
 
-									Text {
-										leftPadding: 6
-										visible: root.grouped
-										text: modelData.band
-										font.pixelSize: Theme.fontCaption
-										font.bold: true
-										font.letterSpacing: 0.66
-										opacity: 0.6
-										color: Theme.glassTextPrimary
-									}
+						// Only asked for when nothing was scanned to answer it.
+						Column {
+							width: parent.width
+							visible: root.hidden
+							spacing: Theme.spacingXs + 2
 
-									Repeater {
-										model: modelData.networks
+							FieldLabel { text: "SECURITY" }
 
-										NetworkRow {
-											required property var modelData
+							Row {
+								width: parent.width
+								spacing: Theme.spacingS
 
-											width: rows.width
-											compact: false
-											network: modelData
-											highlight: root.search.trim()
-											selected:
-												root.picked === modelData.name
+								Repeater {
+									model: [
+										{ key: "open", label: "Open" },
+										{ key: "password", label: "Password" }
+									]
 
-											detail: root.controller?.detail[
-												modelData.name] ?? null
-											bars: root.controller?.barsFor(
-												modelData.name) ?? 0
+									DialogButton {
+										required property var modelData
 
-											onChosen:
-												root.picked = modelData.name
-											onActivated: {
-												root.picked = modelData.name;
-												root.commit();
-											}
-										}
+										width: (parent.width - Theme.spacingS) / 2
+										text: modelData.label
+										enabled: !root.joining
+
+										variant: root.openSecurity === modelData.key
+											? "primary" : "secondary"
+
+										onClicked:
+											root.openSecurity = modelData.key
 									}
 								}
 							}
 						}
-					}
 
-					// Only worth saying when there is more below.
-					Text {
-						anchors {
-							right: parent.right
-							rightMargin: 6
-							bottom: parent.bottom
+						Column {
+							width: parent.width
+							visible: root.needsPassword
+							spacing: Theme.spacingXs + 2
+
+							FieldLabel { text: "PASSWORD" }
+
+							GlassField {
+								id: password
+
+								width: parent.width
+								placeholder: "Required"
+								echoMode: TextInput.Password
+								revealable: true
+								enabled: !root.joining
+
+								onAccepted: root.join()
+							}
 						}
-
-						visible: list.contentHeight > list.height
-							&& list.contentY + list.height
-								< list.contentHeight - 4
-
-						text: "scroll for more"
-						font.pixelSize: 10
-						opacity: 0.5
-						color: Theme.glassTextPrimary
 					}
-				}
 
-				// Nothing to show, for one of two quite different reasons.
-				Column {
-					width: parent.width
-					visible: root.ordered.length === 0
-					topPadding: 28
-					bottomPadding: 20
-					spacing: Theme.spacingXs + 2
+					Checkbox {
+						id: remember
 
-					Text {
-						width: parent.width
-						horizontalAlignment: Text.AlignHCenter
-						text: root.networks.length === 0
-							? (root.scanning ? "Looking for networks…"
-								: "No networks in range")
-							: `Showing 0 of ${root.networks.length} networks`
-
-						font.pixelSize: Theme.fontTitle
-						font.weight: Font.DemiBold
-						opacity: 0.6
-						color: Theme.glassTextPrimary
+						text: "Remember this network"
+						checked: true
+						onToggled: remember.checked = !remember.checked
 					}
 
 					Text {
 						width: parent.width
-						horizontalAlignment: Text.AlignHCenter
-						visible: root.networks.length > 0
-						text: "Clear the search to see all."
-						font.pixelSize: Theme.fontTitle
-						opacity: 0.6
-						color: Theme.glassTextPrimary
+						wrapMode: Text.WordWrap
+						visible: root.error !== ""
+						text: root.error
+						font.pixelSize: Theme.fontCaption
+						lineHeight: 1.4
+						color: Theme.warning
 					}
-				}
 
-				// How much of the list the search is hiding. Without this a
-				// filter left in the box looks like a network that has gone.
-				Text {
-					width: parent.width
-					horizontalAlignment: Text.AlignHCenter
-					visible: root.ordered.length > 0
-						&& root.matching.length < root.networks.length
-
-					text: `Showing ${root.matching.length} of `
-						+ `${root.networks.length} networks · clear the `
-						+ `search to see all.`
-
-					font.pixelSize: Theme.fontCaption
-					opacity: 0.6
-					color: Theme.glassTextPrimary
-				}
-
-				Rectangle {
-					width: parent.width
-					height: 1
-					color: Theme.glassControlBorder
-				}
-
-				Item {
-					width: parent.width
-					height: hiddenButton.height
-
-					DialogButton {
-						id: hiddenButton
-
-						anchors.left: parent.left
-						text: "Join Hidden Network…"
-						onClicked: root.askHidden()
+					Rectangle {
+						width: parent.width
+						height: 1
+						color: Theme.glassControlBorder
 					}
 
 					Row {
@@ -619,194 +841,17 @@ Scope {
 
 						DialogButton {
 							text: "Cancel"
+							enabled: !root.joining
 							onClicked: root.close()
 						}
 
 						DialogButton {
-							text: root.picked !== ""
-								? `Join ${root.pickedShort}` : "Join"
-
-							enabled: root.picked !== ""
-
-							// Dim glass with faded text until there is
-							// something to join, then the bright chip - which
-							// needs dark text, so the variant changes with it.
-							variant: root.picked !== ""
-								? "primary" : "secondary"
-
-							onClicked: root.commit()
+							text: root.joining ? "Joining…" : "Join"
+							variant: "primary"
+							enabled: !root.joining && ssid.text !== ""
+								&& (!root.needsPassword || password.text !== "")
+							onClicked: root.join()
 						}
-					}
-				}
-			}
-
-			// ---------------------------------------------------------------
-			// Page two: the join form.
-			// ---------------------------------------------------------------
-
-			Column {
-				width: parent.width
-				visible: root.page === "join"
-				spacing: Theme.spacingL
-
-				Row {
-					width: parent.width
-					spacing: Theme.spacingL - 2
-
-					DiscButton {
-						anchors.verticalCenter: parent.verticalCenter
-						glyph: "back"
-						onClicked: root.back()
-					}
-
-					Column {
-						anchors.verticalCenter: parent.verticalCenter
-						spacing: Theme.spacingXs
-
-						Text {
-							text: root.hidden
-								? "Join Hidden Network" : "Join Network"
-							font.pixelSize: Theme.fontDisplay
-							font.bold: true
-							font.letterSpacing: -0.2
-							color: Theme.glassTextPrimary
-						}
-
-						Text {
-							text: root.hidden
-								? "Enter the network name and security details."
-								: root.secured
-									? "This network is secured. Enter its "
-										+ "password to connect."
-									: "This network is open. No password is "
-										+ "needed."
-
-							font.pixelSize: Theme.fontTitle
-							font.weight: Font.DemiBold
-							opacity: 0.75
-							color: Theme.glassTextPrimary
-						}
-					}
-				}
-
-				Column {
-					width: parent.width
-					spacing: Theme.spacingM
-
-					Column {
-						width: parent.width
-						spacing: Theme.spacingXs + 2
-
-						FieldLabel { text: "NETWORK NAME" }
-
-						GlassField {
-							id: ssid
-
-							width: parent.width
-							placeholder: "Network name"
-							enabled: !root.joining
-
-							onAccepted: root.needsPassword
-								? password.focusInput() : root.join()
-						}
-					}
-
-					// Only asked for when nothing was scanned to answer it.
-					Column {
-						width: parent.width
-						visible: root.hidden
-						spacing: Theme.spacingXs + 2
-
-						FieldLabel { text: "SECURITY" }
-
-						Row {
-							width: parent.width
-							spacing: Theme.spacingS
-
-							Repeater {
-								model: [
-									{ key: "open", label: "Open" },
-									{ key: "password", label: "Password" }
-								]
-
-								DialogButton {
-									required property var modelData
-
-									width: (parent.width - Theme.spacingS) / 2
-									text: modelData.label
-									enabled: !root.joining
-
-									variant: root.openSecurity === modelData.key
-										? "primary" : "secondary"
-
-									onClicked:
-										root.openSecurity = modelData.key
-								}
-							}
-						}
-					}
-
-					Column {
-						width: parent.width
-						visible: root.needsPassword
-						spacing: Theme.spacingXs + 2
-
-						FieldLabel { text: "PASSWORD" }
-
-						GlassField {
-							id: password
-
-							width: parent.width
-							placeholder: "Required"
-							echoMode: TextInput.Password
-							revealable: true
-							enabled: !root.joining
-
-							onAccepted: root.join()
-						}
-					}
-				}
-
-				Checkbox {
-					id: remember
-
-					text: "Remember this network"
-					checked: true
-					onToggled: remember.checked = !remember.checked
-				}
-
-				Text {
-					width: parent.width
-					wrapMode: Text.WordWrap
-					visible: root.error !== ""
-					text: root.error
-					font.pixelSize: Theme.fontCaption
-					lineHeight: 1.4
-					color: Theme.warning
-				}
-
-				Rectangle {
-					width: parent.width
-					height: 1
-					color: Theme.glassControlBorder
-				}
-
-				Row {
-					anchors.right: parent.right
-					spacing: Theme.spacingS + 2
-
-					DialogButton {
-						text: "Cancel"
-						enabled: !root.joining
-						onClicked: root.close()
-					}
-
-					DialogButton {
-						text: root.joining ? "Joining…" : "Join"
-						variant: "primary"
-						enabled: !root.joining && ssid.text !== ""
-							&& (!root.needsPassword || password.text !== "")
-						onClicked: root.join()
 					}
 				}
 			}
