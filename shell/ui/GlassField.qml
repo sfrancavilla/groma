@@ -15,6 +15,10 @@ Item {
 	property bool revealable: false
 	property bool revealed: false
 
+	// An optional glyph inside the track, ahead of the text - the design's
+	// magnifier on the network picker's search box.
+	property Component leading: null
+
 	signal accepted
 
 	function clear() {
@@ -27,6 +31,12 @@ Item {
 
 	implicitWidth: 200
 	implicitHeight: Theme.sliderHeight
+
+	// Where the text starts. The placeholder and the input both read it, so
+	// adding a glyph cannot move one without the other.
+	readonly property real textInset: field.leading
+		? Theme.spacingL + 13 + Theme.spacingS + 2
+		: Theme.spacingL + 2
 
 	Rectangle {
 		anchors.fill: parent
@@ -44,10 +54,21 @@ Item {
 		border.color: input.activeFocus
 			? Theme.glassTrackBorderFocus : Theme.glassTrackBorder
 
+		Loader {
+			anchors {
+				left: parent.left
+				leftMargin: Theme.spacingL
+				verticalCenter: parent.verticalCenter
+			}
+
+			active: field.leading !== null
+			sourceComponent: field.leading
+		}
+
 		Text {
 			anchors {
 				left: parent.left
-				leftMargin: Theme.spacingL + 2
+				leftMargin: field.textInset
 				verticalCenter: parent.verticalCenter
 			}
 
@@ -87,7 +108,7 @@ Item {
 
 			anchors {
 				fill: parent
-				leftMargin: Theme.spacingL + 2
+				leftMargin: field.textInset
 				rightMargin: field.revealable
 					? Theme.spacingL * 2 + 16 : Theme.spacingL + 2
 			}

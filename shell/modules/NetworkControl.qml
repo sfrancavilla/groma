@@ -44,6 +44,36 @@ BarPopup {
 		return signal >= 75 ? 4 : signal >= 50 ? 3 : signal >= 25 ? 2 : 1;
 	}
 
+	// nmcli reports what the access point advertises - "WPA2", "WPA1 WPA2",
+	// "WPA2 802.1X", "" for an open network. The design's rows want one word,
+	// and the strongest thing on offer is the honest one to name.
+	function securityLabel(security) {
+		const raw = security.trim();
+
+		if (raw === "" || raw === "OWE")
+			return "Open";
+		if (raw.includes("802.1X"))
+			return "Enterprise";
+		if (raw.includes("WPA3"))
+			return "WPA3";
+		if (raw.includes("WPA2"))
+			return "WPA2";
+		if (raw.includes("WPA"))
+			return "WPA";
+		if (raw.includes("WEP"))
+			return "WEP";
+
+		return raw;
+	}
+
+	// FREQ is in MHz. 6 GHz starts at 5955, which is above the 5 GHz band but
+	// still begins with a five - so the order of these tests matters.
+	function bandFor(freq) {
+		const mhz = parseInt(freq);
+
+		return mhz >= 5925 ? "6 GHz" : mhz >= 5000 ? "5 GHz" : "2.4 GHz";
+	}
+
 	function parseScan(text) {
 		const found = {};
 
@@ -83,7 +113,8 @@ BarPopup {
 				found[name] = {
 					signal: signal,
 					secured: security.trim() !== "",
-					band: parseInt(freq) >= 5000 ? "5 GHz" : "2.4 GHz",
+					security: root.securityLabel(security),
+					band: root.bandFor(freq),
 					inUse: inUse === "*"
 				};
 			}

@@ -154,6 +154,13 @@ Singleton {
 	readonly property color glassChip: Qt.rgba(1, 1, 1, 0.10)
 	readonly property color glassChipActive: Qt.rgba(1, 1, 1, 0.28)
 
+	// A picked row in the network list. Brighter than the connected card and
+	// ringed, because here it means "this is what Join will act on" rather
+	// than "this is the state of things".
+	readonly property color glassChipSelected: Qt.rgba(1, 1, 1, 0.34)
+	readonly property color glassChipSelectedBorder: Qt.rgba(1, 1, 1, 0.60)
+	readonly property color glassRowRing: Qt.rgba(1, 1, 1, 0.14)
+
 	// Dialog buttons are the tiles' chips. The primary one is bright enough
 	// that its label has to go dark.
 	readonly property color chipPrimary: Qt.rgba(1, 1, 1, 0.50)
@@ -203,17 +210,27 @@ Singleton {
 	readonly property int dialogWidth: 320
 	readonly property int dialogPadding: 20
 
+	// A picker is not a prompt. The design gives the network list 520 where a
+	// question gets 320 - it has to hold a name, a security label and a
+	// strength readout on one line without any of them eliding.
+	readonly property int dialogWidthWide: 520
+	readonly property int dialogListHeight: 344
+
 	// --- Type scale ---
 	readonly property int fontCaption: 11
 	readonly property int fontBody: 12
 	readonly property int fontTitle: 13
 	readonly property int fontLead: 14
 	readonly property int fontHeading: 16
+	readonly property int fontDisplay: 20
 
 	// Corner radii, by element size.
 	readonly property int radiusSmall: 6
 	readonly property int radiusMedium: 10
 	readonly property int radiusLarge: 12
 	readonly property int radiusPill: 12
+	// A row in the wide picker, which is taller than a tile's row and wants a
+	// correspondingly rounder corner.
+	readonly property int radiusRow: 16
 	readonly property int radiusPanel: 24
 }

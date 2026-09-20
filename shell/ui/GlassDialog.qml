@@ -15,6 +15,12 @@ Item {
 	// An optional disc beside the text, as in the design's 3b and 5c.
 	property Component icon: null
 
+	// A prompt and a picker are the same sheet at different sizes. The
+	// defaults are the prompt's; the network picker widens all three.
+	property real sheetWidth: Theme.dialogWidth
+	property real padding: Theme.dialogPadding
+	property real spacing: Theme.spacingM
+
 	default property alias content: column.data
 
 	// For the caller's blur region: the sheet, not the whole screen.
@@ -41,8 +47,8 @@ Item {
 		id: sheet
 
 		anchors.centerIn: parent
-		width: Theme.dialogWidth
-		height: column.implicitHeight + Theme.dialogPadding * 2
+		width: dialog.sheetWidth
+		height: column.implicitHeight + dialog.padding * 2
 		radius: Theme.radiusPanel
 
 		opacity: dialog.open ? 1 : 0
@@ -66,12 +72,12 @@ Item {
 				left: parent.left
 				right: parent.right
 				top: parent.top
-				leftMargin: Theme.dialogPadding
-				rightMargin: Theme.dialogPadding
-				topMargin: Theme.dialogPadding
+				leftMargin: dialog.padding
+				rightMargin: dialog.padding
+				topMargin: dialog.padding
 			}
 
-			spacing: Theme.spacingM
+			spacing: dialog.spacing
 
 			Row {
 				width: parent.width
