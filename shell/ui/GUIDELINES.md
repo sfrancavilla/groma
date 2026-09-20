@@ -1,14 +1,21 @@
 # Groma UI guidelines
 
-Rules for the shell's surfaces. Most of these are not preferences - they are
-decisions already made in `Theme.qml` and in the design project, written down
-so the next surface does not quietly make a different one.
+Rules for the shell's surfaces, so the next one does not quietly make a
+different decision from the last.
 
-Where a rule and the design disagree, look at the screen. Usually the design
-is right and the rule gets amended; occasionally it is the other way, as with
-the picker's `Cancel` below. Either way the answer is written down here.
+Three lines settle every question of authority:
 
-Where a rule and a *guess about* the design disagree, read the CSS.
+1. **A rule here is the answer.** Follow it. It was written because the
+   question already came up once.
+2. **Where this document is silent, the design project decides** - and read it,
+   never remember it. `oklch(0.3 0.05 230)` is `#0d3242`, far darker than it
+   looks, and a day went on matching that one by eye.
+3. **Where the design contradicts a rule here, the rule already won** - that
+   contradiction is why the rule exists. Disagree by changing this document,
+   never by deviating in a single surface.
+
+Nothing here is a matter of taste at the point of use. If a rule looks wrong,
+it is a five-line pull request, not a judgement call in a delegate.
 
 
 ## Capitalisation
@@ -50,25 +57,43 @@ opens a further step instead of acting. `Join Hidden Network…` opens a form;
 
 ## Getting out
 
-Which dismissal a surface offers follows from what kind of surface it is.
+Two separate questions, answered separately, so that exactly one answer applies
+to any surface.
 
-| Surface | Way out |
+**The mark in the header.** First row that matches:
+
+| Surface | Header mark |
 | --- | --- |
-| Bar popup (a tile under its bar icon) | None drawn. Click away, or the icon again. |
-| Prompt (asks a question) | Its answer buttons. `Cancel` and the affirmative. No X. |
-| Browse surface (offers things to look at) | An X disc, top right. |
-| Page of a multi-page sheet | Back chevron **in place of** the X, never both. |
+| A later page of a sheet | Back chevron |
+| Anything that asks a question | None - the footer answers it |
+| Anything else over the whole screen | X disc, top right |
+| A bar popup | None - click away, or press its bar icon again |
 
-A prompt gets no X because `Cancel` already is one, and two ways to say no
-invites the question of whether they differ. A browse surface gets an X because
-leaving without choosing anything is a normal outcome rather than a refusal -
-and for the same reason it gets **no `Cancel`**, which would be that second way
-to say no. The design draws both on the network picker; the rule wins here,
-because on screen the two chips sat side by side doing the same thing.
+Never two marks. A back chevron replaces the X; it does not join it.
 
-A later page of a sheet may still carry `Cancel` alongside its back chevron.
-Those are not two ways to say no: back returns to the previous page, `Cancel`
-closes the sheet. The join page has both, correctly.
+**The buttons in the footer.** First row that matches:
+
+| Surface | Footer |
+| --- | --- |
+| Asks a question you can decline | `Cancel` and the affirmative |
+| Asks a question with only one answer | No footer - `Enter` submits |
+| Offers a choice | The affirmative alone |
+| Asks nothing | No footer |
+
+Which puts every surface built so far in exactly one place:
+
+| | Header | Footer |
+| --- | --- | --- |
+| Volume, battery, Wi-Fi tiles | none | none |
+| Network picker | X | `Join` |
+| Its join page | back | `Cancel` `Join` |
+| Polkit prompt | none | `Cancel` `Authenticate` |
+| Lock screen | none | none - `Enter` submits |
+
+The picker is the one place this overrides the design, which draws a `Cancel`
+there as well as the X - two chips side by side doing one thing. Note that the
+join page's back and `Cancel` are not that pairing: back returns to the list,
+`Cancel` closes the sheet, and they end in different places.
 
 There is **one** close mark: `ui/DiscButton.qml`, `glyph: "close"`. Not a text
 `×`, which renders at whatever the font decides and cannot be hit reliably.
@@ -96,8 +121,8 @@ The panel is 2880×1920 at scale 2, so one logical pixel is two physical ones.
   holds focusable or selectable children - it will shave the rings off. Where
   clipping is unavoidable, inset the content by the ring's width instead. Both
   the picker's row column and its page slide are built around this.
-- **Never eyeball a colour from the design.** `oklch(0.3 0.05 230)` is `#0d3242`,
-  far darker than it looks, and a session was lost to guessing it. Convert it.
+- **Convert every colour, never match one by eye.** The desktop base looks like
+  a mid slate and is `#0d3242`.
 
 
 ## Where a thing belongs
