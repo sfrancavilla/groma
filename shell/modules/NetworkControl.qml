@@ -392,12 +392,15 @@ BarPopup {
 						}
 
 						// Unknown networks need a password, which means a
-						// dialog. The tile steps out of the way rather than
-						// leaving its click-catcher under a modal.
-						root.open = false;
+						// dialog. Open it *before* closing the tile: this
+						// handler lives inside the tile's window, and closing
+						// it first tears down the surface the click arrived on
+						// while the rest of the handler is still running.
 						root.joinDialog?.ask(row.network.name,
 							root.barsFor(row.network.name),
 							root.detail[row.network.name]?.secured ?? true);
+
+						root.open = false;
 					}
 				}
 			}
