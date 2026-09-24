@@ -73,10 +73,18 @@ Scope {
 	// Which reading is on screen, and for how long.
 	property string kind: ""
 
+	// What the card is drawing. Held through the fade: `kind` is cleared the
+	// moment the timer fires, and the card takes another 140ms to go, so
+	// keying the contents off it swapped a device name for the volume slider
+	// inside a card that was still on screen.
+	property string showing: ""
+
+	onKindChanged: if (root.kind !== "") root.showing = root.kind;
+
 	Timer {
 		id: hideTimer
 
-		interval: root.kind === "output" ? 2400 : 1600
+		interval: root.showing === "output" ? 2400 : 1600
 		onTriggered: root.kind = ""
 	}
 
@@ -162,7 +170,7 @@ Scope {
 
 				SpeakerIcon {
 					anchors.verticalCenter: parent.verticalCenter
-					visible: root.kind === "volume" || root.kind === "output"
+					visible: root.showing === "volume" || root.showing === "output"
 					color: Theme.glassTextPrimary
 
 					waves: !root.sinkReady || root.sink.audio.muted
@@ -172,7 +180,7 @@ Scope {
 
 				BrightnessIcon {
 					anchors.verticalCenter: parent.verticalCenter
-					visible: root.kind === "brightness"
+					visible: root.showing === "brightness"
 					color: Theme.glassTextPrimary
 					level: root.brightness
 				}
@@ -181,7 +189,7 @@ Scope {
 				// than showing a level.
 				Text {
 					anchors.verticalCenter: parent.verticalCenter
-					visible: root.kind === "output"
+					visible: root.showing === "output"
 					width: parent.width - 18 - Theme.spacingM
 					elide: Text.ElideRight
 					text: Audio.sinkLabel(root.sink)
@@ -192,15 +200,15 @@ Scope {
 
 				Slider {
 					anchors.verticalCenter: parent.verticalCenter
-					visible: root.kind !== "output"
+					visible: root.showing !== "output"
 					width: parent.width - 18 - value.width - Theme.spacingM * 2
 					interactive: false
 
-					value: root.kind === "brightness"
+					value: root.showing === "brightness"
 						? root.brightness
 						: root.sinkReady ? root.sink.audio.volume : 0
 
-					active: root.kind === "brightness"
+					active: root.showing === "brightness"
 						|| !(root.sinkReady && root.sink.audio.muted)
 				}
 
@@ -208,14 +216,14 @@ Scope {
 					id: value
 
 					anchors.verticalCenter: parent.verticalCenter
-					visible: root.kind !== "output"
+					visible: root.showing !== "output"
 					width: 34
 					horizontalAlignment: Text.AlignRight
 					font.pixelSize: Theme.fontBody
 					color: Theme.glassTextPrimary
 
 					text: {
-						if (root.kind === "brightness")
+						if (root.showing === "brightness")
 							return Math.round(root.brightness * 100) + "%";
 						if (!root.sinkReady)
 							return "--";
