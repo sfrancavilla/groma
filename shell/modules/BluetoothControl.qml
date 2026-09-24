@@ -151,9 +151,22 @@ BarPopup {
 				height: 46
 				radius: 14
 
-				color: Theme.glassChipActive
+				readonly property bool busy: card.modelData.state
+					=== BluetoothDeviceState.Disconnecting
+
+				// Pointing at it is how anyone finds out what it does, so
+				// pointing at it is when it says.
+				readonly property bool offering:
+					cardMouse.containsMouse && !card.busy
+
+				color: card.offering
+					? Theme.glassControlStrongHover : Theme.glassChipActive
 				border.width: 1
 				border.color: Theme.glassTrackBorderFocus
+
+				Behavior on color {
+					ColorAnimation { duration: 120 }
+				}
 
 				Column {
 					anchors {
@@ -173,8 +186,7 @@ BarPopup {
 
 					Text {
 						text: {
-							if (card.modelData.state
-									=== BluetoothDeviceState.Disconnecting)
+							if (card.busy)
 								return "Disconnecting…";
 
 							const battery = root.batteryText(card.modelData);
@@ -198,11 +210,23 @@ BarPopup {
 
 					spacing: Theme.spacingS
 
+					Chip {
+						anchors.verticalCenter: parent.verticalCenter
+						visible: card.offering
+						text: "Disconnect"
+
+						// Takes the click itself as well as the card beneath
+						// it. Two targets for one action is fine when missing
+						// the small one still hits the large one.
+						onClicked: card.modelData.connected = false
+					}
+
 					// Only for devices that report one. A speaker usually does
 					// not, and an empty track would read as a flat battery.
 					LevelPill {
 						anchors.verticalCenter: parent.verticalCenter
-						visible: card.modelData.batteryAvailable
+						visible: !card.offering
+							&& card.modelData.batteryAvailable
 						value: card.modelData.battery
 						fillColor: card.modelData.battery <= 0.2
 							? Theme.glassFillWarning : Theme.glassTrackFill
@@ -210,6 +234,7 @@ BarPopup {
 
 					Rectangle {
 						anchors.verticalCenter: parent.verticalCenter
+						visible: !card.offering
 						width: 6
 						height: 6
 						radius: 3
@@ -218,7 +243,10 @@ BarPopup {
 				}
 
 				MouseArea {
+					id: cardMouse
+
 					anchors.fill: parent
+					hoverEnabled: true
 					cursorShape: Qt.PointingHandCursor
 					onClicked: card.modelData.connected = false
 				}

@@ -10,6 +10,11 @@ Rectangle {
 
 	signal clicked
 
+	// A Rectangle is zero-wide until told otherwise, so a Chip with no width
+	// set rendered as nothing at all. Callers that lay chips out in a grid
+	// still set their own.
+	implicitWidth: label.implicitWidth + Theme.spacingM * 2
+
 	height: Theme.chipHeight
 	radius: Theme.radiusPill
 
