@@ -152,15 +152,7 @@ BarPopup {
 				width: chips.chipWidth
 				active: modelData === Pipewire.defaultAudioSink
 
-				// PipeWire offers three names for a sink and only one is any
-				// use on a chip: nickname is the codec ("ALC285 Analog"),
-				// description is device plus profile, and the profile
-				// description is what it actually is.
-				text: (modelData.properties
-						|| {})["device.profile.description"]
-					|| modelData.description
-					|| modelData.nickname
-					|| "Output"
+				text: Audio.sinkLabel(modelData)
 
 				onClicked: Pipewire.preferredDefaultAudioSink = modelData
 			}

@@ -121,6 +121,14 @@ Scope {
 		if (line === "")
 			return;
 
+		// Every line bluez says, at debug level. The patterns below are read
+		// off bluetoothctl output rather than any documented contract, so
+		// until a real pairing has confirmed them this is how a failure gets
+		// diagnosed - and re-adding it later would reload the shell, which
+		// restarts the agent underneath whatever pairing went wrong.
+		console.log("BT|", line);
+
+
 		// "Confirm passkey 481903 (yes/no):"
 		const confirm = line.match(/Confirm passkey (\d+)/);
 		if (confirm) {

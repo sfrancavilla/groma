@@ -47,13 +47,36 @@ Scope {
 		return max > 0 && now >= 0 ? now / max : 0;
 	}
 
+	// The default sink changing is something that happens to you rather than
+	// something you did: a headset connects, a cable goes in, and the sound
+	// moves without anything on screen saying so. Worth announcing, unlike a
+	// volume step, which you can hear.
+	property string lastSink: ""
+
+	onSinkChanged: {
+		const name = root.sink?.name ?? "";
+
+		// Nothing to announce on the way up. The first sink after a reload is
+		// recorded, not flashed, or every save would fire the OSD.
+		if (name === "" || root.lastSink === "") {
+			root.lastSink = name;
+			return;
+		}
+
+		if (name === root.lastSink)
+			return;
+
+		root.lastSink = name;
+		root.flash("output");
+	}
+
 	// Which reading is on screen, and for how long.
 	property string kind: ""
 
 	Timer {
 		id: hideTimer
 
-		interval: 1600
+		interval: root.kind === "output" ? 2400 : 1600
 		onTriggered: root.kind = ""
 	}
 
@@ -139,7 +162,7 @@ Scope {
 
 				SpeakerIcon {
 					anchors.verticalCenter: parent.verticalCenter
-					visible: root.kind === "volume"
+					visible: root.kind === "volume" || root.kind === "output"
 					color: Theme.glassTextPrimary
 
 					waves: !root.sinkReady || root.sink.audio.muted
@@ -154,8 +177,22 @@ Scope {
 					level: root.brightness
 				}
 
+				// Where the sliders go when the OSD is naming a device rather
+				// than showing a level.
+				Text {
+					anchors.verticalCenter: parent.verticalCenter
+					visible: root.kind === "output"
+					width: parent.width - 18 - Theme.spacingM
+					elide: Text.ElideRight
+					text: Audio.sinkLabel(root.sink)
+					font.pixelSize: Theme.fontLead
+					font.weight: Font.DemiBold
+					color: Theme.glassTextPrimary
+				}
+
 				Slider {
 					anchors.verticalCenter: parent.verticalCenter
+					visible: root.kind !== "output"
 					width: parent.width - 18 - value.width - Theme.spacingM * 2
 					interactive: false
 
@@ -171,6 +208,7 @@ Scope {
 					id: value
 
 					anchors.verticalCenter: parent.verticalCenter
+					visible: root.kind !== "output"
 					width: 34
 					horizontalAlignment: Text.AlignRight
 					font.pixelSize: Theme.fontBody
