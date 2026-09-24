@@ -112,7 +112,8 @@ Scope {
 		return line
 			.replace(/\u001b\[[0-9;?]*[A-Za-z]/g, "")
 			.replace(/\r/g, "")
-			.replace(/^\s*\[[^\]]*\][>#]?\s*/, "")
+			// Prompts stack: "[bluetoothctl]> [Nothing Ear (3)]> [NEW] ...".
+			.replace(/^(\s*\[[^\]]*\][>#]?\s*)+/, "")
 			.trim();
 	}
 
@@ -121,12 +122,6 @@ Scope {
 		if (line === "")
 			return;
 
-		// Every line bluez says, at debug level. The patterns below are read
-		// off bluetoothctl output rather than any documented contract, so
-		// until a real pairing has confirmed them this is how a failure gets
-		// diagnosed - and re-adding it later would reload the shell, which
-		// restarts the agent underneath whatever pairing went wrong.
-		console.log("BT|", line);
 
 
 		// "Confirm passkey 481903 (yes/no):"
@@ -153,6 +148,14 @@ Scope {
 			root.paired(root.pairingWith);
 			return;
 		}
+
+		// "Attempting to pair with X" and "Pairing successful" are confirmed
+		// against real hardware. The passkey wording above is not: earbuds
+		// pair "just works" and never ask. So anything that looks like a
+		// question and fell through all of the above gets said out loud,
+		// rather than leaving bluez waiting on an answer nobody will give.
+		if (/passkey|pin code|confirmation/i.test(line))
+			console.warn("BluetoothAgent: unhandled prompt:", line);
 
 		const failed = line.match(/Failed to pair:\s*(.*)$/);
 		if (failed) {
