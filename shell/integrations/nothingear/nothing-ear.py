@@ -90,6 +90,7 @@ try:
         try:
             chunk = sock.recv(512)
             if not chunk:
+                emit(event="lost", reason="closed by device")
                 break
             buf += chunk
         except socket.timeout:

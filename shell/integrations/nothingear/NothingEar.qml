@@ -48,6 +48,31 @@ Scope {
 
 	readonly property bool wanted: root.address !== "" && root.audioUp
 
+	// The buds' sink itself, for when asking nicely does not work.
+	readonly property var sinkNode: Pipewire.nodes.values.find(node =>
+		node.isSink && !node.isStream
+			&& node.name.startsWith("bluez_output."
+				+ root.address.replace(/:/g, "_"))) ?? null
+
+	PwObjectTracker {
+		objects: root.sinkNode ? [root.sinkNode] : []
+	}
+
+	// Muting is ours to undo. A muted node can be restored by WirePlumber at
+	// the next connection, so it is undone on the way out as well as on the
+	// way back.
+	property bool mutedByUs: false
+	property bool pausedByUs: false
+
+	function unmute() {
+		if (root.mutedByUs && root.sinkNode?.audio)
+			root.sinkNode.audio.muted = false;
+
+		root.mutedByUs = false;
+	}
+
+
+
 	// address -> { left, right, case, charging: {left, right, case} }, kept
 	// for the last pair seen so the tile does not blank between reports.
 	property var battery: ({})
@@ -103,6 +128,8 @@ Scope {
 	// that died once (killed, crashed, lost to a shell restart) would never
 	// come back. Start and stop it by hand, and bring it back if it goes.
 	onWantedChanged: {
+		if (!root.wanted)
+			root.unmute();
 		root.setbacks = 0;
 		link.running = false;
 		if (root.wanted)
@@ -193,12 +220,17 @@ Scope {
 		const playing = state === "Playing";
 		const paused = state === "Paused";
 
-		// Playing while armed means someone pressed play themselves. Start
-		// over from there.
-		if (playing) {
+		// Playing while armed means someone pressed play themselves - unless
+		// we are the reason it is still playing, having muted instead of
+		// paused. Then a bud event is the resume it looks like.
+		const manual = playing && !root.mutedByUs;
+
+		if (!root.armed || manual) {
+			root.unmute();
 			root.armed = false;
 
-			if (Settings.pauseOnBudRemoved) {
+			if (playing && Settings.pauseOnBudRemoved) {
+				root.pausedByUs = false;
 				pause.running = true;
 				root.armed = true;
 				root.budsOut = 1;
@@ -208,7 +240,7 @@ Scope {
 			return;
 		}
 
-		if (!root.armed || !paused) {
+		if (!paused && !root.mutedByUs) {
 			root.armed = false;
 			return;
 		}
@@ -223,8 +255,46 @@ Scope {
 		if (root.budsOut <= 0) {
 			root.armed = false;
 
-			if (Settings.resumeOnBudReplaced)
-				play.running = true;
+			if (Settings.resumeOnBudReplaced) {
+				root.unmute();
+
+				if (root.pausedByUs)
+					play.running = true;
+			}
+		}
+	}
+
+	// Chromium answers a pause request with success and carries on playing
+	// - seen with CanPause true and PlaybackStatus Playing, over playerctl
+	// and over raw D-Bus alike. Asking is still right, because a player that
+	// listens keeps its place; but the point of this is silence into empty
+	// ears, so a player that does not listen gets the sink muted under it.
+	Timer {
+		id: verify
+
+		interval: 400
+		onTriggered: outcome.running = true
+	}
+
+	Process {
+		id: outcome
+
+		command: ["playerctl", "status"]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				if (text.trim() === "Playing") {
+					if (root.sinkNode?.audio) {
+						root.sinkNode.audio.muted = true;
+						root.mutedByUs = true;
+					}
+
+					root.osd?.say("Muted · earbud moved");
+				} else {
+					root.pausedByUs = true;
+					root.osd?.say("Paused · earbud moved");
+				}
+			}
 		}
 	}
 
@@ -242,7 +312,7 @@ Scope {
 		id: pause
 
 		command: ["playerctl", "-a", "pause"]
-		onExited: root.osd?.say("Paused · earbud moved")
+		onExited: verify.start()
 	}
 
 	// No card for this one: the sound coming back is its own announcement.
