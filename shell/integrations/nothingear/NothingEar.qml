@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Io
 import Quickshell.Bluetooth
+import Quickshell.Services.Pipewire
 import QtQuick
 import "../.."
 
@@ -34,6 +35,19 @@ Scope {
 
 	readonly property string address: root.buds?.address ?? ""
 
+	// The gate. Bluez saying "connected" is not enough: opening our channel
+	// is itself enough to make bluez say that, so a helper keyed on it could
+	// page the buds back after the user disconnected them - and did, holding
+	// them on a link with no audio in it. A PipeWire sink for the address
+	// means the buds are delivering sound to this machine, which our channel
+	// cannot have caused.
+	readonly property bool audioUp: Pipewire.nodes.values.some(node =>
+		node.isSink && !node.isStream
+			&& node.name.startsWith("bluez_output."
+				+ root.address.replace(/:/g, "_")))
+
+	readonly property bool wanted: root.address !== "" && root.audioUp
+
 	// address -> { left, right, case, charging: {left, right, case} }, kept
 	// for the last pair seen so the tile does not blank between reports.
 	property var battery: ({})
@@ -48,6 +62,7 @@ Scope {
 
 		switch (msg.event) {
 		case "battery": {
+			root.setbacks = 0;
 			// A report carries whatever is talking. The case has no radio, so
 			// it appears only while a bud is docked to relay it - and that
 			// docked bud then drops out of the next report itself. Measured:
@@ -76,7 +91,7 @@ Scope {
 		case "wear":
 			root.onWear();
 			return;
-		case "retry":
+		case "failed":
 		case "lost":
 			console.log("NothingEar:", msg.event, msg.reason ?? "");
 			return;
@@ -87,19 +102,35 @@ Scope {
 	// when the process exits, and a write destroys a binding - so a helper
 	// that died once (killed, crashed, lost to a shell restart) would never
 	// come back. Start and stop it by hand, and bring it back if it goes.
-	onAddressChanged: {
+	onWantedChanged: {
+		root.setbacks = 0;
 		link.running = false;
-		if (root.address !== "")
+		if (root.wanted)
 			link.running = true;
 	}
 
-	Component.onCompleted: if (root.address !== "") link.running = true
+	Component.onCompleted: if (root.wanted) link.running = true
+
+	// The helper makes one attempt and exits on any loss; this is the only
+	// retry there is, and it only fires while the buds are still our sink.
+	//
+	// Backs off, because the buds allow one vendor session and drop ours the
+	// moment the phone's app takes it - with dual connection on, that can be
+	// every time. Retrying every two seconds against that is noise on the
+	// link; a minute between attempts is not. A battery report means we are
+	// in, and resets it.
+	property int setbacks: 0
 
 	Timer {
 		id: revive
 
-		interval: 2000
-		onTriggered: if (root.address !== "" && !link.running) link.running = true
+		interval: Math.min(60000, 2000 * Math.pow(2, root.setbacks))
+		onTriggered: {
+			if (root.wanted && !link.running) {
+				root.setbacks += 1;
+				link.running = true;
+			}
+		}
 	}
 
 	Process {
@@ -108,7 +139,7 @@ Scope {
 		command: ["python3", `${Quickshell.shellDir}/integrations/nothingear/nothing-ear.py`,
 			root.address]
 
-		onExited: if (root.address !== "") revive.start()
+		onExited: if (root.wanted) revive.start()
 
 		stdout: SplitParser {
 			onRead: line => root.handle(line)
