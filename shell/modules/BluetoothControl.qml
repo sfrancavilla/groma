@@ -17,12 +17,14 @@ BarPopup {
 	// have to own a window.
 	property var dialog: null
 
-	// The Nothing vendor channel, when a pair is connected: left, right and
-	// case where bluez has one number for all three.
-	property var ear: null
+	// A contract for integrations: anything with a `battery` map keyed by
+	// device address, each entry { left, right, case } in percent, any of
+	// them absent. Bluez has one number per device; a maker's own channel may
+	// have three. This tile does not know or care whose channel.
+	property var batteryDetail: null
 
 	function budBattery(device) {
-		return root.ear?.battery?.[device.address] ?? null;
+		return root.batteryDetail?.battery?.[device.address] ?? null;
 	}
 
 	readonly property var adapter: Bluetooth.defaultAdapter ?? null

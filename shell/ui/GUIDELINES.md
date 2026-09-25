@@ -149,5 +149,15 @@ The panel is 2880×1920 at scale 2, so one logical pixel is two physical ones.
 | `ui/` | Surfaces and controls with no knowledge of what they show. |
 | `icons/` | Glyphs, drawn as `Shape` paths, scaling from a `baseWidth`/`baseHeight`. |
 | `modules/` | One feature each: its data, its IPC and its layout. |
+| `integrations/<name>/` | Code for one maker's or one device's behaviour, self-contained. `<name>` is a QML module name: letters only, no hyphens. |
+
+An integration fills a **contract the baseline defines** - a property on a
+module (`BluetoothControl.batteryDetail`), a function on a service
+(`Osd.say`) - and is instantiated in `shell.qml` in the marked block. That
+instance is the only place the baseline refers to it. Dependencies point one
+way: an integration may use `ui/`, `icons/`, `Theme`, `Settings` and `Audio`;
+nothing in `modules/` imports from `integrations/`. It lives under `shell/`
+until an integration needs something that is not shell code - a unit file, a
+udev rule - which is the second use that earns a folder at the repo root.
 
 A component is extracted on its **second** use, not in anticipation of one.

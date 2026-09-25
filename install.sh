@@ -29,7 +29,7 @@ PACKAGES=(
 
 	brightnessctl       # the idle chain dims with this, the OSD reads it
 	playerctl           # media keys, and pausing when an earbud comes out
-	python              # helpers/nothing-ear.py, the earbuds' vendor channel
+	python              # integrations/nothingear only; harmless without the buds
 	curl                # the public-address lookup in the network tile
 
 	xdg-desktop-portal  # screen sharing, file pickers

@@ -21,6 +21,10 @@ Singleton {
 		adapter.publicAddressLookup = value;
 	}
 
+	// --- Integration: Nothing earbuds (integrations/nothingear) ----------
+	// One settings file for everything, so these keep the baseline's store;
+	// the prefix in the comment is the only namespacing there is.
+
 	// Stop the sound when an earbud is taken out - or put in, since the buds
 	// do not say which. On by default: the failure mode of "off" is playing
 	// into an empty ear.

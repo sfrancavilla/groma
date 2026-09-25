@@ -4,6 +4,7 @@ import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
 import QtQuick
 import "modules"
+import "integrations/nothingear"
 
 ShellRoot {
 	SystemClock {
@@ -55,8 +56,12 @@ ShellRoot {
 	// happened to the sound.
 	Osd { id: osd }
 
-	// A pair of Nothing earbuds' own channel: per-bud battery, and a pause
-	// when a bud comes out.
+	// --- Device integrations ---------------------------------------------
+	// Vendor-specific. Each lives in integrations/<name>/, fills a baseline
+	// contract, and costs nothing until its device is present. Remove the
+	// instance to remove the integration; nothing else refers to it.
+
+	// Nothing earbuds: per-bud battery, and a pause when a bud comes out.
 	NothingEar {
 		id: nothingEar
 
@@ -156,7 +161,7 @@ ShellRoot {
 			BluetoothControl {
 				anchors.verticalCenter: parent.verticalCenter
 				dialog: bluetoothDialog
-				ear: nothingEar
+				batteryDetail: nothingEar
 			}
 
 			NetworkControl {

@@ -2,9 +2,15 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Bluetooth
 import QtQuick
-import ".."
+import "../.."
 
 // The vendor channel of a pair of Nothing earbuds, while one is connected.
+//
+// An integration, not a module: it exists for one maker's devices and rides
+// on a protocol that maker has not documented. It fills the baseline's
+// contracts - BluetoothControl's battery detail, the OSD's say() - and the
+// baseline never refers to it by name; shell.qml instantiates it, and that
+// line is the whole of the coupling.
 //
 // Bluez reports one battery figure for the pair. The buds report left, right
 // and case, and say so the moment any of them changes - which is what the
@@ -99,7 +105,7 @@ Scope {
 	Process {
 		id: link
 
-		command: ["python3", `${Quickshell.shellDir}/helpers/nothing-ear.py`,
+		command: ["python3", `${Quickshell.shellDir}/integrations/nothingear/nothing-ear.py`,
 			root.address]
 
 		onExited: if (root.address !== "") revive.start()
