@@ -21,6 +21,23 @@ Singleton {
 		adapter.publicAddressLookup = value;
 	}
 
+	// Stop the sound when an earbud is taken out - or put in, since the buds
+	// do not say which. On by default: the failure mode of "off" is playing
+	// into an empty ear.
+	readonly property alias pauseOnBudRemoved: adapter.pauseOnBudRemoved
+
+	function setPauseOnBudRemoved(value) {
+		adapter.pauseOnBudRemoved = value;
+	}
+
+	// And start it again when the bud comes back. Inferred from timing, since
+	// the buds report a change and not a direction - see NothingEar.qml.
+	readonly property alias resumeOnBudReplaced: adapter.resumeOnBudReplaced
+
+	function setResumeOnBudReplaced(value) {
+		adapter.resumeOnBudReplaced = value;
+	}
+
 	FileView {
 		id: file
 
@@ -39,6 +56,8 @@ Singleton {
 			id: adapter
 
 			property bool publicAddressLookup: false
+			property bool pauseOnBudRemoved: true
+			property bool resumeOnBudReplaced: true
 		}
 	}
 }

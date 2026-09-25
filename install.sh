@@ -28,7 +28,8 @@ PACKAGES=(
 	polkit              # the authentication agent talks to polkitd
 
 	brightnessctl       # the idle chain dims with this, the OSD reads it
-	playerctl           # media keys
+	playerctl           # media keys, and pausing when an earbud comes out
+	python              # helpers/nothing-ear.py, the earbuds' vendor channel
 	curl                # the public-address lookup in the network tile
 
 	xdg-desktop-portal  # screen sharing, file pickers

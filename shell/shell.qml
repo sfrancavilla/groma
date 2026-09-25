@@ -51,8 +51,17 @@ ShellRoot {
 		controller: networkControl
 	}
 
-	// Feedback for the volume and brightness keys.
-	Osd {}
+	// Feedback for the volume and brightness keys, and for things that
+	// happened to the sound.
+	Osd { id: osd }
+
+	// A pair of Nothing earbuds' own channel: per-bud battery, and a pause
+	// when a bud comes out.
+	NothingEar {
+		id: nothingEar
+
+		osd: osd
+	}
 
 	PwObjectTracker {
 		objects: [Pipewire.defaultAudioSink]
@@ -147,6 +156,7 @@ ShellRoot {
 			BluetoothControl {
 				anchors.verticalCenter: parent.verticalCenter
 				dialog: bluetoothDialog
+				ear: nothingEar
 			}
 
 			NetworkControl {

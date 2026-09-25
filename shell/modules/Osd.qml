@@ -84,7 +84,7 @@ Scope {
 	Timer {
 		id: hideTimer
 
-		interval: root.showing === "output" ? 2400 : 1600
+		interval: root.textual ? 2400 : 1600
 		onTriggered: root.kind = ""
 	}
 
@@ -92,6 +92,18 @@ Scope {
 		root.kind = what;
 		hideTimer.restart();
 	}
+
+	// A line of text with the speaker beside it, for things that happened to
+	// the sound rather than levels of it.
+	property string message: ""
+
+	function say(text) {
+		root.message = text;
+		root.flash("message");
+	}
+
+	readonly property bool textual:
+		root.showing === "output" || root.showing === "message"
 
 	function stepVolume(delta) {
 		if (!root.sinkReady)
@@ -170,7 +182,7 @@ Scope {
 
 				SpeakerIcon {
 					anchors.verticalCenter: parent.verticalCenter
-					visible: root.showing === "volume" || root.showing === "output"
+					visible: root.showing === "volume" || root.textual
 					color: Theme.glassTextPrimary
 
 					waves: !root.sinkReady || root.sink.audio.muted
@@ -189,10 +201,10 @@ Scope {
 				// than showing a level.
 				Text {
 					anchors.verticalCenter: parent.verticalCenter
-					visible: root.showing === "output"
+					visible: root.textual
 					width: parent.width - 18 - Theme.spacingM
 					elide: Text.ElideRight
-					text: Audio.sinkLabel(root.sink)
+					text: root.showing === "message" ? root.message : Audio.sinkLabel(root.sink)
 					font.pixelSize: Theme.fontLead
 					font.weight: Font.DemiBold
 					color: Theme.glassTextPrimary
@@ -200,7 +212,7 @@ Scope {
 
 				Slider {
 					anchors.verticalCenter: parent.verticalCenter
-					visible: root.showing !== "output"
+					visible: !root.textual
 					width: parent.width - 18 - value.width - Theme.spacingM * 2
 					interactive: false
 
@@ -216,7 +228,7 @@ Scope {
 					id: value
 
 					anchors.verticalCenter: parent.verticalCenter
-					visible: root.showing !== "output"
+					visible: !root.textual
 					width: 34
 					horizontalAlignment: Text.AlignRight
 					font.pixelSize: Theme.fontBody

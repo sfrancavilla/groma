@@ -17,6 +17,14 @@ BarPopup {
 	// have to own a window.
 	property var dialog: null
 
+	// The Nothing vendor channel, when a pair is connected: left, right and
+	// case where bluez has one number for all three.
+	property var ear: null
+
+	function budBattery(device) {
+		return root.ear?.battery?.[device.address] ?? null;
+	}
+
 	readonly property var adapter: Bluetooth.defaultAdapter ?? null
 	readonly property bool enabled: root.adapter?.enabled ?? false
 
@@ -189,6 +197,19 @@ BarPopup {
 							if (card.busy)
 								return "Disconnecting…";
 
+							// The buds' own figures, whichever of them are talking:
+							// a docked bud drops out of reports until it is
+							// taken out again.
+							const buds = root.budBattery(card.modelData);
+							const parts = [];
+							if (buds) {
+								if (buds.left !== undefined) parts.push(`L ${buds.left}%`);
+								if (buds.right !== undefined) parts.push(`R ${buds.right}%`);
+								if (buds.case !== undefined) parts.push(`Case ${buds.case}%`);
+							}
+							if (parts.length > 0)
+								return parts.join(" · ");
+
 							const battery = root.batteryText(card.modelData);
 
 							return battery !== ""
@@ -224,11 +245,24 @@ BarPopup {
 					// Only for devices that report one. A speaker usually does
 					// not, and an empty track would read as a flat battery.
 					LevelPill {
+						id: pill
+
+						// The lower of the two buds: the one that decides how
+						// long the pair lasts.
+						readonly property var buds: root.budBattery(card.modelData)
+						readonly property real level: {
+							const levels = [];
+							if (pill.buds?.left !== undefined) levels.push(pill.buds.left);
+							if (pill.buds?.right !== undefined) levels.push(pill.buds.right);
+							return levels.length > 0
+								? Math.min(...levels) / 100 : card.modelData.battery;
+						}
+
 						anchors.verticalCenter: parent.verticalCenter
 						visible: !card.offering
-							&& card.modelData.batteryAvailable
-						value: card.modelData.battery
-						fillColor: card.modelData.battery <= 0.2
+							&& (pill.buds !== null || card.modelData.batteryAvailable)
+						value: pill.level
+						fillColor: pill.level <= 0.2
 							? Theme.glassFillWarning : Theme.glassTrackFill
 					}
 
