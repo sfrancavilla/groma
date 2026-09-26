@@ -401,10 +401,10 @@ hl.window_rule({
     border_size = 0,
 })
 
--- Software is the same kind of window as Files.
+-- Groma Store is the same kind of window as Files.
 hl.window_rule({
     name  = "groma-software",
-    match = { class = "^org\\.quickshell$", title = "^Software$" },
+    match = { class = "^org\\.quickshell$", title = "^Groma Store$" },
 
     rounding    = 20,
     border_size = 0,

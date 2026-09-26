@@ -11,7 +11,7 @@ log="$1"; shift
 : > "$log"
 set -m
 echo "pid:$$" >> "$log"
-printf '\033]0;Software\007'
+printf '\033]0;Groma Store\007'
 echo "\$ $*"
 "$@" 2>&1 | tee -a "$log"
 code=${PIPESTATUS[0]}

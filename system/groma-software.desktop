@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=Software
+Name=Groma Store
 GenericName=Package manager
 Comment=Install and update applications from the official repositories and the AUR
 Exec=qs -c groma ipc call software open
 Icon=system-software-install
 Terminal=false
 Categories=System;PackageManager;Settings;
-Keywords=install;update;aur;pacman;packages;store;
+Keywords=software;store;install;update;aur;pacman;packages;store;

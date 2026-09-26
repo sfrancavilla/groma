@@ -5,7 +5,7 @@ import "../ui"
 import "../icons"
 import ".."
 
-// Software: the design's turn 11. Finding, installing, removing and
+// Groma Store: the design's turn 11. Finding, installing, removing and
 // updating packages from the official repositories and the AUR.
 //
 // Knowing is software-worker.py's job - pacman for the repositories, the
@@ -305,7 +305,7 @@ Scope {
 			return;
 		}
 		root.job = { verb: verb, what: what, started: Date.now(), last: "", pid: 0 };
-		Quickshell.execDetached(["foot", "--app-id=groma-software-run", "--title=Software", "--",
+		Quickshell.execDetached(["foot", "--app-id=groma-software-run", "--title=Groma Store", "--",
 			"bash", root.runner, root.logPath].concat(argv));
 		tailTimer.start();
 	}
@@ -646,7 +646,7 @@ Scope {
 		id: window
 
 		visible: root.open
-		title: "Software"
+		title: "Groma Store"
 		color: "transparent"
 
 		implicitWidth: Theme.filesWidth
