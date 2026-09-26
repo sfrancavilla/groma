@@ -1090,6 +1090,13 @@ Scope {
 						currentIndex: root.picked
 						highlightFollowsCurrentItem: false
 						onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+						// A page, or a list that arrived late, opens at its top:
+						// the header is part of the page, not something to scroll to.
+						onCountChanged: if (root.picked === 0) positionViewAtBeginning()
+						Connections {
+							target: root
+							function onPageChanged() { listPage.positionViewAtBeginning(); }
+						}
 
 						header: Item {
 							width: listPage.width
@@ -1110,8 +1117,11 @@ Scope {
 									Text {
 										width: parent.width
 										elide: Text.ElideRight
+										// "available" is what goes when a tile is narrow.
+										readonly property bool narrow: listPage.width < 760
 										text: root.checking ? "Checking…" : root.updateCount === 0 ? "Everything is up to date"
-											: root.updateCount === 1 ? "1 update available" : `${root.updateCount} updates available`
+											: root.updateCount === 1 ? "1 update" + (narrow ? "" : " available")
+											: `${root.updateCount} updates` + (narrow ? "" : " available")
 										font.pixelSize: Theme.fontSearch
 										font.bold: true
 										color: Theme.glassTextPrimary
@@ -1240,6 +1250,8 @@ Scope {
 
 								Text {
 									anchors.verticalCenter: parent.verticalCenter
+									width: listPage.width - x - 26
+									elide: Text.ElideRight
 									text: row.update ? (row.aur ? "Rebuilt locally from each PKGBUILD" : "Updated together with pacman -Syu; Arch doesn’t support partial upgrades")
 										: row.aur ? "· built from user-submitted PKGBUILDs" : ""
 									font.pixelSize: Theme.fontCaption
