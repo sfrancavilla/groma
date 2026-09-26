@@ -265,7 +265,8 @@ Scope {
 		return text.split("\n")
 			.filter(line => line.length > 2)
 			.map(line => {
-				const path = line.slice(2);
+				// fd writes a folder with a slash after it.
+				const path = line.slice(2).replace(/\/$/, "");
 				const cut = path.lastIndexOf("/");
 				const name = path.slice(cut + 1);
 				const lower = name.toLowerCase();
