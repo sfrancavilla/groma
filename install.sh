@@ -42,6 +42,7 @@ PACKAGES=(
 	libqalculate        # qalc: units and conversions in the launcher; arithmetic works without it
 	fd                  # file search in the launcher, under the applications and behind "/"
 	udisks2             # mounting and ejecting drives from the Files sidebar, through polkit
+	pacman-contrib      # checkupdates, which Software uses to see official updates without a half-synced database
 	libnotify           # notify-send, for testing the notification daemon
 	desktop-file-utils  # update-desktop-database, after the Files entry is linked in
 
@@ -69,6 +70,7 @@ say "Registering Files as the folder handler"
 # from a browser's downloads, from the launcher - lands in it.
 mkdir -p "$HOME/.local/share/applications"
 ln -sfn "$GROMA/system/groma-files.desktop" "$HOME/.local/share/applications/groma-files.desktop"
+ln -sfn "$GROMA/system/groma-software.desktop" "$HOME/.local/share/applications/groma-software.desktop"
 update-desktop-database "$HOME/.local/share/applications"
 xdg-mime default groma-files.desktop inode/directory
 

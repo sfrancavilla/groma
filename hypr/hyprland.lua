@@ -401,6 +401,15 @@ hl.window_rule({
     border_size = 0,
 })
 
+-- Software is the same kind of window as Files.
+hl.window_rule({
+    name  = "groma-software",
+    match = { class = "^org\\.quickshell$", title = "^Software$" },
+
+    rounding    = 20,
+    border_size = 0,
+})
+
 -- Hyprland-run windowrule
 hl.window_rule({
     name  = "move-hyprland-run",

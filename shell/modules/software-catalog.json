@@ -1,0 +1,32 @@
+{
+  "featured": ["firefox", "signal-desktop", "visual-studio-code-bin", "obsidian", "gimp", "spotify", "ghostty", "zen-browser-bin", "kdenlive"],
+  "categories": ["Browsers", "Editors", "Media", "Graphics", "Chat", "Terminal", "System"],
+  "apps": [
+    { "pkg": "firefox", "name": "Firefox", "category": "Browsers", "source": "official", "desc": "Fast, private web browser from Mozilla" },
+    { "pkg": "chromium", "name": "Chromium", "category": "Browsers", "source": "official", "desc": "The open-source base of Google Chrome" },
+    { "pkg": "zen-browser-bin", "name": "Zen Browser", "category": "Browsers", "source": "aur", "desc": "Firefox-based browser with vertical tabs" },
+    { "pkg": "visual-studio-code-bin", "name": "Visual Studio Code", "category": "Editors", "source": "aur", "desc": "Code editor with extensions and debugging" },
+    { "pkg": "zed", "name": "Zed", "category": "Editors", "source": "official", "desc": "Fast, collaborative code editor" },
+    { "pkg": "neovim", "name": "Neovim", "category": "Editors", "source": "official", "desc": "Extensible, keyboard-driven text editor" },
+    { "pkg": "obsidian", "name": "Obsidian", "category": "Editors", "source": "official", "desc": "Markdown notes linked into a knowledge base" },
+    { "pkg": "libreoffice-fresh", "name": "LibreOffice", "category": "Editors", "source": "official", "desc": "Documents, spreadsheets and presentations" },
+    { "pkg": "spotify", "name": "Spotify", "category": "Media", "source": "aur", "desc": "Music and podcast streaming client" },
+    { "pkg": "vlc", "name": "VLC", "category": "Media", "source": "official", "desc": "Plays nearly every audio and video format" },
+    { "pkg": "mpv", "name": "mpv", "category": "Media", "source": "official", "desc": "Minimal, scriptable video player" },
+    { "pkg": "kdenlive", "name": "Kdenlive", "category": "Media", "source": "official", "desc": "Non-linear video editor" },
+    { "pkg": "obs-studio", "name": "OBS Studio", "category": "Media", "source": "official", "desc": "Screen recording and live streaming" },
+    { "pkg": "gimp", "name": "GIMP", "category": "Graphics", "source": "official", "desc": "Raster image editor for photos and artwork" },
+    { "pkg": "inkscape", "name": "Inkscape", "category": "Graphics", "source": "official", "desc": "Vector graphics editor" },
+    { "pkg": "krita", "name": "Krita", "category": "Graphics", "source": "official", "desc": "Digital painting and illustration" },
+    { "pkg": "blender", "name": "Blender", "category": "Graphics", "source": "official", "desc": "3D modelling, animation and rendering" },
+    { "pkg": "signal-desktop", "name": "Signal Desktop", "category": "Chat", "source": "official", "desc": "End-to-end encrypted messages and calls" },
+    { "pkg": "telegram-desktop", "name": "Telegram", "category": "Chat", "source": "official", "desc": "Cloud-based messaging" },
+    { "pkg": "discord", "name": "Discord", "category": "Chat", "source": "official", "desc": "Voice, video and text communities" },
+    { "pkg": "thunderbird", "name": "Thunderbird", "category": "Chat", "source": "official", "desc": "Mail, calendar and contacts" },
+    { "pkg": "ghostty", "name": "Ghostty", "category": "Terminal", "source": "official", "desc": "GPU-accelerated terminal with native tabs" },
+    { "pkg": "alacritty", "name": "Alacritty", "category": "Terminal", "source": "official", "desc": "Minimal GPU-accelerated terminal" },
+    { "pkg": "kitty", "name": "kitty", "category": "Terminal", "source": "official", "desc": "Feature-rich GPU terminal" },
+    { "pkg": "btop", "name": "btop", "category": "System", "source": "official", "desc": "Resource monitor for the terminal" },
+    { "pkg": "fastfetch", "name": "fastfetch", "category": "System", "source": "official", "desc": "System information at a glance" }
+  ]
+}

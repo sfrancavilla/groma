@@ -65,6 +65,9 @@ ShellRoot {
 	// The file manager: an ordinary window, opened from SUPER+E.
 	FilesWindow {}
 
+	// Installing and updating: the official repositories and the AUR.
+	SoftwareWindow {}
+
 	// Feedback for the volume and brightness keys, and for things that
 	// happened to the sound.
 	Osd { id: osd }

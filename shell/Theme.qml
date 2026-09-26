@@ -210,6 +210,21 @@ Singleton {
 	readonly property color dragBadgeInk: "#143c62"
 	readonly property color dragCaption: Qt.rgba(0, 0, 0, 0.28)
 
+	// Software, from the design's turn 11. The source mark: "official" is the
+	// plain micro-chip, "AUR" oklch(0.82 0.1 250) at .35 with an
+	// oklch(0.9 0.08 250) edge at .55; "out of date" is oklch(0.85 0.17 70) at
+	// .45 with oklch(0.9 0.16 70) at .6. Update is oklch(0.85 0.2 145) at .35.
+	readonly property color microChip: Qt.rgba(1, 1, 1, 0.10)
+	readonly property color microChipBorder: Qt.rgba(1, 1, 1, 0.22)
+	readonly property color chipAur: Qt.rgba(0x92 / 255, 0xc9 / 255, 1, 0.35)
+	readonly property color chipAurBorder: Qt.rgba(0xb6 / 255, 0xe3 / 255, 1, 0.55)
+	readonly property color chipOutOfDate: Qt.rgba(1, 0xb7 / 255, 0x34 / 255, 0.45)
+	readonly property color chipOutOfDateBorder: Qt.rgba(1, 0xc9 / 255, 0x58 / 255, 0.60)
+	readonly property color chipUpdate: Qt.rgba(0x6b / 255, 0xef / 255, 0x75 / 255, 0.35)
+	readonly property color chipUpdateBorder: Qt.rgba(0x8a / 255, 0xfd / 255, 0x90 / 255, 0.60)
+	// The tail of the terminal in the install card: a dark inset.
+	readonly property color terminalInset: Qt.rgba(0, 0, 0, 0.22)
+
 	// A ring rather than a thicker border, so focus does not move anything.
 	readonly property color focusRing: Qt.rgba(1, 1, 1, 0.18)
 

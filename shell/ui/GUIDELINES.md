@@ -114,6 +114,9 @@ Which puts every surface built so far in exactly one place:
 | Files: a copy in flight | none - a card, not a sheet | `Cancel` alone |
 | Files: open with | none | `Cancel` `Open` |
 | Files: properties | X | none - it asks nothing |
+| Software window | X | none - `Enter` acts on the pick; the footer carries the status and the keys |
+| Software: details | X | `Cancel` · `Install` / `Update` / `Remove` (destructive) |
+| Software: a job in flight | none - a card | `Show terminal` · `Cancel` |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
 there as well as the X - two chips side by side doing one thing. Note that the
