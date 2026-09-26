@@ -868,7 +868,12 @@ Scope {
 		function onStatusChanged() { if (folder.status === FolderListModel.Ready) Qt.callLater(root.rebuild); }
 	}
 
-	onFilterChanged: root.rebuild()
+	onFilterChanged: {
+		root.rebuild();
+		// An empty track has nothing for the keys to do; the list does.
+		if (root.filter === "" && searchField.activeFocus && searchField.text === "")
+			body.forceActiveFocus();
+	}
 
 	readonly property int current: root.entries.findIndex(entry => entry.path === root.picked)
 	readonly property var currentEntry: root.current >= 0 ? root.entries[root.current] : null
@@ -1407,7 +1412,7 @@ Scope {
 											anchors.fill: parent
 											hoverEnabled: true
 											cursorShape: Qt.PointingHandCursor
-											onClicked: root.go(crumb.modelData.path)
+											onClicked: { body.forceActiveFocus(); root.go(crumb.modelData.path); }
 
 											// The folded chip, and a last chip cut short,
 											// say the whole path when pointed at.
@@ -1539,7 +1544,7 @@ Scope {
 											anchors.fill: parent
 											hoverEnabled: true
 											cursorShape: Qt.PointingHandCursor
-											onClicked: root.grid = parent.modelData
+											onClicked: { body.forceActiveFocus(); root.grid = parent.modelData; }
 										}
 									}
 								}
@@ -1670,7 +1675,7 @@ Scope {
 									anchors.fill: parent
 									hoverEnabled: true
 									cursorShape: Qt.PointingHandCursor
-									onClicked: root.go(place.modelData.path)
+									onClicked: { body.forceActiveFocus(); root.go(place.modelData.path); }
 								}
 							}
 						}
@@ -2028,6 +2033,7 @@ Scope {
 								onClicked: mouse => {
 									if (root.dragJustEnded)
 										return;
+									body.forceActiveFocus();
 									root.select(row.modelData, mouse.modifiers & Qt.ControlModifier ? "toggle"
 										: mouse.modifiers & Qt.ShiftModifier ? "range" : "only");
 								}
@@ -2245,6 +2251,7 @@ Scope {
 									onClicked: mouse => {
 										if (root.dragJustEnded)
 											return;
+										body.forceActiveFocus();
 										root.select(cell.modelData, mouse.modifiers & Qt.ControlModifier ? "toggle"
 											: mouse.modifiers & Qt.ShiftModifier ? "range" : "only");
 									}
@@ -2286,6 +2293,18 @@ Scope {
 							const copy = drop.proposedAction === Qt.CopyAction || drop.proposedAction === Qt.LinkAction;
 							root.startTransfer(copy ? "copy" : "move", paths, target);
 							drop.accept(copy ? Qt.CopyAction : Qt.MoveAction);
+						}
+					}
+
+					// A left click on nothing: the keys come back to the list and
+					// the selection lets go. Under the views, so rows and tiles
+					// take theirs first.
+					MouseArea {
+						anchors.fill: parent
+						z: -1
+						onClicked: {
+							body.forceActiveFocus();
+							root.picked = "";
 						}
 					}
 
