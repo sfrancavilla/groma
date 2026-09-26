@@ -35,6 +35,7 @@ Scope {
 		searchField.clear();
 		root.open = true;
 		list.contentY = 0;
+		clients.running = true;
 		Qt.callLater(() => searchField.focusInput());
 	}
 
@@ -150,6 +151,58 @@ Scope {
 		root.picked = entries[next].id;
 	}
 
+	// --- what is already running -------------------------------------------
+	//
+	// Opening an application that has a window is, nine times in ten, a
+	// request to be taken to that window - so Enter goes there, to the one
+	// used most recently, on whichever workspace it is. Shift+Enter opens a
+	// fresh one regardless. Hyprland lists its windows; the match is by the
+	// window class against the entry's id, its StartupWMClass and the name
+	// of what it runs - all three, because Chromium's .desktop ships a
+	// StartupWMClass that is a literal packaging placeholder.
+	property var windows: []
+
+	Process {
+		id: clients
+
+		command: ["hyprctl", "clients", "-j"]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				try {
+					root.windows = JSON.parse(text).map(win => ({
+						cls: String(win.class ?? "").toLowerCase(),
+						initial: String(win.initialClass ?? "").toLowerCase(),
+						address: win.address,
+						workspace: win.workspace?.id ?? 0,
+						recency: win.focusHistoryID ?? 999
+					}));
+				} catch (err) {
+					root.windows = [];
+				}
+			}
+		}
+	}
+
+	function classesOf(entry) {
+		const exec = String(entry.execString ?? "").trim().split(/\s+/)[0] ?? "";
+		return [entry.id, entry.startupClass, exec.split("/").pop()]
+			.map(name => String(name ?? "").toLowerCase())
+			.filter(name => name !== "" && !name.startsWith("@@"));
+	}
+
+	function windowsFor(entry) {
+		if (entry === null)
+			return [];
+
+		const names = root.classesOf(entry);
+		return root.windows
+			.filter(win => names.includes(win.cls) || names.includes(win.initial))
+			.sort((a, b) => a.recency - b.recency);
+	}
+
+	readonly property var currentWindows: root.windowsFor(root.current)
+
 	function launch() {
 		const entry = root.current;
 
@@ -158,6 +211,23 @@ Scope {
 				root.searchWeb();
 			return;
 		}
+
+		const open = root.windowsFor(entry);
+		if (open.length > 0) {
+			Quickshell.execDetached(["hyprctl", "dispatch",
+				`hl.dsp.focus({ window = "address:${open[0].address}" })`]);
+			History.noteLaunch(entry.id);
+			root.close();
+			return;
+		}
+
+		root.launchNew();
+	}
+
+	function launchNew() {
+		const entry = root.current;
+		if (entry === null)
+			return;
 
 		entry.execute();
 		History.noteLaunch(entry.id);
@@ -311,6 +381,7 @@ Scope {
 					}
 
 					onAccepted: root.launch()
+					onAcceptedAlternate: root.launchNew()
 				}
 
 				Chip {
@@ -617,17 +688,32 @@ Scope {
 											}
 										}
 
-										// "Open ↵" on the card; the kind of thing
-										// it is on a row.
+										// On the card: what Enter does, and Shift+Enter
+										// when the first would switch rather than open.
+										// On a row: a dot if it is running, and the kind
+										// of thing it is.
 										Row {
 											id: trailing
+
+											readonly property int running: root.windowsFor(slot.modelData).length
 
 											anchors.verticalCenter: parent.verticalCenter
 											spacing: 6
 
+											Rectangle {
+												anchors.verticalCenter: parent.verticalCenter
+												visible: !slot.topHit && trailing.running > 0
+												width: 6
+												height: 6
+												radius: 3
+												color: Theme.success
+											}
+
 											Text {
 												anchors.verticalCenter: parent.verticalCenter
-												text: slot.topHit ? "Open" : root.kind(slot.modelData)
+												text: slot.topHit
+													? (trailing.running > 0 ? "Switch" : "Open")
+													: root.kind(slot.modelData)
 												font.pixelSize: Theme.fontBody
 												font.weight: Font.DemiBold
 												opacity: slot.topHit ? 0.9 : 0.6
@@ -638,6 +724,22 @@ Scope {
 												anchors.verticalCenter: parent.verticalCenter
 												visible: slot.topHit
 												text: "↵"
+											}
+
+											Text {
+												anchors.verticalCenter: parent.verticalCenter
+												visible: slot.topHit && trailing.running > 0
+												text: "New"
+												font.pixelSize: Theme.fontBody
+												font.weight: Font.DemiBold
+												opacity: 0.7
+												color: Theme.glassTextPrimary
+											}
+
+											KeyCap {
+												anchors.verticalCenter: parent.verticalCenter
+												visible: slot.topHit && trailing.running > 0
+												text: "⇧↵"
 											}
 										}
 									}
@@ -724,7 +826,9 @@ Scope {
 					spacing: 14
 
 					Repeater {
-						model: [["↑↓", "Move"], ["↵", "Open"], ["Esc", "Close"]]
+						model: [["↑↓", "Move"],
+							["↵", root.currentWindows.length > 0 ? "Switch" : "Open"],
+							["Esc", "Close"]]
 
 						Row {
 							required property var modelData

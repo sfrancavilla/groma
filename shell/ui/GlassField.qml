@@ -22,6 +22,9 @@ Item {
 	property int fontSize: Theme.fontTitle
 
 	signal accepted
+	// Return with Shift held. The input owns Return, so the modifier has to
+	// be read here, not on whatever contains the field.
+	signal acceptedAlternate
 
 	function clear() {
 		input.text = "";
@@ -126,6 +129,14 @@ Item {
 			color: Theme.glassTextPrimary
 			selectionColor: Theme.glassControlHover
 			selectedTextColor: Theme.glassTextPrimary
+
+			Keys.onPressed: event => {
+				if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+						&& (event.modifiers & Qt.ShiftModifier)) {
+					event.accepted = true;
+					field.acceptedAlternate();
+				}
+			}
 
 			onAccepted: field.accepted()
 		}
