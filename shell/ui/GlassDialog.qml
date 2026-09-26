@@ -27,6 +27,11 @@ Item {
 	// grows downward instead of shifting the whole sheet.
 	property real topFraction: -1
 
+	// A sheet inside an ordinary window sits on that window's own content,
+	// which the compositor does not blur, so the glass recipe shows the rows
+	// through it. Dense gives it the menu's dark base instead.
+	property bool dense: false
+
 	default property alias content: column.data
 
 	// For the caller's blur region: the sheet, not the whole screen.
@@ -60,6 +65,7 @@ Item {
 		width: dialog.sheetWidth
 		height: column.implicitHeight + dialog.padding * 2
 		radius: dialog.radius
+		color: dialog.dense ? Theme.menuSurface : (Theme.glass ? Theme.glassSurface : Theme.surface)
 
 		opacity: dialog.open ? 1 : 0
 		scale: dialog.open ? 1 : 0.96

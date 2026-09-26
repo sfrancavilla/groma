@@ -38,6 +38,9 @@ Scope {
 	property var behind: []
 	property var ahead: []
 
+	// A sheet over the window: the folder and the places step back under it.
+	readonly property bool sheetUp: root.confirm !== null || root.conflict !== null || root.opener !== null
+
 	// The path of the highlighted entry, or "" for none: where the keyboard
 	// is. The selection is what an action applies to; usually the same one
 	// thing, more after Shift or Ctrl.
@@ -291,6 +294,7 @@ Scope {
 		}
 		if (!several) {
 			out.push({ label: "Open", run: () => root.openEntry(entry) });
+			out.push({ label: "Open with…", run: () => root.probeOpen(entry, true) });
 			out.push({ label: "Rename", run: () => root.startRename(entry) });
 		}
 		out.push({ label: "Copy", run: () => root.hold(them, false) });
@@ -719,7 +723,97 @@ Scope {
 		if (entry.folder)
 			root.go(entry.path);
 		else
-			Quickshell.execDetached(["xdg-open", entry.path]);
+			root.probeOpen(entry, false);
+	}
+
+	// --- opening with an application ------------------------------------------
+	//
+	// The desktop keeps a default per file type; xdg-open follows it. Where
+	// there is none, a browser tab is what xdg-open falls back to, so Files
+	// asks instead: a sheet of the installed applications, the ones that
+	// claim the type first. "Always" writes the default, so Enter opens
+	// directly from then on and other programs follow the same choice.
+	//
+	// { entry, type, defaultId, suggested, always, index } or null.
+	property var opener: null
+
+	function probeOpen(entry, ask) {
+		typeProbe.entry = entry;
+		typeProbe.ask = ask;
+		typeProbe.running = false;
+		typeProbe.running = true;
+	}
+
+	Process {
+		id: typeProbe
+
+		property var entry: null
+		property bool ask: false
+
+		command: ["bash", "-c",
+			't=$(xdg-mime query filetype "$1"); d=$(xdg-mime query default "$t" 2>/dev/null); '
+			+ 'printf "%s\\n%s\\n" "$t" "$d"; '
+			+ 'case "$t" in text/*) pat="^($t|text/plain)=";; *) pat="^$t=";; esac; '
+			+ 'cat /usr/share/applications/mimeinfo.cache "$HOME/.local/share/applications/mimeinfo.cache" '
+			+ '/usr/local/share/applications/mimeinfo.cache 2>/dev/null | grep -E "$pat" | cut -d= -f2 | tr ";" "\\n" | grep . | sort -u',
+			"sh", typeProbe.entry?.path ?? ""]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				const lines = text.split("\n");
+				const type = lines[0] ?? "";
+				const defaultId = (lines[1] ?? "").replace(/\.desktop$/, "");
+				const suggested = lines.slice(2).filter(l => l !== "").map(l => l.replace(/\.desktop$/, ""));
+				if (defaultId !== "" && !typeProbe.ask) {
+					Quickshell.execDetached(["xdg-open", typeProbe.entry.path]);
+					return;
+				}
+				root.opener = { entry: typeProbe.entry, type: type, defaultId: defaultId,
+					suggested: suggested, always: false, index: 0 };
+			}
+		}
+	}
+
+	// The applications on offer: those claiming the type, then the rest.
+	readonly property var openerApps: {
+		const o = root.opener;
+		if (o === null)
+			return [];
+		const suggested = o.suggested.map(id => DesktopEntries.byId(id)).filter(e => e !== null && !e.noDisplay);
+		const rest = DesktopEntries.applications.values
+			.filter(e => !e.noDisplay && !suggested.some(sug => sug.id === e.id))
+			.sort((a, b) => a.name.localeCompare(b.name));
+		return suggested.map(e => ({ entry: e, suggested: true }))
+			.concat(rest.map(e => ({ entry: e, suggested: false })));
+	}
+
+	function moveOpener(delta) {
+		const o = root.opener;
+		if (o === null || root.openerApps.length === 0)
+			return;
+		root.opener = Object.assign({}, o, {
+			index: Math.max(0, Math.min(root.openerApps.length - 1, o.index + delta)) });
+		openerList.positionViewAtIndex(root.opener.index, ListView.Contain);
+	}
+
+	function runOpener() {
+		const o = root.opener;
+		root.opener = null;
+		if (o === null || root.openerApps.length === 0)
+			return;
+		const app = root.openerApps[o.index].entry;
+		root.launch(app.id, o.entry.path, o.always ? o.type : "");
+		root.say(`Opening ${o.entry.name} with ${app.name}` + (o.always ? ` · always, for ${o.type}` : ""));
+	}
+
+	// gio launch runs a desktop entry with a file, as a click on it would.
+	// With a type, that entry becomes the desktop's default for it first.
+	function launch(id, path, alwaysFor) {
+		Quickshell.execDetached(["bash", "-c",
+			'[ -n "$4" ] && xdg-mime default "$1.desktop" "$4"; '
+			+ 'for d in "$HOME/.local/share/applications" /usr/local/share/applications /usr/share/applications; do '
+			+ 'f="$d/$1.desktop"; [ -f "$f" ] && exec gio launch "$f" "$2"; done',
+			"sh", id, path, "", alwaysFor]);
 	}
 
 	// --- places ---------------------------------------------------------
@@ -760,6 +854,7 @@ Scope {
 			worker.running = false;
 			root.confirm = null;
 			root.menu = null;
+			root.opener = null;
 			root.renaming = "";
 		}
 	}
@@ -1058,6 +1153,12 @@ Scope {
 			root.paste(undefined);
 		}
 
+		// The path "Open with…" takes on the highlighted thing.
+		function openwith(): void {
+			if (root.currentEntry !== null)
+				root.probeOpen(root.currentEntry, true);
+		}
+
 		// The path the conflict sheet's chips take: skip, keep or replace.
 		function answer(choice: string): void {
 			root.answerConflict(choice);
@@ -1117,6 +1218,20 @@ Scope {
 					if (root.drag !== null) {
 						if (event.key === Qt.Key_Escape)
 							root.cancelDrag();
+						event.accepted = true;
+						return;
+					}
+
+					// "Open with": walk the applications, Return opens, Escape leaves.
+					if (root.opener !== null) {
+						if (event.key === Qt.Key_Down)
+							root.moveOpener(1);
+						else if (event.key === Qt.Key_Up)
+							root.moveOpener(-1);
+						else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+							root.runOpener();
+						else if (event.key === Qt.Key_Escape)
+							root.opener = null;
 						event.accepted = true;
 						return;
 					}
@@ -1247,6 +1362,11 @@ Scope {
 					}
 
 					height: Theme.filesHeaderHeight
+					opacity: root.sheetUp ? Theme.menuBackdropOpacity : 1
+
+					Behavior on opacity {
+						NumberAnimation { duration: 120 }
+					}
 
 					Rectangle {
 						anchors.bottom: parent.bottom
@@ -1573,6 +1693,11 @@ Scope {
 
 					width: Theme.filesSidebarWidth
 					color: Qt.rgba(1, 1, 1, 0.04)
+					opacity: root.sheetUp ? Theme.menuBackdropOpacity : 1
+
+					Behavior on opacity {
+						NumberAnimation { duration: 120 }
+					}
 
 					Rectangle {
 						anchors.right: parent.right
@@ -1698,8 +1823,9 @@ Scope {
 						bottomMargin: 10
 					}
 
-					// Steps back while a menu is up, so the menu is what is read.
-					opacity: root.menu !== null ? Theme.menuBackdropOpacity : 1
+					// Steps back while a menu or a sheet is up, so that is what
+					// is read: nothing inside a window gets the compositor's blur.
+					opacity: root.menu !== null || root.sheetUp ? Theme.menuBackdropOpacity : 1
 
 					Behavior on opacity {
 						NumberAnimation { duration: 120 }
@@ -2405,6 +2531,8 @@ Scope {
 
 						Repeater {
 							model: {
+								if (root.opener !== null)
+									return [["↑↓", "Move"], ["↵", "Open"], ["Esc", "Cancel"]];
 								if (root.conflict !== null)
 									return [["↵", "Keep both"], ["Esc", "Skip"]];
 								if (root.confirm !== null)
@@ -2845,12 +2973,215 @@ Scope {
 				}
 			}
 
+			// "Open with": the installed applications, those that claim the
+			// type first, and a switch to make the pick the default.
+			GlassDialog {
+				id: openerSheet
+
+				anchors.fill: parent
+				dense: true
+				open: root.opener !== null
+				visible: open || sheet.opacity > 0.01
+				sheetWidth: Math.min(Theme.dialogWidthPrompt, body.width - 40)
+				title: root.opener !== null ? `Open “${root.opener.entry.name}” with` : ""
+				body: root.opener === null ? ""
+					: root.opener.defaultId !== ""
+						? `A ${root.opener.type} file. ${DesktopEntries.byId(root.opener.defaultId)?.name ?? root.opener.defaultId} opens these unless you choose otherwise.`
+						: `A ${root.opener.type} file. Nothing is set to open these yet.`
+
+				icon: Lens {
+					width: 44
+					height: 44
+					sheen: false
+
+					FileGlyph {
+						anchors.centerIn: parent
+						kind: root.opener !== null && root.opener.entry.folder ? "folder" : "file"
+						zoom: 1.3
+					}
+				}
+
+				ListView {
+					id: openerList
+
+					width: parent.width
+					height: Math.min(5, Math.max(1, root.openerApps.length)) * 48 + Math.max(0, Math.min(5, root.openerApps.length) - 1) * 4 + 20
+					clip: true
+					spacing: 4
+					model: root.openerApps
+					boundsBehavior: Flickable.StopAtBounds
+
+					delegate: Item {
+						id: appRow
+
+						required property var modelData
+						required property int index
+
+						readonly property bool chosen: root.opener !== null && root.opener.index === index
+						readonly property bool labelled: index === 0
+							|| (!modelData.suggested && root.openerApps[index - 1].suggested)
+						readonly property string iconFile: Quickshell.iconPath(modelData.entry.icon, true)
+
+						width: openerList.width
+						height: 48 + (labelled ? 20 : 0)
+
+						Text {
+							x: 10
+							visible: appRow.labelled
+							text: appRow.modelData.suggested ? "SUGGESTED" : "ALL APPLICATIONS"
+							font.pixelSize: Theme.fontCaption
+							font.bold: true
+							font.letterSpacing: 0.66
+							opacity: 0.6
+							color: Theme.glassTextPrimary
+						}
+
+						Rectangle {
+							anchors.bottom: parent.bottom
+							width: parent.width
+							height: 48
+							radius: Theme.radiusRow
+							color: appRow.chosen ? Theme.glassChipActive
+								: appMouse.containsMouse ? Theme.glassControlHover : "transparent"
+							border.width: appRow.chosen ? 1 : 0
+							border.color: Theme.glassTrackBorderFocus
+
+							Row {
+								anchors {
+									left: parent.left
+									right: parent.right
+									leftMargin: Theme.spacingM
+									rightMargin: Theme.spacingM
+									verticalCenter: parent.verticalCenter
+								}
+
+								spacing: Theme.spacingM
+
+								Lens {
+									id: appDisc
+
+									anchors.verticalCenter: parent.verticalCenter
+									width: 30
+									height: 30
+									sheen: false
+
+									Image {
+										anchors.centerIn: parent
+										width: parent.width * 0.72
+										height: width
+										visible: appRow.iconFile !== ""
+										source: appRow.iconFile
+										sourceSize: Qt.size(64, 64)
+										fillMode: Image.PreserveAspectFit
+										smooth: true
+									}
+
+									Text {
+										anchors.centerIn: parent
+										visible: appRow.iconFile === ""
+										text: appRow.modelData.entry.name.slice(0, 1).toUpperCase()
+										font.pixelSize: 12
+										font.weight: Font.Black
+										color: Theme.fileInk
+									}
+								}
+
+								Column {
+									anchors.verticalCenter: parent.verticalCenter
+									width: parent.width - appDisc.width - Theme.spacingM
+									spacing: 2
+
+									Text {
+										width: parent.width
+										elide: Text.ElideRight
+										text: appRow.modelData.entry.name
+										font.pixelSize: Theme.fontLead
+										font.weight: appRow.chosen ? Font.Bold : Font.DemiBold
+										color: Theme.glassTextPrimary
+									}
+
+									Text {
+										width: parent.width
+										elide: Text.ElideRight
+										visible: text !== ""
+										text: appRow.modelData.entry.genericName || appRow.modelData.entry.comment || ""
+										font.pixelSize: Theme.fontBody
+										font.weight: Font.DemiBold
+										opacity: 0.6
+										color: Theme.glassTextPrimary
+									}
+								}
+							}
+
+							MouseArea {
+								id: appMouse
+
+								anchors.fill: parent
+								hoverEnabled: true
+								onClicked: root.opener = Object.assign({}, root.opener, { index: appRow.index })
+								onDoubleClicked: { root.opener = Object.assign({}, root.opener, { index: appRow.index }); root.runOpener(); }
+							}
+						}
+					}
+				}
+
+				Item {
+					width: parent.width
+					height: Theme.chipHeight
+
+					Row {
+						anchors {
+							left: parent.left
+							verticalCenter: parent.verticalCenter
+						}
+
+						spacing: Theme.spacingS
+
+						Switch {
+							anchors.verticalCenter: parent.verticalCenter
+							checked: root.opener?.always ?? false
+							onToggled: root.opener = Object.assign({}, root.opener, { always: !root.opener.always })
+						}
+
+						Text {
+							anchors.verticalCenter: parent.verticalCenter
+							text: "Always, for this type"
+							font.pixelSize: Theme.fontBody
+							font.weight: Font.DemiBold
+							color: Theme.glassTextPrimary
+						}
+					}
+
+					Row {
+						anchors {
+							right: parent.right
+							verticalCenter: parent.verticalCenter
+						}
+
+						spacing: Theme.spacingS
+
+						DialogButton {
+							text: "Cancel"
+							onClicked: root.opener = null
+						}
+
+						DialogButton {
+							text: "Open"
+							variant: "primary"
+							enabled: root.openerApps.length > 0
+							onClicked: root.runOpener()
+						}
+					}
+				}
+			}
+
 			// A name already taken: the design's sheet, with the two things
 			// side by side and three ways out.
 			GlassDialog {
 				id: conflictSheet
 
 				anchors.fill: parent
+				dense: true
 				open: root.conflict !== null
 				visible: open || sheet.opacity > 0.01
 				sheetWidth: Math.min(360, body.width - 40)
@@ -2997,6 +3328,7 @@ Scope {
 			GlassDialog {
 				anchors.fill: parent
 				open: root.confirm !== null
+				dense: true
 				visible: open || sheet.opacity > 0.01
 				title: root.confirm?.title ?? ""
 				body: root.confirm?.body ?? ""

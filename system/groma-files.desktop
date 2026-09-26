@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Files
+Comment=Groma's file manager
+Exec=qs -c groma ipc call files open %f
+Icon=system-file-manager
+Terminal=false
+Categories=System;FileTools;FileManager;Utility;
+MimeType=inode/directory;

@@ -42,6 +42,7 @@ PACKAGES=(
 	libqalculate        # qalc: units and conversions in the launcher; arithmetic works without it
 	fd                  # file search in the launcher, under the applications and behind "/"
 	libnotify           # notify-send, for testing the notification daemon
+	desktop-file-utils  # update-desktop-database, after the Files entry is linked in
 
 	# Screenshots. hyprshot is a script over grim and slurp, so this is also
 	# how the shell gets compared against the design it is built from - grim
@@ -61,6 +62,21 @@ ln -sfn "$GROMA/shell" "$HOME/.config/quickshell/groma"
 say "Linking the compositor config into ~/.config/hypr"
 mkdir -p "$HOME/.config/hypr"
 ln -sfn "$GROMA/hypr/hyprland.lua" "$HOME/.config/hypr/hyprland.lua"
+
+say "Registering Files as the folder handler"
+# A desktop entry for the shell's own file manager, so xdg-open on a folder -
+# from a browser's downloads, from the launcher - lands in it.
+mkdir -p "$HOME/.local/share/applications"
+ln -sfn "$GROMA/system/groma-files.desktop" "$HOME/.local/share/applications/groma-files.desktop"
+update-desktop-database "$HOME/.local/share/applications"
+xdg-mime default groma-files.desktop inode/directory
+
+# An editor for text, only where one is installed. Files asks "Open with…"
+# for anything nothing claims, so this is a convenience, not a requirement.
+if [ -f /usr/share/applications/code.desktop ]; then
+	say "Making VS Code the editor for text"
+	xdg-mime default code.desktop text/plain text/markdown
+fi
 
 say "Installing the lock-before-sleep unit"
 # Symlinked rather than copied, so editing it in the repo is enough. The unit

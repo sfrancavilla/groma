@@ -112,6 +112,7 @@ Which puts every surface built so far in exactly one place:
 | Files window | X | none - `Enter` opens the pick; the footer carries the status and the keys |
 | Files: a name already taken | none | `Skip` · `Keep both` · `Replace` - three answers, `Escape` is `Skip` |
 | Files: a copy in flight | none - a card, not a sheet | `Cancel` alone |
+| Files: open with | none | `Cancel` `Open` |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
 there as well as the X - two chips side by side doing one thing. Note that the
@@ -146,6 +147,11 @@ The panel is 2880×1920 at scale 2, so one logical pixel is two physical ones.
   the picker's row column and its page slide are built around this.
 - **Convert every colour, never match one by eye.** The desktop base looks like
   a mid slate and is `#0d3242`.
+- **Inside a window, sheets and menus are dense.** The compositor blurs what
+  is behind a window, never what is inside one, so the glass recipe over a
+  window's own rows shows them through. A `GlassDialog` in a window takes
+  `dense: true` (the menu's `Theme.menuSurface`), and what it covers steps
+  back to `Theme.menuBackdropOpacity`.
 - **A window's corners are 20, not the design's 24.** Hyprland caps its
   rounding at 20, the compositor cuts the corners and blurs the whole window
   rectangle, so the pane has to match it exactly: `Theme.radiusWindow`, and the
