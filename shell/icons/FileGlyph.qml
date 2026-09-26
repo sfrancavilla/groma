@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 import ".."
 
 // The marks the design draws inside a lens disc for things in the file
@@ -53,57 +54,72 @@ Item {
 			border.color: glyph.color
 		}
 
-		// home: a roof over a doorway
-		Item {
+		// home, downloads and trash are outlines rather than assemblies of
+		// rectangles: at 14px the design's pieces - a rotated square for a
+		// roof, a bar for a lid - read as fragments, where one stroked path
+		// reads as the thing.
+		Shape {
 			anchors.centerIn: parent
-			visible: glyph.kind === "home"
 			width: 14
 			height: 14
+			visible: glyph.kind === "home" || glyph.kind === "downloads" || glyph.kind === "trash"
+			preferredRendererType: Shape.CurveRenderer
 
-			Item {
-				x: 2
-				y: 2
-				width: 8
-				height: 8
-				rotation: 45
+			// home: a roof, then the walls and floor as one open box.
+			ShapePath {
+				strokeColor: glyph.kind === "home" ? glyph.color : "transparent"
+				strokeWidth: 2
+				fillColor: "transparent"
+				joinStyle: ShapePath.RoundJoin
+				capStyle: ShapePath.RoundCap
 
-				Rectangle { width: 2; height: parent.height; color: glyph.color }
-				Rectangle { width: parent.width; height: 2; color: glyph.color }
+				startX: 1; startY: 7
+				PathLine { x: 7; y: 1.5 }
+				PathLine { x: 13; y: 7 }
+				PathMove { x: 3; y: 6 }
+				PathLine { x: 3; y: 12.5 }
+				PathLine { x: 11; y: 12.5 }
+				PathLine { x: 11; y: 6 }
 			}
 
-			Item {
-				x: 2
-				anchors.bottom: parent.bottom
-				width: 6
-				height: 6
+			// downloads: an arrow into a tray.
+			ShapePath {
+				strokeColor: glyph.kind === "downloads" ? glyph.color : "transparent"
+				strokeWidth: 2
+				fillColor: "transparent"
+				joinStyle: ShapePath.RoundJoin
+				capStyle: ShapePath.RoundCap
 
-				Rectangle { anchors.left: parent.left; width: 2; height: parent.height; color: glyph.color }
-				Rectangle { anchors.right: parent.right; width: 2; height: parent.height; color: glyph.color }
-				Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1; color: glyph.color }
-			}
-		}
-
-		// downloads: an arrow onto a line
-		Item {
-			anchors.centerIn: parent
-			visible: glyph.kind === "downloads"
-			width: 14
-			height: 14
-
-			Rectangle { x: 6; y: 0; width: 2; height: 9; radius: 1; color: glyph.color }
-
-			Item {
-				x: 3
-				y: 2
-				width: 6
-				height: 6
-				rotation: 45
-
-				Rectangle { anchors.right: parent.right; width: 2; height: parent.height; color: glyph.color }
-				Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: glyph.color }
+				startX: 7; startY: 1
+				PathLine { x: 7; y: 8.5 }
+				PathMove { x: 3.5; y: 5.5 }
+				PathLine { x: 7; y: 9 }
+				PathLine { x: 10.5; y: 5.5 }
+				PathMove { x: 1.5; y: 10 }
+				PathLine { x: 1.5; y: 12.5 }
+				PathLine { x: 12.5; y: 12.5 }
+				PathLine { x: 12.5; y: 10 }
 			}
 
-			Rectangle { anchors.bottom: parent.bottom; width: 14; height: 2; radius: 1; color: glyph.color }
+			// trash: a lid with a handle over a bin that narrows a little.
+			ShapePath {
+				strokeColor: glyph.kind === "trash" ? glyph.color : "transparent"
+				strokeWidth: 2
+				fillColor: "transparent"
+				joinStyle: ShapePath.RoundJoin
+				capStyle: ShapePath.RoundCap
+
+				startX: 1; startY: 3.5
+				PathLine { x: 13; y: 3.5 }
+				PathMove { x: 5; y: 3.5 }
+				PathLine { x: 5; y: 1.5 }
+				PathLine { x: 9; y: 1.5 }
+				PathLine { x: 9; y: 3.5 }
+				PathMove { x: 2.5; y: 3.5 }
+				PathLine { x: 3.5; y: 13 }
+				PathLine { x: 10.5; y: 13 }
+				PathLine { x: 11.5; y: 3.5 }
+			}
 		}
 
 		// pictures: a frame with a sun in the corner
