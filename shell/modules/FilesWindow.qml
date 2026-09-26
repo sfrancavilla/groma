@@ -192,6 +192,74 @@ Scope {
 			what.run();
 	}
 
+	// The actions on a thing, or on the folder when nothing is under the
+	// pointer. One list for Tab and for the right button, drawn where it
+	// was asked for.
+	property var menu: null
+
+	function actionsFor(entry) {
+		const out = [];
+		if (entry === null) {
+			if (!root.inTrash)
+				out.push({ label: "New folder", run: () => root.newFolder() });
+			return out;
+		}
+		if (root.inTrash) {
+			out.push({ label: "Restore", run: () => root.restoreEntry(entry) });
+			out.push({ label: "Delete forever…", run: () => root.askDelete(entry) });
+			return out;
+		}
+		out.push({ label: "Open", run: () => root.openEntry(entry) });
+		out.push({ label: "Rename", run: () => root.startRename(entry) });
+		out.push({ label: "Copy path", run: () => {
+			Quickshell.execDetached(["sh", "-c", "printf %s \"$1\" | wl-copy", "sh", entry.path]);
+			root.say(`Copied ${root.tilde(entry.path)}`);
+		} });
+		out.push({ label: "New folder", run: () => root.newFolder() });
+		out.push({ label: "Move to Trash", run: () => root.trashEntry(entry) });
+		out.push({ label: "Delete forever…", run: () => root.askDelete(entry) });
+		return out;
+	}
+
+	// x and y in the body's coordinates.
+	function openMenu(entry, x, y) {
+		if (entry !== null)
+			root.picked = entry.path;
+		const items = root.actionsFor(entry);
+		if (items.length === 0)
+			return;
+		root.menu = { entry: entry, items: items, x: x, y: y, index: 0 };
+	}
+
+	function moveMenu(delta) {
+		const m = root.menu;
+		root.menu = Object.assign({}, m, { index: (m.index + delta + m.items.length) % m.items.length });
+	}
+
+	function runMenu() {
+		const m = root.menu;
+		root.menu = null;
+		if (m)
+			m.items[m.index].run();
+	}
+
+	// Tab: the menu beside the highlighted thing, or beside the list.
+	function toggleMenu() {
+		if (root.menu !== null) {
+			root.menu = null;
+			return;
+		}
+		const entry = root.currentEntry;
+		let at = { x: content.x + 40, y: content.y + 40 };
+		if (entry !== null) {
+			const view = root.grid ? gridView : listView;
+			const item = view.itemAtIndex(root.current);
+			if (item)
+				at = item.mapToItem(body, root.grid ? item.width / 2 : 60, root.grid ? item.height / 2 : item.height - 8);
+		}
+		root.openMenu(entry, at.x, at.y);
+	}
+
 	// Enter: open a thing, or put it back where it came from.
 	function activate() {
 		if (root.currentEntry === null)
@@ -259,6 +327,7 @@ Scope {
 
 	function land(where) {
 		root.renaming = "";
+		root.menu = null;
 		root.path = where;
 		root.picked = "";
 		searchField.clear();
@@ -324,6 +393,7 @@ Scope {
 		} else {
 			worker.running = false;
 			root.confirm = null;
+			root.menu = null;
 			root.renaming = "";
 		}
 	}
@@ -538,6 +608,11 @@ Scope {
 			root.picked = path;
 		}
 
+		// The path Tab takes: the actions for the highlighted thing.
+		function actions(): void {
+			root.toggleMenu();
+		}
+
 		// The path F2 takes on the highlighted thing.
 		function rename(): void {
 			if (root.currentEntry !== null && !root.inTrash)
@@ -595,9 +670,34 @@ Scope {
 						return;
 					}
 
+					// A menu open takes the arrows, Return and Escape; any
+					// other key closes it and is then read as usual.
+					if (root.menu !== null) {
+						if (event.key === Qt.Key_Down) {
+							root.moveMenu(1);
+						} else if (event.key === Qt.Key_Up) {
+							root.moveMenu(-1);
+						} else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+							root.runMenu();
+						} else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Tab) {
+							root.menu = null;
+						} else {
+							root.menu = null;
+							return;
+						}
+						event.accepted = true;
+						return;
+					}
+
 					// The rename editor owns the keyboard; what it lets
 					// through is not for the list.
 					if (root.renaming !== "") {
+						event.accepted = true;
+						return;
+					}
+
+					if (event.key === Qt.Key_Tab) {
+						root.toggleMenu();
 						event.accepted = true;
 						return;
 					}
@@ -830,6 +930,7 @@ Scope {
 								root.activate();
 								body.forceActiveFocus();
 							}
+							onTabbed: root.toggleMenu()
 						}
 
 						// List or grid: one segmented chip, the chosen half
@@ -1500,6 +1601,26 @@ Scope {
 						}
 					}
 
+					// The right button, over rows, tiles and the space between:
+					// a menu for what is under the pointer. Only that button
+					// is taken, so clicks and double-clicks fall through.
+					MouseArea {
+						anchors.fill: parent
+						acceptedButtons: Qt.RightButton
+						onPressed: mouse => {
+							const view = root.grid ? gridView : listView;
+							const inView = view.mapFromItem(content, mouse.x, mouse.y);
+							let entry = null;
+							if (inView.x >= 0 && inView.y >= 0 && inView.x < view.width && inView.y < view.height) {
+								const index = view.indexAt(inView.x + view.contentX, inView.y + view.contentY);
+								if (index >= 0)
+									entry = root.entries[index];
+							}
+							const at = content.mapToItem(body, mouse.x, mouse.y);
+							root.openMenu(entry, at.x, at.y);
+						}
+					}
+
 					Text {
 						anchors.centerIn: parent
 						visible: root.entries.length === 0
@@ -1562,6 +1683,8 @@ Scope {
 									return [["↵", root.confirm.verb], ["Esc", "Cancel"]];
 								if (root.renaming !== "")
 									return [["↵", "Rename"], ["Esc", "Cancel"]];
+								if (root.menu !== null)
+									return [["↑↓", "Move"], ["↵", "Do"], ["Esc", "Close"]];
 								const rows = [[root.grid ? "←↑↓→" : "↑↓", "Move"]];
 								if (root.currentEntry !== null) {
 									rows.push(["↵", root.inTrash ? "Restore" : "Open"]);
@@ -1569,6 +1692,7 @@ Scope {
 										rows.push(["F2", "Rename"]);
 									rows.push(["Del", root.inTrash ? "Delete" : "Trash"]);
 								}
+								rows.push(["Tab", "Actions"]);
 								rows.push(["Esc", root.filter !== "" ? "Clear" : "Close"]);
 								return rows;
 							}
@@ -1596,10 +1720,102 @@ Scope {
 				}
 			}
 
+			// Click-away for the menu: anything pressed outside it closes it,
+			// and the press goes no further.
+			MouseArea {
+				anchors.fill: parent
+				visible: root.menu !== null
+				acceptedButtons: Qt.AllButtons
+				onPressed: root.menu = null
+			}
+
+			// The menu: a small pane of glass at the pointer, rows for the
+			// actions, the keyboard's row brighter.
+			GlassPanel {
+				id: menuPane
+
+				readonly property var model: root.menu?.items ?? []
+
+				x: Math.max(8, Math.min(body.width - width - 8, root.menu?.x ?? 0))
+				y: Math.max(8, Math.min(body.height - height - 8, root.menu?.y ?? 0))
+				width: 200
+				height: menuColumn.implicitHeight + 12
+				radius: 14
+				shadowLayers: 8
+				visible: opacity > 0.01
+				opacity: root.menu !== null ? 1 : 0
+				scale: root.menu !== null ? 1 : 0.96
+				transformOrigin: Item.TopLeft
+
+				Behavior on opacity {
+					NumberAnimation { duration: 120 }
+				}
+				Behavior on scale {
+					NumberAnimation { duration: 120 }
+				}
+
+				Column {
+					id: menuColumn
+
+					anchors {
+						left: parent.left
+						right: parent.right
+						top: parent.top
+						margins: 6
+					}
+
+					Repeater {
+						model: menuPane.model
+
+						Rectangle {
+							id: menuRow
+
+							required property var modelData
+							required property int index
+
+							readonly property bool current: root.menu !== null && root.menu.index === index
+
+							width: parent.width
+							height: 32
+							radius: 10
+							color: current ? Theme.glassChipActive
+								: menuMouse.containsMouse ? Theme.glassControlHover : "transparent"
+
+							Text {
+								anchors {
+									left: parent.left
+									leftMargin: 12
+									verticalCenter: parent.verticalCenter
+								}
+
+								text: menuRow.modelData.label
+								font.pixelSize: Theme.fontTitle
+								font.weight: menuRow.current ? Font.Bold : Font.DemiBold
+								color: Theme.glassTextPrimary
+							}
+
+							MouseArea {
+								id: menuMouse
+
+								anchors.fill: parent
+								hoverEnabled: true
+								cursorShape: Qt.PointingHandCursor
+								onEntered: if (root.menu !== null) root.menu = Object.assign({}, root.menu, { index: menuRow.index })
+								onClicked: { root.menu = Object.assign({}, root.menu, { index: menuRow.index }); root.runMenu(); }
+							}
+						}
+					}
+				}
+			}
+
 			// A question over the window: the 3a sheet, scoped to the pane.
+			// Gone entirely when not asked - its scrim swallows every click
+			// under it, which with the sheet merely invisible was every
+			// click in the window.
 			GlassDialog {
 				anchors.fill: parent
 				open: root.confirm !== null
+				visible: open || sheet.opacity > 0.01
 				title: root.confirm?.title ?? ""
 				body: root.confirm?.body ?? ""
 

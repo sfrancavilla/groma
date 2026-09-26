@@ -69,6 +69,7 @@ to any surface.
 | An ordinary window | X disc, at the right of its own header |
 | Anything else over the whole screen | X disc, top right |
 | A bar popup | None - click away, or press its bar icon again |
+| A menu at the pointer | None - click away, `Escape`, or `Tab` again |
 
 Never two marks. A back chevron replaces the X; it does not join it.
 
