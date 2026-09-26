@@ -112,20 +112,28 @@ Scope {
 			.map(item => item.entry);
 	}
 
-	// With nothing typed: what was launched lately, then everything.
-	readonly property var recent: History.recent(8)
+	// With nothing typed: what was launched lately as a row of tiles, as the
+	// design draws it, then everything else as rows.
+	readonly property int recentLimit: 5
+
+	readonly property var recent: History.recent(root.recentLimit)
 		.map(id => DesktopEntries.byId(id))
 		.filter(entry => entry !== null && !entry.noDisplay)
 
 	readonly property var everything: root.apps.slice()
 		.sort((a, b) => a.name.localeCompare(b.name))
 
-	// The rows in the order they are drawn, whichever state the sheet is in,
-	// so the arrow keys walk what is on screen.
-	readonly property var ordered: root.term !== ""
+	// What the list below the tiles holds.
+	readonly property var listed: root.term !== ""
 		? root.matches
-		: root.recent.concat(root.everything.filter(
-			entry => !root.recent.some(seen => seen.id === entry.id)))
+		: root.everything.filter(
+			entry => !root.recent.some(seen => seen.id === entry.id))
+
+	// Everything on screen in the order it is drawn - tiles first - so the
+	// arrow keys walk what is there. The field owns left and right for its
+	// caret, so the tiles are walked with up and down like the rows.
+	readonly property var ordered: root.term !== ""
+		? root.matches : root.recent.concat(root.listed)
 
 	// The first row is the one Enter runs, unless something else was picked -
 	// and a pick that is no longer on screen falls back to the first.
@@ -317,12 +325,154 @@ Scope {
 				}
 			}
 
+			// Recent applications as tiles, with the one way to be rid of
+			// them beside the label - a secondary action in the header slot.
+			Column {
+				width: parent.width
+				visible: root.term === "" && root.recent.length > 0
+				spacing: 6
+
+				Item {
+					width: parent.width
+					height: recentLabel.height
+
+					Text {
+						id: recentLabel
+
+						x: 10
+						text: "RECENT"
+						font.pixelSize: Theme.fontCaption
+						font.bold: true
+						font.letterSpacing: 0.66
+						opacity: 0.6
+						color: Theme.glassTextPrimary
+					}
+
+					Text {
+						anchors.right: parent.right
+						anchors.rightMargin: 10
+						text: "Clear"
+						font.pixelSize: Theme.fontCaption
+						font.weight: Font.DemiBold
+						opacity: clearMouse.containsMouse ? 1.0 : 0.6
+						color: Theme.glassTextPrimary
+
+						MouseArea {
+							id: clearMouse
+
+							anchors.fill: parent
+							anchors.margins: -6
+							hoverEnabled: true
+							cursorShape: Qt.PointingHandCursor
+							onClicked: {
+								History.clear();
+								root.picked = "";
+							}
+						}
+					}
+				}
+
+				Row {
+					id: tiles
+
+					readonly property real tileWidth:
+						(width - (root.recentLimit - 1) * 6) / root.recentLimit
+
+					width: parent.width
+					spacing: 6
+
+					Repeater {
+						model: root.recent
+
+						Rectangle {
+							id: tile
+
+							required property var modelData
+
+							readonly property bool selected: root.current?.id === modelData.id
+							readonly property string iconFile: Quickshell.iconPath(modelData.icon, true)
+
+							width: tiles.tileWidth
+							height: 48 + 8 + 16 + 22
+							radius: 18
+
+							color: tile.selected ? Theme.glassChipActive
+								: tileMouse.containsMouse ? Theme.glassControlHover
+								: "transparent"
+							border.width: tile.selected ? 1 : 0
+							border.color: Theme.glassTrackBorderFocus
+
+							Behavior on color {
+								ColorAnimation { duration: 120 }
+							}
+
+							Column {
+								anchors.centerIn: parent
+								width: parent.width
+								spacing: 8
+
+								Lens {
+									anchors.horizontalCenter: parent.horizontalCenter
+									width: 48
+									height: 48
+									sheen: false
+									tint: root.tint(tile.modelData.name)
+
+									Image {
+										anchors.centerIn: parent
+										width: parent.width * 0.72
+										height: width
+										visible: tile.iconFile !== ""
+										source: tile.iconFile
+										sourceSize: Qt.size(96, 96)
+										fillMode: Image.PreserveAspectFit
+										smooth: true
+									}
+
+									Text {
+										anchors.centerIn: parent
+										visible: tile.iconFile === ""
+										text: tile.modelData.name.slice(0, 1).toUpperCase()
+										font.pixelSize: 18
+										font.weight: Font.Black
+										color: root.ink(tile.modelData.name)
+									}
+								}
+
+								Text {
+									width: parent.width - 12
+									anchors.horizontalCenter: parent.horizontalCenter
+									horizontalAlignment: Text.AlignHCenter
+									elide: Text.ElideRight
+									text: tile.modelData.name
+									font.pixelSize: Theme.fontBody
+									font.weight: tile.selected ? Font.Bold : Font.DemiBold
+									color: Theme.glassTextPrimary
+								}
+							}
+
+							MouseArea {
+								id: tileMouse
+
+								anchors.fill: parent
+								hoverEnabled: true
+								cursorShape: Qt.PointingHandCursor
+								onClicked: {
+									root.picked = tile.modelData.id;
+									root.launch();
+								}
+							}
+						}
+					}
+				}
+			}
+
 			// The rows. One list either way; the labels and the top-hit
 			// treatment come from what is in it.
 			Item {
 				width: parent.width
 				height: Math.min(8 * (Theme.launcherRowHeight + 4) + 40, list.contentHeight)
-				visible: root.ordered.length > 0
+				visible: root.listed.length > 0
 
 				Flickable {
 					id: list
@@ -339,7 +489,7 @@ Scope {
 						spacing: 4
 
 						Repeater {
-							model: root.ordered
+							model: root.listed
 
 							Item {
 								id: slot
@@ -353,10 +503,8 @@ Scope {
 								readonly property bool topHit: root.term !== "" && slot.index === 0
 								readonly property bool selected: root.current?.id === modelData.id
 								readonly property string iconFile: Quickshell.iconPath(modelData.icon, true)
-								readonly property bool firstRecent: root.term === ""
-									&& root.recent.length > 0 && slot.index === 0
 								readonly property bool firstOther: root.term === ""
-									? slot.index === root.recent.length
+									? slot.index === 0
 									: slot.index === 1
 
 								width: rows.width
@@ -367,10 +515,8 @@ Scope {
 									id: label
 
 									x: 10
-									visible: slot.topHit || slot.firstRecent || slot.firstOther
-									text: slot.topHit ? "TOP HIT"
-										: slot.firstRecent ? "RECENT"
-										: "APPLICATIONS"
+									visible: slot.topHit || slot.firstOther
+									text: slot.topHit ? "TOP HIT" : "APPLICATIONS"
 									font.pixelSize: Theme.fontCaption
 									font.bold: true
 									font.letterSpacing: 0.66
