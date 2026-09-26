@@ -14,9 +14,10 @@ import ".."
 // worker. What is here now is the browsing: places, breadcrumbs, a list and a
 // grid, a search over the folder on screen, and Enter to open.
 //
-// Hyprland is told to leave the frame alone - no rounding, border or shadow
-// of its own - so the pane can draw the design's 24px corners and cast its
-// own shadow into the padding around it.
+// The window is the pane, edge to edge. Hyprland rounds it to the design's
+// 24px and casts the shadow: padding for a shadow of our own would be part
+// of the window, and the compositor blurs a window's whole rectangle, so it
+// showed as a frosted band around the glass.
 Scope {
 	id: root
 
@@ -342,9 +343,9 @@ Scope {
 		title: "Files"
 		color: "transparent"
 
-		implicitWidth: Theme.filesWidth + Theme.glassShadowPadding * 2
-		implicitHeight: Theme.filesHeight + Theme.glassShadowPadding * 2
-		minimumSize: Qt.size(640 + Theme.glassShadowPadding * 2, 400 + Theme.glassShadowPadding * 2)
+		implicitWidth: Theme.filesWidth
+		implicitHeight: Theme.filesHeight
+		minimumSize: Qt.size(640, 400)
 
 		// Closed by the compositor - SUPER+C - rather than by the disc.
 		onVisibleChanged: if (!visible) root.open = false
@@ -353,8 +354,8 @@ Scope {
 			id: pane
 
 			anchors.fill: parent
-			anchors.margins: Theme.glassShadowPadding
 			radius: Theme.radiusPanel
+			shadowLayers: 0
 
 			Item {
 				id: body
