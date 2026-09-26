@@ -1601,22 +1601,23 @@ Scope {
 					}
 
 					// A menu open takes the arrows, Return and Escape; any
-					// other key closes it and is then read as usual.
+					// other key closes it and then goes on to do what it does.
 					if (root.menu !== null) {
-						if (event.key === Qt.Key_Down) {
-							root.moveMenu(1);
-						} else if (event.key === Qt.Key_Up) {
-							root.moveMenu(-1);
-						} else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-							root.runMenu();
-						} else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Tab) {
-							root.menu = null;
-						} else {
-							root.menu = null;
+						if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
+							root.moveMenu(event.key === Qt.Key_Down ? 1 : -1);
+							event.accepted = true;
 							return;
 						}
-						event.accepted = true;
-						return;
+						if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+							root.runMenu();
+							event.accepted = true;
+							return;
+						}
+						root.menu = null;
+						if (event.key === Qt.Key_Escape || event.key === Qt.Key_Tab) {
+							event.accepted = true;
+							return;
+						}
 					}
 
 					// The rename editor owns the keyboard; what it lets
