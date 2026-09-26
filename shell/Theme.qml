@@ -143,6 +143,10 @@ Singleton {
 		Qt.rgba(warning.r, warning.g, warning.b, 0.70)
 	// The lens is nearly white, so anything drawn on it has to be dark.
 	readonly property color glassOnLens: "#1d6b3f"
+	// The launcher's lens glyphs for a recognised calculation and command,
+	// the design's oklch(0.5 0.14 60) and oklch(0.45 0.13 150), converted.
+	readonly property color calcInk: "#8a5a10"
+	readonly property color runInk: "#1f6b3a"
 	readonly property color glassTextOnLens: "#16161c"
 
 	// Depth cues the design carries as inset box-shadows, for the lens. The

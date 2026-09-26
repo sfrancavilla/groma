@@ -15,16 +15,23 @@ import "../ui"
 // how to run them - this file only has to decide what to show and in what
 // order.
 //
+// What you type is recognised rather than declared. Arithmetic gets a result
+// card; a word that is a program on PATH gets a Run card; applications are
+// searched regardless, and an application that matches by name stays on top
+// with the card beneath it - "code" is both. The design's prefixes remain as
+// overrides for when recognition would guess wrong: "=" forces a calculation,
+// ">" a command. The chip on the track says which was recognised.
+//
 // The sheet hangs from a fifth of the way down the screen rather than sitting
 // in the middle, so a result list that changes length grows downward and the
-// sheet never jumps. The search track is the header: a launcher has nothing to
-// say about itself, and what you type is the title.
+// sheet never jumps.
 Scope {
 	id: root
 
 	property bool open: false
 
-	// Held by id, not by row: the list re-sorts on every keystroke.
+	// The pick is held by key, not by row: the list re-sorts on every
+	// keystroke. Keys look like "app:chromium", "run:hyprctl reload", "calc".
 	property string picked: ""
 
 	readonly property string query: searchField.text
@@ -36,6 +43,8 @@ Scope {
 		root.open = true;
 		list.contentY = 0;
 		clients.running = true;
+		executables.running = true;
+		tools.running = true;
 		Qt.callLater(() => searchField.focusInput());
 	}
 
@@ -48,7 +57,138 @@ Scope {
 		searchField.text = text;
 	}
 
-	// Everything with a menu entry, minus what asks not to be shown.
+	// --- recognising what was typed --------------------------------------
+
+	readonly property bool forcedCalc: root.query.replace(/^\s+/, "").startsWith("=")
+	readonly property bool forcedRun: root.query.replace(/^\s+/, "").startsWith(">")
+
+	// The text with any prefix taken off.
+	readonly property string body: root.forcedCalc || root.forcedRun
+		? root.query.replace(/^\s+/, "").slice(1).trim() : root.query.trim()
+
+	// Digits and operators and nothing else, with at least one of each.
+	readonly property bool looksLikeMath:
+		/^[\d\s.,+\-*/%^()]+$/.test(root.body) && /\d/.test(root.body)
+			&& /[+\-*/%^]/.test(root.body)
+
+	readonly property string firstWord: root.body.split(/\s+/)[0] ?? ""
+	readonly property bool looksLikeCommand:
+		root.firstWord !== "" && root.onPath[root.firstWord] === true
+
+	readonly property string mode: root.forcedCalc ? "calc"
+		: root.forcedRun ? "run"
+		: root.looksLikeMath ? "calc"
+		: root.looksLikeCommand ? "run"
+		: "all"
+
+	// Every program on PATH, gathered when the sheet opens: 1,800 names in
+	// under thirty milliseconds, so a word can be checked rather than guessed.
+	property var onPath: ({})
+
+	Process {
+		id: executables
+
+		command: ["bash", "-c", "compgen -c"]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				const found = {};
+				for (const name of text.split("\n"))
+					if (name !== "")
+						found[name] = true;
+				root.onPath = found;
+			}
+		}
+	}
+
+	// Optional helpers: a clipboard to copy into, a calculator that knows
+	// units. Neither is required; both are used when present.
+	property bool hasCopy: false
+	property bool hasQalc: false
+
+	Process {
+		id: tools
+
+		command: ["bash", "-c", "command -v wl-copy && echo COPY; command -v qalc && echo QALC; true"]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				root.hasCopy = text.includes("COPY");
+				root.hasQalc = text.includes("QALC");
+			}
+		}
+	}
+
+	// --- arithmetic --------------------------------------------------------
+	//
+	// A real parser, not eval(): + - * / % ^, brackets, unary minus, and a
+	// comma as a thousands separator. Anything else is not arithmetic and the
+	// card does not appear.
+	function evaluate(text) {
+		const src = text.replace(/,/g, "").replace(/\s+/g, "");
+		const tokens = src.match(/\d+(\.\d+)?|[-+*/%^()]/g);
+		if (!tokens || tokens.join("") !== src)
+			return NaN;
+
+		const out = [], ops = [];
+		const prec = { "+": 1, "-": 1, "*": 2, "/": 2, "%": 2, "^": 3, "neg": 4 };
+		const rightAssoc = { "^": true, "neg": true };
+		let expectOperand = true;
+
+		const apply = op => {
+			if (op === "neg") { out.push(-out.pop()); return; }
+			const b = out.pop(), a = out.pop();
+			switch (op) {
+			case "+": out.push(a + b); break;
+			case "-": out.push(a - b); break;
+			case "*": out.push(a * b); break;
+			case "/": out.push(a / b); break;
+			case "%": out.push(a % b); break;
+			case "^": out.push(Math.pow(a, b)); break;
+			}
+		};
+
+		for (const tok of tokens) {
+			if (/^\d/.test(tok)) {
+				out.push(parseFloat(tok)); expectOperand = false;
+			} else if (tok === "(") {
+				ops.push(tok); expectOperand = true;
+			} else if (tok === ")") {
+				while (ops.length && ops[ops.length - 1] !== "(") apply(ops.pop());
+				if (!ops.length) return NaN;
+				ops.pop(); expectOperand = false;
+			} else {
+				const op = tok === "-" && expectOperand ? "neg" : tok;
+				if (op !== "neg" && expectOperand) return NaN;
+				while (ops.length) {
+					const top = ops[ops.length - 1];
+					if (top === "(") break;
+					if (prec[top] > prec[op] || (prec[top] === prec[op] && !rightAssoc[op]))
+						apply(ops.pop());
+					else
+						break;
+				}
+				ops.push(op); expectOperand = true;
+			}
+		}
+		while (ops.length) {
+			const op = ops.pop();
+			if (op === "(") return NaN;
+			apply(op);
+		}
+		return out.length === 1 && expectOperand === false ? out[0] : NaN;
+	}
+
+	readonly property real result: root.mode === "calc" ? root.evaluate(root.body) : NaN
+	readonly property bool hasResult: !isNaN(root.result) && isFinite(root.result)
+
+	function pretty(n) {
+		const s = Number(n.toPrecision(12)).toString();
+		return s.includes("e") ? s : s.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+	}
+
+	// --- applications ------------------------------------------------------
+
 	readonly property var apps: DesktopEntries.applications.values
 		.filter(entry => !entry.noDisplay)
 
@@ -98,23 +238,33 @@ Scope {
 	readonly property var filler: ["for", "the", "and", "with", "your", "from",
 		"that", "this", "into", "over", "you", "are", "all", "any", "can"]
 
+	// Forced modes search nothing; recognised ones still do.
 	readonly property var matches: {
-		if (root.term === "")
+		if (root.term === "" || root.forcedCalc || root.forcedRun)
 			return [];
+
+		const term = root.body.toLowerCase();
 
 		// The rank decides the order; within a rank, what you launch most
 		// rises. The weight is bounded below one so it never crosses a rank.
+		// The weight only orders what already matched: added to zero it
+		// would make anything ever launched match everything.
 		return root.apps
-			.map(entry => ({ entry: entry,
-				score: root.score(entry, root.term) + History.weight(entry.id) }))
+			.map(entry => {
+				const base = root.score(entry, term);
+				return { entry: entry, score: base > 0 ? base + History.weight(entry.id) : 0 };
+			})
 			.filter(item => item.score > 0)
 			.sort((a, b) => b.score - a.score
 				|| a.entry.name.localeCompare(b.entry.name))
 			.map(item => item.entry);
 	}
 
-	// With nothing typed: what was launched lately as a row of tiles, as the
-	// design draws it, then everything else as rows.
+	// An application matching by its name outranks a card; one matching only
+	// by description does not.
+	readonly property bool appOnTop: root.matches.length > 0
+		&& root.score(root.matches[0], root.body.toLowerCase()) >= 3
+
 	readonly property int recentLimit: 5
 
 	readonly property var recent: History.recent(root.recentLimit)
@@ -124,42 +274,68 @@ Scope {
 	readonly property var everything: root.apps.slice()
 		.sort((a, b) => a.name.localeCompare(b.name))
 
-	// What the list below the tiles holds.
-	readonly property var listed: root.term !== ""
-		? root.matches
-		: root.everything.filter(
-			entry => !root.recent.some(seen => seen.id === entry.id))
+	// --- the list, as items of several kinds -------------------------------
+	//
+	// { kind: "app", entry }   { kind: "calc" }   { kind: "run", line }
+	// { kind: "history", line }
+	readonly property var items: {
+		const out = [];
+		const term = root.term;
+
+		if (term === "") {
+			for (const entry of root.everything)
+				if (!root.recent.some(seen => seen.id === entry.id))
+					out.push({ kind: "app", entry: entry, key: "app:" + entry.id });
+			return out;
+		}
+
+		const card = root.mode === "calc" && root.hasResult ? { kind: "calc", key: "calc" }
+			: root.mode === "run" && root.body !== "" ? { kind: "run", line: root.body, key: "run:" + root.body }
+			: null;
+
+		const appsFirst = root.appOnTop || card === null;
+		const appItems = root.matches.map(entry => ({ kind: "app", entry: entry, key: "app:" + entry.id }));
+
+		if (appsFirst) out.push(...appItems);
+		if (card) out.push(card);
+		if (!appsFirst) out.push(...appItems);
+
+		if (root.mode === "run")
+			for (const line of History.recentCommands(6))
+				if (line !== root.body)
+					out.push({ kind: "history", line: line, key: "hist:" + line });
+
+		return out;
+	}
 
 	// Everything on screen in the order it is drawn - tiles first - so the
 	// arrow keys walk what is there. The field owns left and right for its
 	// caret, so the tiles are walked with up and down like the rows.
-	readonly property var ordered: root.term !== ""
-		? root.matches : root.recent.concat(root.listed)
+	readonly property var ordered: root.term !== "" ? root.items
+		: root.recent.map(entry => ({ kind: "app", entry: entry, key: "app:" + entry.id }))
+			.concat(root.items)
 
-	// The first row is the one Enter runs, unless something else was picked -
-	// and a pick that is no longer on screen falls back to the first.
-	readonly property var current: root.ordered.find(
-		entry => entry.id === root.picked) ?? root.ordered[0] ?? null
+	readonly property var current: root.ordered.find(item => item.key === root.picked)
+		?? root.ordered[0] ?? null
 
 	function move(step) {
 		const entries = root.ordered;
 		if (entries.length === 0)
 			return;
 
-		const at = entries.findIndex(entry => entry.id === (root.current?.id ?? ""));
-		const next = Math.max(0, Math.min(entries.length - 1, at + step));
-		root.picked = entries[next].id;
+		const at = entries.findIndex(item => item.key === (root.current?.key ?? ""));
+		root.picked = entries[Math.max(0, Math.min(entries.length - 1, at + step))].key;
 	}
 
-	// --- what is already running -------------------------------------------
-	//
-	// Opening an application that has a window is, nine times in ten, a
-	// request to be taken to that window - so Enter goes there, to the one
-	// used most recently, on whichever workspace it is. Shift+Enter opens a
-	// fresh one regardless. Hyprland lists its windows; the match is by the
-	// window class against the entry's id, its StartupWMClass and the name
-	// of what it runs - all three, because Chromium's .desktop ships a
-	// StartupWMClass that is a literal packaging placeholder.
+	// --- acting ------------------------------------------------------------
+
+	// What is already running. Opening an application that has a window is,
+	// nine times in ten, a request to be taken to that window - so Enter goes
+	// there, to the one used most recently, on whichever workspace it is.
+	// Shift+Enter opens a fresh one regardless. The match is by the window
+	// class against the entry's id, its StartupWMClass and the name of what it
+	// runs - all three, because Chromium's .desktop ships a StartupWMClass
+	// that is a literal packaging placeholder.
 	property var windows: []
 
 	Process {
@@ -174,7 +350,6 @@ Scope {
 						cls: String(win.class ?? "").toLowerCase(),
 						initial: String(win.initialClass ?? "").toLowerCase(),
 						address: win.address,
-						workspace: win.workspace?.id ?? 0,
 						recency: win.focusHistoryID ?? 999
 					}));
 				} catch (err) {
@@ -192,7 +367,7 @@ Scope {
 	}
 
 	function windowsFor(entry) {
-		if (entry === null)
+		if (!entry)
 			return [];
 
 		const names = root.classesOf(entry);
@@ -201,36 +376,54 @@ Scope {
 			.sort((a, b) => a.recency - b.recency);
 	}
 
-	readonly property var currentWindows: root.windowsFor(root.current)
+	readonly property var currentWindows:
+		root.current?.kind === "app" ? root.windowsFor(root.current.entry) : []
 
-	function launch() {
-		const entry = root.current;
+	function act(alternate) {
+		const item = root.current;
 
-		if (entry === null) {
+		if (item === null) {
 			if (root.term !== "")
 				root.searchWeb();
 			return;
 		}
 
-		const open = root.windowsFor(entry);
-		if (open.length > 0) {
-			Quickshell.execDetached(["hyprctl", "dispatch",
-				`hl.dsp.focus({ window = "address:${open[0].address}" })`]);
-			History.noteLaunch(entry.id);
+		switch (item.kind) {
+		case "app": {
+			const open = alternate ? [] : root.windowsFor(item.entry);
+			if (open.length > 0) {
+				Quickshell.execDetached(["hyprctl", "dispatch",
+					`hl.dsp.focus({ window = "address:${open[0].address}" })`]);
+			} else {
+				item.entry.execute();
+			}
+			History.noteLaunch(item.entry.id);
 			root.close();
 			return;
 		}
-
-		root.launchNew();
+		case "calc":
+			if (root.hasCopy) {
+				Quickshell.execDetached(["sh", "-c",
+					"printf %s \"$1\" | wl-copy", "sh", root.pretty(root.result)]);
+				root.close();
+			}
+			return;
+		case "run":
+		case "history":
+			root.runCommand(item.line, alternate);
+			return;
+		}
 	}
 
-	function launchNew() {
-		const entry = root.current;
-		if (entry === null)
-			return;
+	// Detached, or in the terminal with the shell kept open afterwards so the
+	// output can be read.
+	function runCommand(line, inTerminal) {
+		if (inTerminal)
+			Quickshell.execDetached(["foot", "-e", "sh", "-c", line + '; exec "$SHELL"']);
+		else
+			Quickshell.execDetached(["sh", "-c", line]);
 
-		entry.execute();
-		History.noteLaunch(entry.id);
+		History.noteCommand(line);
 		root.close();
 	}
 
@@ -268,7 +461,7 @@ Scope {
 			.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 		const name = entry.name;
 		const lower = name.toLowerCase();
-		const term = root.term;
+		const term = root.body.toLowerCase();
 
 		let at = -1;
 		if (term !== "") {
@@ -349,13 +542,13 @@ Scope {
 			topFraction: Theme.launcherTop
 
 			Keys.onEscapePressed: root.close()
-			Keys.onReturnPressed: root.launch()
-			Keys.onEnterPressed: root.launch()
 			Keys.onDownPressed: root.move(1)
 			Keys.onUpPressed: root.move(-1)
 
-			// The search track. A lens with the magnifier in it on the left,
-			// the mode on the right - only "All" exists so far.
+			// The search track. The lens on the left shows what was
+			// recognised - the magnifier, "=" or ">_" - and the chip on the
+			// right names it, in the design's amber for a calculation and
+			// green for a command. Neither is a button.
 			Item {
 				width: parent.width
 				height: Theme.launcherTrackHeight
@@ -374,14 +567,25 @@ Scope {
 
 						SearchIcon {
 							anchors.centerIn: parent
+							visible: root.mode === "all"
 							width: 15
 							height: 15
 							color: Theme.glassOnLens
 						}
+
+						Text {
+							anchors.centerIn: parent
+							visible: root.mode !== "all"
+							text: root.mode === "calc" ? "=" : ">_"
+							font.pixelSize: root.mode === "calc" ? 20 : 14
+							font.family: root.mode === "run" ? "monospace" : label.font.family
+							font.weight: Font.Black
+							color: root.mode === "calc" ? Theme.calcInk : Theme.runInk
+						}
 					}
 
-					onAccepted: root.launch()
-					onAcceptedAlternate: root.launchNew()
+					onAccepted: root.act(false)
+					onAcceptedAlternate: root.act(true)
 				}
 
 				Chip {
@@ -391,8 +595,10 @@ Scope {
 						verticalCenter: parent.verticalCenter
 					}
 
-					text: "All"
+					text: root.mode === "calc" ? "Calc" : root.mode === "run" ? "Run" : "All"
 					active: true
+					accent: root.mode === "calc" ? Theme.warning
+						: root.mode === "run" ? Theme.success : "transparent"
 				}
 			}
 
@@ -460,7 +666,7 @@ Scope {
 
 							required property var modelData
 
-							readonly property bool selected: root.current?.id === modelData.id
+							readonly property bool selected: root.current?.key === "app:" + modelData.id
 							readonly property string iconFile: Quickshell.iconPath(modelData.icon, true)
 
 							width: tiles.tileWidth
@@ -529,8 +735,8 @@ Scope {
 								hoverEnabled: true
 								cursorShape: Qt.PointingHandCursor
 								onClicked: {
-									root.picked = tile.modelData.id;
-									root.launch();
+									root.picked = "app:" + tile.modelData.id;
+									root.act(false);
 								}
 							}
 						}
@@ -538,12 +744,11 @@ Scope {
 				}
 			}
 
-			// The rows. One list either way; the labels and the top-hit
-			// treatment come from what is in it.
+			// The rows: applications, a calculation, a command, its history.
 			Item {
 				width: parent.width
-				height: Math.min(8 * (Theme.launcherRowHeight + 4) + 40, list.contentHeight)
-				visible: root.listed.length > 0
+				height: Math.min(8 * (Theme.launcherRowHeight + 4) + 60, list.contentHeight)
+				visible: root.items.length > 0
 
 				Flickable {
 					id: list
@@ -560,202 +765,18 @@ Scope {
 						spacing: 4
 
 						Repeater {
-							model: root.listed
+							model: root.items
 
-							Item {
-								id: slot
-
+							Loader {
 								required property var modelData
 								required property int index
 
-								// The first match gets the design's card; the
-								// rest are plain rows. With nothing typed there
-								// is no "hit", only what was used lately.
-								readonly property bool topHit: root.term !== "" && slot.index === 0
-								readonly property bool selected: root.current?.id === modelData.id
-								readonly property string iconFile: Quickshell.iconPath(modelData.icon, true)
-								readonly property bool firstOther: root.term === ""
-									? slot.index === 0
-									: slot.index === 1
-
 								width: rows.width
-								height: (slot.topHit ? Theme.launcherTopHitHeight : Theme.launcherRowHeight)
-									+ (label.visible ? label.height + 8 : 0)
 
-								Text {
-									id: label
-
-									x: 10
-									visible: slot.topHit || slot.firstOther
-									text: slot.topHit ? "TOP HIT" : "APPLICATIONS"
-									font.pixelSize: Theme.fontCaption
-									font.bold: true
-									font.letterSpacing: 0.66
-									opacity: 0.6
-									color: Theme.glassTextPrimary
-								}
-
-								Rectangle {
-									id: row
-
-									anchors.bottom: parent.bottom
-									width: parent.width
-									height: slot.topHit ? Theme.launcherTopHitHeight : Theme.launcherRowHeight
-									radius: slot.topHit ? 18 : Theme.radiusRow
-
-									// The top hit is a bright card. Everything
-									// else is bare until pointed at or picked.
-									color: slot.topHit || slot.selected ? Theme.glassChipActive
-										: rowMouse.containsMouse ? Theme.glassControlHover
-										: "transparent"
-									border.width: slot.topHit || slot.selected ? 1 : 0
-									border.color: Theme.glassTrackBorderFocus
-
-									Behavior on color {
-										ColorAnimation { duration: 120 }
-									}
-
-									Row {
-										anchors {
-											left: parent.left
-											right: parent.right
-											leftMargin: Theme.spacingM
-											rightMargin: Theme.spacingM
-											verticalCenter: parent.verticalCenter
-										}
-
-										spacing: Theme.spacingM
-
-										// Every application on a disc of its own
-										// colour. The icon sits on it where the
-										// theme has one; the initial where not.
-										Lens {
-											id: disc
-
-											anchors.verticalCenter: parent.verticalCenter
-											width: slot.topHit ? 36 : 30
-											height: width
-											sheen: false
-											tint: root.tint(slot.modelData.name)
-
-											Image {
-												anchors.centerIn: parent
-												width: parent.width * 0.72
-												height: width
-												visible: slot.iconFile !== ""
-												source: slot.iconFile
-												sourceSize: Qt.size(64, 64)
-												fillMode: Image.PreserveAspectFit
-												smooth: true
-											}
-
-											Text {
-												anchors.centerIn: parent
-												visible: slot.iconFile === ""
-												text: slot.modelData.name.slice(0, 1).toUpperCase()
-												font.pixelSize: slot.topHit ? 15 : 12
-												font.weight: Font.Black
-												color: root.ink(slot.modelData.name)
-											}
-										}
-
-										Column {
-											anchors.verticalCenter: parent.verticalCenter
-											width: parent.width - disc.width - Theme.spacingM
-												- trailing.width - Theme.spacingM
-											spacing: 2
-
-											Text {
-												width: parent.width
-												elide: Text.ElideRight
-												textFormat: Text.RichText
-												text: root.marked(slot.modelData)
-												font.pixelSize: slot.topHit ? 15 : Theme.fontLead
-												font.weight: slot.topHit || slot.selected ? Font.Bold : Font.DemiBold
-												color: Theme.glassTextPrimary
-											}
-
-											Text {
-												width: parent.width
-												elide: Text.ElideRight
-												visible: slot.topHit && text !== ""
-												text: ["Application", slot.modelData.genericName]
-													.filter(part => part).join(" · ")
-												font.pixelSize: Theme.fontBody
-												font.weight: Font.DemiBold
-												opacity: 0.75
-												color: Theme.glassTextPrimary
-											}
-										}
-
-										// On the card: what Enter does, and Shift+Enter
-										// when the first would switch rather than open.
-										// On a row: a dot if it is running, and the kind
-										// of thing it is.
-										Row {
-											id: trailing
-
-											readonly property int running: root.windowsFor(slot.modelData).length
-
-											anchors.verticalCenter: parent.verticalCenter
-											spacing: 6
-
-											Rectangle {
-												anchors.verticalCenter: parent.verticalCenter
-												visible: !slot.topHit && trailing.running > 0
-												width: 6
-												height: 6
-												radius: 3
-												color: Theme.success
-											}
-
-											Text {
-												anchors.verticalCenter: parent.verticalCenter
-												text: slot.topHit
-													? (trailing.running > 0 ? "Switch" : "Open")
-													: root.kind(slot.modelData)
-												font.pixelSize: Theme.fontBody
-												font.weight: Font.DemiBold
-												opacity: slot.topHit ? 0.9 : 0.6
-												color: Theme.glassTextPrimary
-											}
-
-											KeyCap {
-												anchors.verticalCenter: parent.verticalCenter
-												visible: slot.topHit
-												text: "↵"
-											}
-
-											Text {
-												anchors.verticalCenter: parent.verticalCenter
-												visible: slot.topHit && trailing.running > 0
-												text: "New"
-												font.pixelSize: Theme.fontBody
-												font.weight: Font.DemiBold
-												opacity: 0.7
-												color: Theme.glassTextPrimary
-											}
-
-											KeyCap {
-												anchors.verticalCenter: parent.verticalCenter
-												visible: slot.topHit && trailing.running > 0
-												text: "⇧↵"
-											}
-										}
-									}
-
-									MouseArea {
-										id: rowMouse
-
-										anchors.fill: parent
-										hoverEnabled: true
-										cursorShape: Qt.PointingHandCursor
-										onClicked: {
-											root.picked = slot.modelData.id;
-											root.launch();
-										}
-									}
-								}
+								sourceComponent: modelData.kind === "calc" ? calcCard
+									: modelData.kind === "run" ? runCard
+									: modelData.kind === "history" ? historyRow
+									: appRow
 							}
 						}
 					}
@@ -767,10 +788,11 @@ Scope {
 			Text {
 				width: parent.width
 				horizontalAlignment: Text.AlignHCenter
-				visible: root.term !== "" && root.ordered.length === 0
+				visible: root.term !== "" && root.items.length === 0
 				topPadding: 16
 				bottomPadding: 8
-				text: `Nothing matches “${root.query.trim()}”`
+				text: root.mode === "calc" ? "Not a calculation I can do"
+					: `Nothing matches “${root.query.trim()}”`
 				font.pixelSize: Theme.fontTitle
 				font.weight: Font.DemiBold
 				opacity: 0.6
@@ -798,7 +820,7 @@ Scope {
 						verticalCenterOffset: 4
 					}
 
-					visible: root.term !== ""
+					visible: root.term !== "" && root.mode === "all"
 					text: `Search the web for “${root.query.trim()}”`
 					font.pixelSize: Theme.fontBody
 					font.weight: Font.DemiBold
@@ -826,9 +848,19 @@ Scope {
 					spacing: 14
 
 					Repeater {
-						model: [["↑↓", "Move"],
-							["↵", root.currentWindows.length > 0 ? "Switch" : "Open"],
-							["Esc", "Close"]]
+						model: {
+							// Only promise what Enter can do: without wl-copy a result
+							// can be read but not copied.
+							const kind = root.current?.kind ?? "app";
+							const enter = kind === "calc" ? (root.hasCopy ? "Copy" : null)
+								: kind === "run" || kind === "history" ? "Run"
+								: root.currentWindows.length > 0 ? "Switch" : "Open";
+							const rows = [["↑↓", "Move"]];
+							if (enter) rows.push(["↵", enter]);
+							if (kind === "run" || kind === "history") rows.push(["⇧↵", "In terminal"]);
+							rows.push(["Esc", "Close"]);
+							return rows;
+						}
 
 						Row {
 							required property var modelData
@@ -850,6 +882,436 @@ Scope {
 							}
 						}
 					}
+				}
+			}
+		}
+	}
+
+	// A label with the right font for the lens glyph to borrow.
+	Text { id: label; visible: false }
+
+	// --- the row kinds -------------------------------------------------------
+
+	// An application: the first match gets the design's card, the rest are
+	// bare until pointed at or picked. Labels mark the sections.
+	Component {
+		id: appRow
+
+		Item {
+			id: slot
+
+			readonly property var entry: modelData.entry
+			readonly property bool topHit: root.term !== "" && index === 0 && root.appOnTop
+			readonly property bool selected: root.current?.key === modelData.key
+			readonly property string iconFile: Quickshell.iconPath(entry.icon, true)
+			readonly property int running: root.windowsFor(entry).length
+			readonly property bool labelled: slot.topHit
+				|| (root.term === "" ? index === 0
+					: index === (root.appOnTop ? 1 : root.items.findIndex(item => item.kind === "app")))
+
+			height: (slot.topHit ? Theme.launcherTopHitHeight : Theme.launcherRowHeight)
+				+ (slot.labelled ? sectionLabel.height + 8 : 0)
+
+			Text {
+				id: sectionLabel
+
+				x: 10
+				visible: slot.labelled
+				text: slot.topHit ? "TOP HIT" : "APPLICATIONS"
+				font.pixelSize: Theme.fontCaption
+				font.bold: true
+				font.letterSpacing: 0.66
+				opacity: 0.6
+				color: Theme.glassTextPrimary
+			}
+
+			Rectangle {
+				anchors.bottom: parent.bottom
+				width: parent.width
+				height: slot.topHit ? Theme.launcherTopHitHeight : Theme.launcherRowHeight
+				radius: slot.topHit ? 18 : Theme.radiusRow
+
+				color: slot.topHit || slot.selected ? Theme.glassChipActive
+					: rowMouse.containsMouse ? Theme.glassControlHover
+					: "transparent"
+				border.width: slot.topHit || slot.selected ? 1 : 0
+				border.color: Theme.glassTrackBorderFocus
+
+				Behavior on color {
+					ColorAnimation { duration: 120 }
+				}
+
+				Row {
+					anchors {
+						left: parent.left
+						right: parent.right
+						leftMargin: Theme.spacingM
+						rightMargin: Theme.spacingM
+						verticalCenter: parent.verticalCenter
+					}
+
+					spacing: Theme.spacingM
+
+					Lens {
+						id: disc
+
+						anchors.verticalCenter: parent.verticalCenter
+						width: slot.topHit ? 36 : 30
+						height: width
+						sheen: false
+						tint: root.tint(slot.entry.name)
+
+						Image {
+							anchors.centerIn: parent
+							width: parent.width * 0.72
+							height: width
+							visible: slot.iconFile !== ""
+							source: slot.iconFile
+							sourceSize: Qt.size(64, 64)
+							fillMode: Image.PreserveAspectFit
+							smooth: true
+						}
+
+						Text {
+							anchors.centerIn: parent
+							visible: slot.iconFile === ""
+							text: slot.entry.name.slice(0, 1).toUpperCase()
+							font.pixelSize: slot.topHit ? 15 : 12
+							font.weight: Font.Black
+							color: root.ink(slot.entry.name)
+						}
+					}
+
+					Column {
+						anchors.verticalCenter: parent.verticalCenter
+						width: parent.width - disc.width - Theme.spacingM - trailing.width - Theme.spacingM
+						spacing: 2
+
+						Text {
+							width: parent.width
+							elide: Text.ElideRight
+							textFormat: Text.RichText
+							text: root.marked(slot.entry)
+							font.pixelSize: slot.topHit ? 15 : Theme.fontLead
+							font.weight: slot.topHit || slot.selected ? Font.Bold : Font.DemiBold
+							color: Theme.glassTextPrimary
+						}
+
+						Text {
+							width: parent.width
+							elide: Text.ElideRight
+							visible: slot.topHit && text !== ""
+							text: ["Application", slot.entry.genericName].filter(part => part).join(" · ")
+							font.pixelSize: Theme.fontBody
+							font.weight: Font.DemiBold
+							opacity: 0.75
+							color: Theme.glassTextPrimary
+						}
+					}
+
+					Row {
+						id: trailing
+
+						anchors.verticalCenter: parent.verticalCenter
+						spacing: 6
+
+						Rectangle {
+							anchors.verticalCenter: parent.verticalCenter
+							visible: !slot.topHit && slot.running > 0
+							width: 6
+							height: 6
+							radius: 3
+							color: Theme.success
+						}
+
+						Text {
+							anchors.verticalCenter: parent.verticalCenter
+							text: slot.topHit ? (slot.running > 0 ? "Switch" : "Open") : root.kind(slot.entry)
+							font.pixelSize: Theme.fontBody
+							font.weight: Font.DemiBold
+							opacity: slot.topHit ? 0.9 : 0.6
+							color: Theme.glassTextPrimary
+						}
+
+						KeyCap { anchors.verticalCenter: parent.verticalCenter; visible: slot.topHit; text: "↵" }
+
+						Text {
+							anchors.verticalCenter: parent.verticalCenter
+							visible: slot.topHit && slot.running > 0
+							text: "New"
+							font.pixelSize: Theme.fontBody
+							font.weight: Font.DemiBold
+							opacity: 0.7
+							color: Theme.glassTextPrimary
+						}
+
+						KeyCap { anchors.verticalCenter: parent.verticalCenter; visible: slot.topHit && slot.running > 0; text: "⇧↵" }
+					}
+				}
+
+				MouseArea {
+					id: rowMouse
+
+					anchors.fill: parent
+					hoverEnabled: true
+					cursorShape: Qt.PointingHandCursor
+					onClicked: {
+						root.picked = modelData.key;
+						root.act(false);
+					}
+				}
+			}
+		}
+	}
+
+	// The design's 9c: the result large, "Copy" on the right, and beneath it
+	// the same number in other clothes.
+	Component {
+		id: calcCard
+
+		Column {
+			spacing: 6
+
+			readonly property bool selected: root.current?.key === "calc"
+
+			Text {
+				x: 10
+				text: "RESULT"
+				font.pixelSize: Theme.fontCaption
+				font.bold: true
+				font.letterSpacing: 0.66
+				opacity: 0.6
+				color: Theme.glassTextPrimary
+			}
+
+			Rectangle {
+				width: parent.width
+				height: 82
+				radius: 20
+				color: Theme.glassChipActive
+				border.width: 1
+				border.color: Theme.glassTrackBorderFocus
+
+				Column {
+					anchors {
+						left: parent.left
+						leftMargin: 18
+						verticalCenter: parent.verticalCenter
+					}
+
+					spacing: 4
+
+					Text {
+						text: root.body
+						font.pixelSize: Theme.fontBody
+						font.weight: Font.DemiBold
+						opacity: 0.75
+						color: Theme.glassTextPrimary
+					}
+
+					Text {
+						text: root.pretty(root.result)
+						font.pixelSize: 40
+						font.bold: true
+						font.letterSpacing: -0.4
+						color: Theme.glassTextPrimary
+					}
+				}
+
+				Row {
+					anchors {
+						right: parent.right
+						rightMargin: 18
+						verticalCenter: parent.verticalCenter
+					}
+
+					spacing: 6
+					visible: root.hasCopy
+
+					Text {
+						anchors.verticalCenter: parent.verticalCenter
+						text: "Copy"
+						font.pixelSize: Theme.fontBody
+						font.weight: Font.DemiBold
+						opacity: 0.9
+						color: Theme.glassTextPrimary
+					}
+
+					KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
+				}
+			}
+
+			Row {
+				width: parent.width
+				spacing: 6
+
+				Repeater {
+					model: {
+						const n = root.result, out = [];
+						if (Number.isInteger(n) && n >= 0) out.push("Hex 0x" + n.toString(16).toUpperCase());
+						out.push(root.pretty(n) + " px → " + root.pretty(n / 16) + " rem");
+						if (Number.isInteger(n) && n >= 0) out.push("Binary " + n.toString(2));
+						return out;
+					}
+
+					Chip {
+						required property string modelData
+
+						width: (parent.width - 12) / 3
+						text: modelData
+					}
+				}
+			}
+		}
+	}
+
+	// The design's 9d: the command, monospace, "Run" and "In terminal".
+	Component {
+		id: runCard
+
+		Column {
+			spacing: 6
+
+			Text {
+				x: 10
+				text: "COMMAND"
+				font.pixelSize: Theme.fontCaption
+				font.bold: true
+				font.letterSpacing: 0.66
+				opacity: 0.6
+				color: Theme.glassTextPrimary
+			}
+
+			Rectangle {
+				width: parent.width
+				height: 52
+				radius: 18
+				color: root.current?.key === modelData.key ? Theme.glassChipActive : Theme.glassControl
+				border.width: 1
+				border.color: root.current?.key === modelData.key ? Theme.glassTrackBorderFocus : Theme.glassControlBorder
+
+				Text {
+					anchors {
+						left: parent.left
+						right: runKeys.left
+						leftMargin: 14
+						rightMargin: Theme.spacingM
+						verticalCenter: parent.verticalCenter
+					}
+
+					elide: Text.ElideMiddle
+					text: modelData.line
+					font.pixelSize: Theme.fontLead
+					font.family: "monospace"
+					font.weight: Font.DemiBold
+					color: Theme.glassTextPrimary
+				}
+
+				Row {
+					id: runKeys
+
+					anchors {
+						right: parent.right
+						rightMargin: 14
+						verticalCenter: parent.verticalCenter
+					}
+
+					spacing: 12
+
+					Row {
+						spacing: 6
+						Text { anchors.verticalCenter: parent.verticalCenter; text: "Run"; font.pixelSize: Theme.fontBody; font.weight: Font.DemiBold; opacity: 0.9; color: Theme.glassTextPrimary }
+						KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
+					}
+
+					Row {
+						spacing: 6
+						Text { anchors.verticalCenter: parent.verticalCenter; text: "In terminal"; font.pixelSize: Theme.fontBody; font.weight: Font.DemiBold; opacity: 0.8; color: Theme.glassTextPrimary }
+						KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "⇧↵" }
+					}
+				}
+
+				MouseArea {
+					anchors.fill: parent
+					cursorShape: Qt.PointingHandCursor
+					onClicked: { root.picked = modelData.key; root.act(false); }
+				}
+			}
+		}
+	}
+
+	// A command run before, with how long ago.
+	Component {
+		id: historyRow
+
+		Item {
+			readonly property bool selected: root.current?.key === modelData.key
+			readonly property bool first: index === root.items.findIndex(item => item.kind === "history")
+
+			height: 44 + (first ? historyLabel.height + 8 : 0)
+
+			Text {
+				id: historyLabel
+
+				x: 10
+				visible: first
+				text: "HISTORY"
+				font.pixelSize: Theme.fontCaption
+				font.bold: true
+				font.letterSpacing: 0.66
+				opacity: 0.6
+				color: Theme.glassTextPrimary
+			}
+
+			Rectangle {
+				anchors.bottom: parent.bottom
+				width: parent.width
+				height: 44
+				radius: 14
+				color: selected ? Theme.glassChipActive : histMouse.containsMouse ? Theme.glassControlHover : "transparent"
+				border.width: selected ? 1 : 0
+				border.color: Theme.glassTrackBorderFocus
+
+				Text {
+					anchors {
+						left: parent.left
+						right: when.left
+						leftMargin: 14
+						rightMargin: Theme.spacingM
+						verticalCenter: parent.verticalCenter
+					}
+
+					elide: Text.ElideMiddle
+					text: modelData.line
+					font.pixelSize: Theme.fontTitle
+					font.family: "monospace"
+					font.weight: Font.DemiBold
+					color: Theme.glassTextPrimary
+				}
+
+				Text {
+					id: when
+
+					anchors {
+						right: parent.right
+						rightMargin: 14
+						verticalCenter: parent.verticalCenter
+					}
+
+					text: History.ago(History.commands[modelData.line]?.last ?? 0)
+					font.pixelSize: Theme.fontBody
+					font.weight: Font.DemiBold
+					opacity: 0.6
+					color: Theme.glassTextPrimary
+				}
+
+				MouseArea {
+					id: histMouse
+
+					anchors.fill: parent
+					hoverEnabled: true
+					cursorShape: Qt.PointingHandCursor
+					onClicked: { root.picked = modelData.key; root.act(false); }
 				}
 			}
 		}

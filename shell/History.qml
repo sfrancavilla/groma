@@ -28,6 +28,33 @@ Singleton {
 
 	function clear() {
 		adapter.apps = ({});
+		adapter.commands = ({});
+	}
+
+	// Commands run from the launcher, the same shape as apps.
+	readonly property var commands: adapter.commands ?? ({})
+
+	function noteCommand(line) {
+		const next = Object.assign({}, adapter.commands ?? {});
+		const was = next[line] ?? { count: 0, last: 0 };
+		next[line] = { count: was.count + 1, last: Date.now() };
+		adapter.commands = next;
+	}
+
+	function recentCommands(limit) {
+		return Object.keys(root.commands)
+			.sort((a, b) => root.commands[b].last - root.commands[a].last)
+			.slice(0, limit);
+	}
+
+	// "just now", "12 min ago", "2 h ago", "Yesterday", "Mon".
+	function ago(ms) {
+		const d = Date.now() - ms;
+		if (d < 60000) return "just now";
+		if (d < 3600000) return Math.round(d / 60000) + " min ago";
+		if (d < 86400000) return Math.round(d / 3600000) + " h ago";
+		if (d < 172800000) return "Yesterday";
+		return new Date(ms).toLocaleDateString(Qt.locale(), "ddd");
 	}
 
 	// Most recently launched first.
@@ -78,6 +105,7 @@ Singleton {
 			id: adapter
 
 			property var apps: ({})
+			property var commands: ({})
 		}
 	}
 }

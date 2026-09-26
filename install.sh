@@ -36,7 +36,9 @@ PACKAGES=(
 	xdg-desktop-portal-hyprland
 	xdg-desktop-portal-gtk
 
-	foot                # the terminal the keybinding opens
+	foot                # the terminal the keybinding opens, and "run in terminal"
+	wl-clipboard        # wl-copy: the launcher's calculator copies its result
+	libqalculate        # qalc: units and conversions in the launcher; arithmetic works without it
 	libnotify           # notify-send, for testing the notification daemon
 
 	# Screenshots. hyprshot is a script over grim and slurp, so this is also

@@ -8,6 +8,10 @@ Rectangle {
 	property alias text: label.text
 	property bool active: false
 
+	// A coloured chip, for a state worth a colour: the launcher's track shows
+	// the mode it recognised in amber for calculation and green for a command.
+	property color accent: "transparent"
+
 	signal clicked
 
 	// A Rectangle is zero-wide until told otherwise, so a Chip with no width
@@ -18,9 +22,13 @@ Rectangle {
 	height: Theme.chipHeight
 	radius: Theme.radiusPill
 
-	color: chip.active ? Theme.glassChipActive
+	color: chip.accent.a > 0 ? Qt.rgba(chip.accent.r, chip.accent.g, chip.accent.b, 0.38)
+		: chip.active ? Theme.glassChipActive
 		: mouse.containsMouse ? Theme.glassControlHover
 		: Theme.glassChip
+
+	border.width: chip.accent.a > 0 ? 1 : 0
+	border.color: Qt.rgba(chip.accent.r, chip.accent.g, chip.accent.b, 0.6)
 
 	Behavior on color {
 		ColorAnimation { duration: 120 }
