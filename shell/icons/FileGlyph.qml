@@ -28,30 +28,47 @@ Item {
 		height: 16
 		scale: glyph.zoom
 
-		// file: 11×14, radius 2
-		Rectangle {
+		// file: a page with its corner folded. folder: a tray with a tab.
+		Shape {
 			anchors.centerIn: parent
-			visible: glyph.kind === "file"
-			width: 11
-			height: 14
-			radius: 2
-			color: "transparent"
-			border.width: 2
-			border.color: glyph.color
-		}
+			width: 16
+			height: 16
+			visible: glyph.kind === "file" || glyph.kind === "folder"
+			preferredRendererType: Shape.CurveRenderer
 
-		// folder: 14×11, rounder at the bottom
-		Rectangle {
-			anchors.centerIn: parent
-			visible: glyph.kind === "folder"
-			width: 14
-			height: 11
-			radius: 2
-			bottomLeftRadius: 3
-			bottomRightRadius: 3
-			color: "transparent"
-			border.width: 2
-			border.color: glyph.color
+			ShapePath {
+				strokeColor: glyph.kind === "file" ? glyph.color : "transparent"
+				strokeWidth: 2
+				fillColor: "transparent"
+				joinStyle: ShapePath.RoundJoin
+				capStyle: ShapePath.RoundCap
+
+				startX: 3.5; startY: 1.5
+				PathLine { x: 9.5; y: 1.5 }
+				PathLine { x: 13; y: 5 }
+				PathLine { x: 13; y: 14.5 }
+				PathLine { x: 3.5; y: 14.5 }
+				PathLine { x: 3.5; y: 1.5 }
+				PathMove { x: 9.5; y: 1.5 }
+				PathLine { x: 9.5; y: 5 }
+				PathLine { x: 13; y: 5 }
+			}
+
+			ShapePath {
+				strokeColor: glyph.kind === "folder" ? glyph.color : "transparent"
+				strokeWidth: 2
+				fillColor: "transparent"
+				joinStyle: ShapePath.RoundJoin
+				capStyle: ShapePath.RoundCap
+
+				startX: 1.5; startY: 3.5
+				PathLine { x: 6; y: 3.5 }
+				PathLine { x: 7.5; y: 5.5 }
+				PathLine { x: 14.5; y: 5.5 }
+				PathLine { x: 14.5; y: 12.5 }
+				PathLine { x: 1.5; y: 12.5 }
+				PathLine { x: 1.5; y: 3.5 }
+			}
 		}
 
 		// home, downloads and trash are outlines rather than assemblies of
