@@ -52,6 +52,9 @@ ShellRoot {
 		controller: networkControl
 	}
 
+	// Type, pick, Enter.
+	Launcher {}
+
 	// Feedback for the volume and brightness keys, and for things that
 	// happened to the sound.
 	Osd { id: osd }

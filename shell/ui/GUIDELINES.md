@@ -78,6 +78,7 @@ answer - first row that matches:
 | --- | --- |
 | Asks a question you can decline | `Cancel` and the affirmative |
 | Asks a question with only one answer | No footer - `Enter` submits |
+| Is a search: what you type is the choice | No footer - `Enter` runs the pick; the search track is the header |
 | Offers a choice | The affirmative alone |
 | Asks nothing | No footer |
 
@@ -105,6 +106,7 @@ Which puts every surface built so far in exactly one place:
 | Bluetooth devices sheet | X | `Forget` · `Pair`/`Connect` |
 | Polkit prompt | none | `Cancel` `Authenticate` |
 | Lock screen | none | none - `Enter` submits |
+| Launcher | X | none - `Enter` runs the pick |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
 there as well as the X - two chips side by side doing one thing. Note that the

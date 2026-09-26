@@ -37,7 +37,7 @@ hl.monitor({
 -- Set programs that you use
 local terminal = "foot"
 local fileManager = "dolphin"
-local menu        = "hyprlauncher"
+local menu        = "qs -c groma ipc call launcher toggle"  -- the shell's own launcher
 
 
 -------------------
