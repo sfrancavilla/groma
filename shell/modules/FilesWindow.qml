@@ -183,8 +183,9 @@ Scope {
 	// A folder just made, to be renamed as soon as the model shows it.
 	property string pendingRename: ""
 
+	// One thing at a time: the selection narrows to what is being renamed.
 	function startRename(entry) {
-		root.picked = entry.path;
+		root.select(entry, "only");
 		root.renamingFolder = entry.folder;
 		root.renaming = entry.path;
 	}
