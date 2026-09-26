@@ -12,7 +12,8 @@ import ".."
 // The window never touches the disk itself. QML can read a folder but not
 // write one, so browsing lives here and every operation goes through the
 // worker beside this file, files-worker.py: one JSON line each way. Rename,
-// new folder, trash, restore and undo are here; copy and move come next.
+// new folder, trash, restore, copy, move and undo; a copy reports its
+// progress in a card and asks about a name already taken in a sheet.
 //
 // The window is the pane, edge to edge, and it tiles like any other:
 // Hyprland rounds it and casts the shadow, and the layout is anchored so
@@ -62,6 +63,13 @@ Scope {
 		}
 	}
 
+	Process {
+		id: copyProbe
+
+		command: ["bash", "-c", "command -v wl-copy && command -v wl-paste"]
+		onExited: code => root.hasCopy = code === 0
+	}
+
 	Timer {
 		id: reviveWorker
 
@@ -86,6 +94,10 @@ Scope {
 		try {
 			msg = JSON.parse(line);
 		} catch (err) {
+			return;
+		}
+		if (msg.event !== undefined) {
+			root.progress(msg);
 			return;
 		}
 		const then = root.pending[msg.id];
@@ -200,8 +212,11 @@ Scope {
 	function actionsFor(entry) {
 		const out = [];
 		if (entry === null) {
-			if (!root.inTrash)
+			if (!root.inTrash) {
+				if (root.held !== null || root.hasCopy)
+					out.push({ label: "Paste", run: () => root.paste(undefined) });
 				out.push({ label: "New folder", run: () => root.newFolder() });
+			}
 			return out;
 		}
 		if (root.inTrash) {
@@ -211,6 +226,10 @@ Scope {
 		}
 		out.push({ label: "Open", run: () => root.openEntry(entry) });
 		out.push({ label: "Rename", run: () => root.startRename(entry) });
+		out.push({ label: "Copy", run: () => root.hold(entry, false) });
+		out.push({ label: "Cut", run: () => root.hold(entry, true) });
+		if (entry.folder && (root.held !== null || root.hasCopy))
+			out.push({ label: "Paste into " + entry.name, run: () => root.paste(entry.path) });
 		out.push({ label: "Copy path", run: () => {
 			Quickshell.execDetached(["sh", "-c", "printf %s \"$1\" | wl-copy", "sh", entry.path]);
 			root.say(`Copied ${root.tilde(entry.path)}`);
@@ -301,6 +320,154 @@ Scope {
 			root.restoreEntry(root.currentEntry);
 		else
 			root.openEntry(root.currentEntry);
+	}
+
+	// --- copy and move -------------------------------------------------------
+	//
+	// Ctrl+C and Ctrl+X remember what was picked; Ctrl+V asks the worker to
+	// bring it here. The same list goes onto the desktop's clipboard as file
+	// URLs, so a paste in another application gets the files too, and a
+	// paste here with nothing remembered reads that clipboard back.
+
+	// { paths, cut } or null.
+	property var held: null
+
+	function hold(entry, cut) {
+		root.held = { paths: [entry.path], cut: cut };
+		root.publishHeld();
+		root.say((cut ? "Cut " : "Copied ") + entry.name + " · Ctrl+V pastes");
+	}
+
+	function publishHeld() {
+		if (root.held === null || !root.hasCopy)
+			return;
+		const urls = root.held.paths.map(path => "file://" + encodeURI(path)).join("\r\n") + "\r\n";
+		Quickshell.execDetached(["sh", "-c", 'printf %s "$1" | wl-copy -t text/uri-list', "sh", urls]);
+	}
+
+	// Into the folder on screen, or into `folder` when given.
+	function paste(folder) {
+		if (root.inTrash)
+			return;
+		const to = folder ?? root.path;
+		if (root.held !== null) {
+			root.transferHeld(to);
+			return;
+		}
+		if (root.hasCopy) {
+			pasteProbe.target = to;
+			pasteProbe.running = true;
+		}
+	}
+
+	function transferHeld(to) {
+		const cut = root.held.cut;
+		root.startTransfer(cut ? "move" : "copy", root.held.paths, to);
+		if (cut)
+			root.held = null;
+	}
+
+	// What another application put on the clipboard, as files.
+	Process {
+		id: pasteProbe
+
+		property string target: ""
+
+		command: ["wl-paste", "-t", "text/uri-list", "-n"]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				const paths = text.split(/\r?\n/)
+					.filter(line => line.startsWith("file://"))
+					.map(line => decodeURI(line.slice(7)));
+				if (paths.length === 0)
+					root.say("Nothing to paste");
+				else
+					root.startTransfer("copy", paths, pasteProbe.target);
+			}
+		}
+	}
+
+	// The copy or move in flight: what the design's card shows.
+	// { id, op, count, to, file, index, done, total, started } or null.
+	property var transfer: null
+
+	// The question the worker is waiting on, from the design's sheet.
+	// { id, name, existing, incoming, remaining } or null.
+	property var conflict: null
+	property bool applyAll: false
+
+	property bool hasCopy: false
+
+	function startTransfer(op, paths, to) {
+		if (root.transfer !== null) {
+			root.say("Wait for the current copy to finish");
+			return;
+		}
+		const id = root.nextId;
+		root.transfer = { id: id, op: op, count: paths.length, to: to, file: "", index: 0,
+			done: 0, total: 0, started: Date.now() };
+		root.ask(op, { paths: paths, to: to }, msg => {
+			root.transfer = null;
+			root.conflict = null;
+			if (msg.cancelled)
+				root.say((op === "copy" ? "Copy" : "Move") + " cancelled");
+			else if (msg.count > 0)
+				root.say((op === "copy" ? "Copied " : "Moved ") + root.things(msg.count)
+					+ " to " + root.nameOf(to) + " · Ctrl+Z undoes");
+			else
+				root.say("Nothing " + (op === "copy" ? "copied" : "moved"));
+		});
+	}
+
+	// The worker's running commentary on a transfer.
+	function progress(msg) {
+		if (root.transfer === null || msg.id !== root.transfer.id)
+			return;
+		if (msg.event === "progress") {
+			root.transfer = Object.assign({}, root.transfer, {
+				file: msg.file, index: msg.index, done: msg.done, total: msg.total });
+		} else if (msg.event === "conflict") {
+			root.applyAll = false;
+			root.conflict = { id: msg.id, name: msg.name, existing: msg.existing,
+				incoming: msg.incoming, remaining: msg.remaining };
+		}
+	}
+
+	function answerConflict(choice) {
+		const c = root.conflict;
+		root.conflict = null;
+		if (c !== null)
+			root.ask("answer", { id: c.id, choice: choice, all: root.applyAll });
+	}
+
+	function cancelTransfer() {
+		if (root.transfer !== null)
+			root.ask("cancel", { id: root.transfer.id });
+		root.conflict = null;
+	}
+
+	function things(n) {
+		return n === 1 ? "1 item" : n + " items";
+	}
+
+	function nameOf(path) {
+		const place = root.places.find(p => p.path === path);
+		return place ? place.name : root.baseName(path);
+	}
+
+	// "about 12 s left", from how fast it has gone so far.
+	readonly property string transferEta: {
+		const t = root.transfer;
+		if (t === null || t.done === 0 || t.total === 0)
+			return "";
+		const elapsed = (Date.now() - t.started) / 1000;
+		const left = (t.total - t.done) / (t.done / Math.max(elapsed, 0.1));
+		if (left < 1)
+			return "";
+		if (left < 90)
+			return "about " + Math.ceil(left) + " s left";
+		return "about " + Math.ceil(left / 60) + " min left";
 	}
 
 	// Where each thing in the Trash came from, by name, from the worker.
@@ -427,6 +594,7 @@ Scope {
 	onOpenChanged: {
 		if (root.open) {
 			placesProbe.running = true;
+			copyProbe.running = true;
 			worker.running = true;
 		} else {
 			worker.running = false;
@@ -596,7 +764,7 @@ Scope {
 		if (days === 0)
 			return withTime ? "Today, " + Qt.formatTime(then, "h:mm") : "Today";
 		if (days === 1)
-			return "Yesterday";
+			return withTime === "exact" ? "Yesterday, " + Qt.formatTime(then, "h:mm") : "Yesterday";
 		if (then.getFullYear() === now.getFullYear())
 			return Qt.formatDate(then, "MMM d");
 		return Qt.formatDate(then, "MMM d, yyyy");
@@ -694,6 +862,26 @@ Scope {
 			root.toggleMenu();
 		}
 
+		// The paths Ctrl+C, Ctrl+X and Ctrl+V take.
+		function copy(): void {
+			if (root.currentEntry !== null && !root.inTrash)
+				root.hold(root.currentEntry, false);
+		}
+
+		function cut(): void {
+			if (root.currentEntry !== null && !root.inTrash)
+				root.hold(root.currentEntry, true);
+		}
+
+		function paste(): void {
+			root.paste(undefined);
+		}
+
+		// The path the conflict sheet's chips take: skip, keep or replace.
+		function answer(choice: string): void {
+			root.answerConflict(choice);
+		}
+
 		// Order the list by a column: name, modified, size, origin, deleted.
 		function sort(column: string): void {
 			root.sortOn(column);
@@ -744,6 +932,16 @@ Scope {
 					const ctrl = event.modifiers & Qt.ControlModifier;
 					const shift = event.modifiers & Qt.ShiftModifier;
 					const columns = root.grid ? gridView.columnCount : 1;
+
+					// The conflict sheet: Escape skips, Return keeps both.
+					if (root.conflict !== null) {
+						if (event.key === Qt.Key_Escape)
+							root.answerConflict("skip");
+						else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+							root.answerConflict("keep");
+						event.accepted = true;
+						return;
+					}
 
 					// A question on screen takes every key: Escape declines,
 					// Return affirms, the rest wait.
@@ -820,6 +1018,14 @@ Scope {
 							root.newFolder();
 					} else if (ctrl && event.key === Qt.Key_Z) {
 						root.undo();
+					} else if (ctrl && event.key === Qt.Key_C) {
+						if (root.currentEntry !== null && !root.inTrash)
+							root.hold(root.currentEntry, false);
+					} else if (ctrl && event.key === Qt.Key_X) {
+						if (root.currentEntry !== null && !root.inTrash)
+							root.hold(root.currentEntry, true);
+					} else if (ctrl && event.key === Qt.Key_V) {
+						root.paste(undefined);
 					} else if (event.key === Qt.Key_Backspace && !searchField.activeFocus) {
 						root.up();
 					} else if (alt && event.key === Qt.Key_Up) {
@@ -1459,6 +1665,9 @@ Scope {
 
 							readonly property bool editing: root.renaming === modelData.path
 							readonly property var trashed: root.trashInfo[modelData.name]
+							readonly property bool cutAway: root.held !== null && root.held.cut && root.held.paths.includes(modelData.path)
+
+							opacity: cutAway ? 0.5 : 1
 
 							Text {
 								anchors {
@@ -1625,6 +1834,9 @@ Scope {
 							readonly property bool selected: root.picked === modelData.path
 							readonly property bool editing: root.renaming === modelData.path
 							readonly property bool image: !modelData.folder && root.imageTypes.includes(modelData.suffix)
+							readonly property bool cutAway: root.held !== null && root.held.cut && root.held.paths.includes(modelData.path)
+
+							opacity: cutAway ? 0.5 : 1
 
 							width: gridView.cellWidth
 							height: gridView.cellHeight
@@ -1854,6 +2066,8 @@ Scope {
 
 						Repeater {
 							model: {
+								if (root.conflict !== null)
+									return [["↵", "Keep both"], ["Esc", "Skip"]];
 								if (root.confirm !== null)
 									return [["↵", root.confirm.verb], ["Esc", "Cancel"]];
 								if (root.renaming !== "")
@@ -2007,6 +2221,290 @@ Scope {
 								onEntered: if (root.menu !== null) root.menu = Object.assign({}, root.menu, { index: menuRow.index })
 								onClicked: { root.menu = Object.assign({}, root.menu, { index: menuRow.index }); root.runMenu(); }
 							}
+						}
+					}
+				}
+			}
+
+			// The copy in flight: the design's card, docked bottom right over
+			// the list, with the file, the count, a track and Cancel.
+			GlassPanel {
+				id: transferCard
+
+				anchors {
+					right: parent.right
+					bottom: parent.bottom
+					rightMargin: 16
+					bottomMargin: Theme.filesFooterHeight + (root.transfer !== null ? 16 : 8)
+				}
+
+				width: Math.min(300, body.width - 32)
+				height: transferColumn.implicitHeight + 28
+				radius: 20
+				shadowLayers: 8
+				visible: opacity > 0.01
+				opacity: root.transfer !== null ? 1 : 0
+
+				Behavior on opacity {
+					NumberAnimation { duration: 220; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
+				}
+				Behavior on anchors.bottomMargin {
+					NumberAnimation { duration: 220; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
+				}
+
+				Column {
+					id: transferColumn
+
+					anchors {
+						left: parent.left
+						right: parent.right
+						top: parent.top
+						margins: 14
+					}
+
+					spacing: 10
+
+					Row {
+						width: parent.width
+						spacing: 10
+
+						Lens {
+							id: transferDisc
+
+							anchors.verticalCenter: parent.verticalCenter
+							width: 36
+							height: 36
+							sheen: false
+
+							FileGlyph {
+								anchors.centerIn: parent
+								kind: "downloads"
+							}
+						}
+
+						Column {
+							anchors.verticalCenter: parent.verticalCenter
+							width: parent.width - transferDisc.width - 10
+							spacing: 2
+
+							Text {
+								width: parent.width
+								elide: Text.ElideRight
+								text: root.transfer === null ? ""
+									: (root.transfer.op === "copy" ? "Copying " : "Moving ")
+										+ root.things(root.transfer.count) + " to " + root.nameOf(root.transfer.to)
+								font.pixelSize: Theme.fontTitle
+								font.bold: true
+								color: Theme.glassTextPrimary
+							}
+
+							Text {
+								width: parent.width
+								elide: Text.ElideRight
+								text: root.transfer === null ? ""
+									: (root.transfer.file !== "" ? root.transfer.file + " · " : "")
+										+ (root.transfer.index + 1) + " of " + root.transfer.count
+								font.pixelSize: Theme.fontBody
+								font.weight: Font.DemiBold
+								opacity: 0.75
+								color: Theme.glassTextPrimary
+							}
+						}
+					}
+
+					// The track: 6px, the done part white.
+					Rectangle {
+						width: parent.width
+						height: 6
+						radius: 3
+						color: Theme.glassControlHover
+
+						Rectangle {
+							width: root.transfer !== null && root.transfer.total > 0
+								? parent.width * root.transfer.done / root.transfer.total : 0
+							height: parent.height
+							radius: 3
+							color: Theme.glassTextPrimary
+
+							Behavior on width {
+								NumberAnimation { duration: 120 }
+							}
+						}
+					}
+
+					Item {
+						width: parent.width
+						height: cancelChip.height
+
+						Text {
+							anchors {
+								left: parent.left
+								right: cancelChip.left
+								rightMargin: 10
+								verticalCenter: parent.verticalCenter
+							}
+
+							elide: Text.ElideRight
+							text: root.transfer === null ? ""
+								: root.size(root.transfer.done) + " of " + root.size(root.transfer.total)
+									+ (root.transferEta !== "" ? " · " + root.transferEta : "")
+							font.pixelSize: Theme.fontCaption
+							font.weight: Font.DemiBold
+							opacity: 0.75
+							color: Theme.glassTextPrimary
+						}
+
+						DialogButton {
+							id: cancelChip
+
+							anchors.right: parent.right
+							text: "Cancel"
+							onClicked: root.cancelTransfer()
+						}
+					}
+				}
+			}
+
+			// A name already taken: the design's sheet, with the two things
+			// side by side and three ways out.
+			GlassDialog {
+				id: conflictSheet
+
+				anchors.fill: parent
+				open: root.conflict !== null
+				visible: open || sheet.opacity > 0.01
+				sheetWidth: Math.min(360, body.width - 40)
+				title: root.conflict !== null ? `“${root.conflict.name}” already exists here` : ""
+				body: root.conflict !== null
+					? `${root.nameOf(root.transfer?.to ?? root.path)} already has ${root.conflict.existing.folder ? "a folder" : "a file"} with this name. Choose which one to keep.`
+					: ""
+
+				icon: Lens {
+					width: 44
+					height: 44
+					sheen: false
+
+					FileGlyph {
+						anchors.centerIn: parent
+						kind: root.conflict !== null && root.conflict.existing.folder ? "folder" : "file"
+						zoom: 1.3
+						color: Theme.calcInk
+					}
+				}
+
+				Column {
+					width: parent.width
+					spacing: 6
+
+					Repeater {
+						model: root.conflict === null ? [] : [
+							{ label: "In " + root.nameOf(root.transfer?.to ?? root.path), info: root.conflict.existing, newer: root.conflict.existing.modified >= root.conflict.incoming.modified },
+							{ label: "Incoming", info: root.conflict.incoming, newer: root.conflict.incoming.modified > root.conflict.existing.modified }
+						]
+
+						Rectangle {
+							id: option
+
+							required property var modelData
+
+							width: parent.width
+							height: 44
+							radius: 14
+							color: modelData.newer ? Theme.glassChipActive : Theme.glassChip
+							border.width: 1
+							border.color: modelData.newer ? Theme.glassTrackBorderFocus : Theme.glassControlBorder
+
+							Row {
+								anchors {
+									left: parent.left
+									right: parent.right
+									leftMargin: 10
+									rightMargin: 10
+									verticalCenter: parent.verticalCenter
+								}
+
+								spacing: 10
+
+								Lens {
+									anchors.verticalCenter: parent.verticalCenter
+									width: 28
+									height: 28
+									sheen: false
+
+									FileGlyph {
+										anchors.centerIn: parent
+										kind: option.modelData.info.folder ? "folder" : "file"
+									}
+								}
+
+								Column {
+									anchors.verticalCenter: parent.verticalCenter
+									spacing: 1
+
+									Text {
+										text: option.modelData.label + (option.modelData.newer ? " · newer" : "")
+										font.pixelSize: Theme.fontBody
+										font.bold: true
+										color: Theme.glassTextPrimary
+									}
+
+									Text {
+										text: root.size(option.modelData.info.size)
+											+ (option.modelData.info.modified ? " · " + root.when(option.modelData.info.modified, "exact") : "")
+										font.pixelSize: Theme.fontCaption
+										font.weight: Font.DemiBold
+										opacity: 0.7
+										color: Theme.glassTextPrimary
+									}
+								}
+							}
+						}
+					}
+				}
+
+				Item {
+					width: parent.width
+					height: 24
+					visible: (root.conflict?.remaining ?? 0) > 0
+
+					Text {
+						anchors {
+							left: parent.left
+							leftMargin: 2
+							verticalCenter: parent.verticalCenter
+						}
+
+						text: `Apply to all remaining (${root.conflict?.remaining ?? 0})`
+						font.pixelSize: Theme.fontBody
+						font.weight: Font.DemiBold
+						color: Theme.glassTextPrimary
+					}
+
+					Switch {
+						anchors {
+							right: parent.right
+							verticalCenter: parent.verticalCenter
+						}
+
+						checked: root.applyAll
+						onToggled: root.applyAll = !root.applyAll
+					}
+				}
+
+				Row {
+					width: parent.width
+					spacing: Theme.spacingS
+
+					Repeater {
+						model: [["Skip", "secondary", "skip"], ["Keep both", "primary", "keep"], ["Replace", "destructive", "replace"]]
+
+						DialogButton {
+							required property var modelData
+
+							width: (parent.width - Theme.spacingS * 2) / 3
+							text: modelData[0]
+							variant: modelData[1]
+							onClicked: root.answerConflict(modelData[2])
 						}
 					}
 				}

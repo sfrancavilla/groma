@@ -14,13 +14,22 @@ see the same Trash.
 
 A journal of the last few operations gives Undo: a rename undoes as the
 reverse rename, a new folder as its removal if still empty, a trash as a
-restore, a restore as a trash.
+restore, a restore as a trash, a copy as the removal of the copies, a
+move as the move back.
+
+Copy and move run on a thread of their own, so the main loop keeps
+reading: a conflict is reported and the transfer waits for the answer, a
+cancel is honoured between chunks. Progress goes out as events carrying
+the request's id; the last line for that id carries `ok`.
 """
 import datetime
 import json
 import os
+import queue
 import shutil
 import sys
+import threading
+import time
 import urllib.parse
 
 HOME = os.path.expanduser("~")
@@ -29,10 +38,12 @@ TRASH_FILES = os.path.join(TRASH, "files")
 TRASH_INFO = os.path.join(TRASH, "info")
 
 journal = []
+emit_lock = threading.Lock()
 
 
 def emit(**obj):
-    print(json.dumps(obj), flush=True)
+    with emit_lock:
+        print(json.dumps(obj), flush=True)
 
 
 class Refused(Exception):
@@ -222,10 +233,213 @@ def op_undo():
         for p in entry[1]:
             trash_one(p)
         return {"undid": "restore"}
+    if kind == "copy":
+        for _, target in entry[1]:
+            if os.path.lexists(target):
+                remove(target)
+        return {"undid": "copy"}
+    if kind == "move":
+        for src, target in reversed(entry[1]):
+            if os.path.lexists(src):
+                raise Refused(f"Cannot undo: {os.path.basename(src)} exists again")
+            move(target, src)
+        return {"undid": "move"}
     raise Refused("Nothing to undo")
 
 
+# --- copy and move ----------------------------------------------------------
+
+CHUNK = 1 << 20
+transfer = None
+
+
+class Cancelled(Exception):
+    pass
+
+
+def size_of(path):
+    if os.path.islink(path):
+        return 0
+    if os.path.isdir(path):
+        total = 0
+        for folder, _, files in os.walk(path):
+            for name in files:
+                try:
+                    total += os.lstat(os.path.join(folder, name)).st_size
+                except OSError:
+                    pass
+        return total
+    try:
+        return os.lstat(path).st_size
+    except OSError:
+        return 0
+
+
+def describe(path):
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return {"size": 0, "modified": ""}
+    return {"size": size_of(path) if os.path.isdir(path) else st.st_size,
+            "modified": datetime.datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%dT%H:%M:%S"),
+            "folder": os.path.isdir(path) and not os.path.islink(path)}
+
+
+class Transfer(threading.Thread):
+    """One copy or move of several things into one folder."""
+
+    def __init__(self, rid, op, paths, dest):
+        super().__init__(daemon=True)
+        self.rid, self.op, self.paths, self.dest = rid, op, paths, dest
+        self.answers = queue.Queue()
+        self.cancelled = False
+        self.policy = None          # a choice made "for all remaining"
+        self.done = 0
+        self.total = 0
+        self.current = ""
+        self.index = 0
+        self.reported = 0.0
+
+    def run(self):
+        global transfer
+        results = []
+        target = None
+        try:
+            if not os.path.isdir(self.dest):
+                raise Refused("The destination folder does not exist")
+            self.total = sum(size_of(p) for p in self.paths)
+            self.report(force=True)
+            for i, src in enumerate(self.paths):
+                if self.cancelled:
+                    break
+                self.index = i
+                self.current = name = os.path.basename(src.rstrip("/"))
+                target = os.path.join(self.dest, name)
+                if os.path.abspath(src) == os.path.abspath(target):
+                    if self.op == "move":
+                        continue
+                    target = os.path.join(self.dest, unique(self.dest, name))
+                elif os.path.lexists(target):
+                    choice = self.resolve(src, target, len(self.paths) - i - 1)
+                    if choice == "skip":
+                        self.done += size_of(src)
+                        self.report(force=True)
+                        continue
+                    if choice == "keep":
+                        target = os.path.join(self.dest, unique(self.dest, name))
+                    elif choice == "replace":
+                        remove(target)
+                if self.op == "move" and os.lstat(src).st_dev == os.stat(self.dest).st_dev:
+                    os.rename(src, target)
+                    self.done += size_of(target)
+                    self.report(force=True)
+                else:
+                    self.copy_tree(src, target)
+                    if self.op == "move":
+                        remove(src)
+                    self.report(force=True)
+                results.append((src, target))
+                target = None
+        except Cancelled:
+            if target is not None and os.path.lexists(target):
+                remove(target)
+            self.finish(results, cancelled=True)
+            return
+        except Refused as why:
+            emit(id=self.rid, ok=False, error=str(why))
+            transfer = None
+            return
+        except PermissionError:
+            emit(id=self.rid, ok=False, error="Not allowed: no permission for that")
+            transfer = None
+            return
+        except OSError as err:
+            emit(id=self.rid, ok=False, error=err.strerror or str(err))
+            transfer = None
+            return
+        self.finish(results, cancelled=self.cancelled)
+
+    def finish(self, results, cancelled):
+        global transfer
+        if results:
+            journal.append((self.op, results))
+        emit(id=self.rid, ok=True, op=self.op, count=len(results), cancelled=cancelled)
+        transfer = None
+
+    def resolve(self, src, target, remaining):
+        if self.policy:
+            return self.policy
+        emit(id=self.rid, event="conflict", name=os.path.basename(target),
+             existing=describe(target), incoming=describe(src), remaining=remaining)
+        answer = self.answers.get()
+        if self.cancelled:
+            raise Cancelled()
+        choice = answer.get("choice", "skip")
+        if answer.get("all"):
+            self.policy = choice
+        return choice
+
+    def report(self, force=False):
+        now = time.monotonic()
+        if not force and now - self.reported < 0.1:
+            return
+        self.reported = now
+        emit(id=self.rid, event="progress", done=self.done, total=self.total,
+             file=self.current, index=self.index, count=len(self.paths))
+
+    def copy_tree(self, src, dst):
+        if self.cancelled:
+            raise Cancelled()
+        if os.path.islink(src):
+            os.symlink(os.readlink(src), dst)
+        elif os.path.isdir(src):
+            os.makedirs(dst, exist_ok=True)
+            for name in os.listdir(src):
+                self.copy_tree(os.path.join(src, name), os.path.join(dst, name))
+            shutil.copystat(src, dst)
+        else:
+            with open(src, "rb") as fi, open(dst, "wb") as fo:
+                while True:
+                    if self.cancelled:
+                        raise Cancelled()
+                    buf = fi.read(CHUNK)
+                    if not buf:
+                        break
+                    fo.write(buf)
+                    self.done += len(buf)
+                    self.report()
+            shutil.copystat(src, dst)
+
+
+def op_transfer(request):
+    global transfer
+    if transfer is not None and transfer.is_alive():
+        raise Refused("Another copy is still running")
+    transfer = Transfer(request["id"], request["op"], request["paths"], request["to"])
+    transfer.start()
+    return None            # the thread answers, when it is done
+
+
+# Neither answers on its own: the transfer's final line is the answer, and
+# these carry its id.
+def op_answer(request):
+    if transfer is not None:
+        transfer.answers.put({"choice": request.get("choice"), "all": bool(request.get("all"))})
+    return None
+
+
+def op_cancel(request):
+    if transfer is not None:
+        transfer.cancelled = True
+        transfer.answers.put({})
+    return None
+
+
 OPS = {
+    "copy": op_transfer,
+    "move": op_transfer,
+    "answer": op_answer,
+    "cancel": op_cancel,
     "rename": lambda r: op_rename(r["path"], r["name"]),
     "mkdir": lambda r: op_mkdir(r["parent"], r.get("name", "Untitled folder")),
     "trash": lambda r: op_trash(r["paths"]),
@@ -260,7 +474,8 @@ def main():
         except OSError as err:
             emit(id=rid, ok=False, error=err.strerror or str(err))
         else:
-            emit(id=rid, ok=True, op=request.get("op"), **result)
+            if result is not None:
+                emit(id=rid, ok=True, op=request.get("op"), **result)
 
 
 if __name__ == "__main__":

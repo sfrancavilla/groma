@@ -110,6 +110,8 @@ Which puts every surface built so far in exactly one place:
 | Lock screen | none | none - `Enter` submits |
 | Launcher | X | none - `Enter` runs the pick |
 | Files window | X | none - `Enter` opens the pick; the footer carries the status and the keys |
+| Files: a name already taken | none | `Skip` · `Keep both` · `Replace` - three answers, `Escape` is `Skip` |
+| Files: a copy in flight | none - a card, not a sheet | `Cancel` alone |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
 there as well as the X - two chips side by side doing one thing. Note that the
