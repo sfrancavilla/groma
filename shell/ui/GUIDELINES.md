@@ -117,6 +117,8 @@ Which puts every surface built so far in exactly one place:
 | Groma Store window | X | none - `Enter` acts on the pick; the footer carries the status and the keys |
 | Groma Store: details | X | `Cancel` · `Install` / `Update` / `Remove` (destructive) |
 | Groma Store: a job in flight | none - a card | `Show terminal` · `Cancel` |
+| Power popup | none - a bar popup | none - a row acts |
+| Power: log out, restart, power off | none | `Cancel` `Log Out` / `Restart` / `Power Off` (destructive) |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
 there as well as the X - two chips side by side doing one thing. Note that the

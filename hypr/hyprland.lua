@@ -299,6 +299,7 @@ hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 -- Recovery, if it ever comes to that: Ctrl+Alt+F2 to a TTY, then
 -- `hyprctl dispatch exit` to end the session.
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("qs -c groma ipc call lock lock"))
+hl.bind(mainMod .. " + Escape", hl.dsp.exec_cmd("qs -c groma ipc call power toggle"))  -- lock, suspend, log out, restart, power off
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))    -- dwindle only
 
 -- Move focus with mainMod + arrow keys

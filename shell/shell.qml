@@ -195,6 +195,11 @@ ShellRoot {
 				anchors.verticalCenter: parent.verticalCenter
 			}
 
+			// Lock, suspend, log out, restart, power off.
+			PowerControl {
+				anchors.verticalCenter: parent.verticalCenter
+			}
+
 		}
 
 		// CENTER: clock		

@@ -449,6 +449,27 @@ Scope {
 	readonly property var everything: root.apps.slice()
 		.sort((a, b) => a.name.localeCompare(b.name))
 
+	// --- the power actions ---------------------------------------------------
+	//
+	// Typing "restart" or "shut down" finds them. They go through the power
+	// control's IPC, so the three that close everything ask first here too.
+	readonly property var systemActions: [
+		{ key: "lock", label: "Lock", glyph: "lock", words: ["lock", "lock screen"] },
+		{ key: "suspend", label: "Suspend", glyph: "moon", words: ["suspend", "sleep", "freeze"] },
+		{ key: "logout", label: "Log Out…", glyph: "leave", words: ["log out", "logout", "sign out", "exit"] },
+		{ key: "restart", label: "Restart…", glyph: "restart", words: ["restart", "reboot"] },
+		{ key: "poweroff", label: "Power Off…", glyph: "power", words: ["power off", "poweroff", "shut down", "shutdown", "turn off"] }
+	]
+
+	readonly property var systemItems: {
+		const term = root.body.toLowerCase();
+		if (term.length < 2)
+			return [];
+		return root.systemActions
+			.filter(a => a.words.some(w => w.startsWith(term) || w.split(" ").some(part => part.startsWith(term))))
+			.map(a => ({ kind: "system", key: "sys:" + a.key, action: a }));
+	}
+
 	// --- the list, as items of several kinds -------------------------------
 	//
 	// { kind: "app", entry }   { kind: "calc" }   { kind: "run", line }
@@ -486,8 +507,14 @@ Scope {
 		const appItems = root.matches.map(entry => ({ kind: "app", entry: entry, key: "app:" + entry.id }));
 
 		if (appsFirst) out.push(...appItems);
+		// "sleep" and "reboot" are programs as well as wishes. Typed bare,
+		// the wish comes first; ">" still says "run it".
+		if (root.mode === "run" && !root.forcedRun) out.push(...root.systemItems);
 		if (card) out.push(card);
 		if (!appsFirst) out.push(...appItems);
+
+		if (root.mode === "all")
+			out.push(...root.systemItems);
 
 		if (root.mode === "all")
 			out.push(...fileItems);
@@ -611,6 +638,10 @@ Scope {
 			root.close();
 			return;
 		}
+		case "system":
+			root.close();
+			Quickshell.execDetached(["qs", "-c", "groma", "ipc", "call", "power", "choose", item.action.key]);
+			return;
 		case "file":
 			root.openFile(alternate ? item.file.parent : item.file.path);
 			return;
@@ -1102,6 +1133,7 @@ Scope {
 									: modelData.kind === "run" ? runCard
 									: modelData.kind === "output" ? outputCard
 									: modelData.kind === "history" ? historyRow
+									: modelData.kind === "system" ? systemRow
 									: appRow
 							}
 						}
@@ -1193,6 +1225,7 @@ Scope {
 							const enter = kind === "calc" ? (root.hasCopy ? "Copy" : null)
 								: kind === "clip" ? "Copy"
 								: kind === "file" ? "Open"
+								: kind === "system" ? "Do"
 								: kind === "run" || kind === "history" ? "Run"
 								: root.currentWindows.length > 0 ? "Switch" : "Open";
 							const rows = [["↑↓", "Move"]];
@@ -1927,6 +1960,78 @@ Scope {
 
 				MouseArea {
 					id: clipMouse
+
+					anchors.fill: parent
+					hoverEnabled: true
+					cursorShape: Qt.PointingHandCursor
+					onClicked: { root.picked = modelData.key; root.act(false); }
+				}
+			}
+		}
+	}
+
+	// A power action: the power popup's disc and words, under a SYSTEM heading.
+	Component {
+		id: systemRow
+
+		Item {
+			readonly property bool selected: root.current?.key === modelData.key
+			readonly property bool first: index === root.items.findIndex(item => item.kind === "system")
+
+			height: Theme.launcherRowHeight + (first ? systemLabel.height + 8 : 0)
+
+			Text {
+				id: systemLabel
+
+				x: 10
+				visible: first
+				text: "SYSTEM"
+				font.pixelSize: Theme.fontCaption
+				font.bold: true
+				font.letterSpacing: 0.66
+				opacity: 0.6
+				color: Theme.glassTextPrimary
+			}
+
+			Rectangle {
+				anchors.bottom: parent.bottom
+				width: parent.width
+				height: Theme.launcherRowHeight
+				radius: Theme.radiusRow
+				color: selected ? Theme.glassChipActive : sysMouse.containsMouse ? Theme.glassControlHover : "transparent"
+				border.width: selected ? 1 : 0
+				border.color: Theme.glassTrackBorderFocus
+
+				Row {
+					anchors { left: parent.left; leftMargin: Theme.spacingM; verticalCenter: parent.verticalCenter }
+					spacing: Theme.spacingM
+
+					Lens {
+						width: 30
+						height: 30
+						sheen: false
+
+						PowerIcon {
+							anchors.centerIn: parent
+							width: 14
+							height: 14
+							stroke: 1.6
+							kind: modelData.action.glyph
+							color: Theme.fileInk
+						}
+					}
+
+					Text {
+						anchors.verticalCenter: parent.verticalCenter
+						text: modelData.action.label
+						font.pixelSize: Theme.fontLead
+						font.weight: selected ? Font.Bold : Font.DemiBold
+						color: Theme.glassTextPrimary
+					}
+				}
+
+				MouseArea {
+					id: sysMouse
 
 					anchors.fill: parent
 					hoverEnabled: true
