@@ -30,6 +30,9 @@ Scope {
 
 	property bool open: false
 
+	// The clipboard history service, for ":".
+	property var clipboard: null
+
 	// The pick is held by key, not by row: the list re-sorts on every
 	// keystroke. Keys look like "app:chromium", "run:hyprctl reload", "calc".
 	property string picked: ""
@@ -118,10 +121,13 @@ Scope {
 
 	readonly property bool forcedCalc: root.query.replace(/^\s+/, "").startsWith("=")
 	readonly property bool forcedRun: root.query.replace(/^\s+/, "").startsWith(">")
+	readonly property bool forcedClip: root.query.replace(/^\s+/, "").startsWith(":")
 
 	// The text with any prefix taken off.
-	readonly property string body: root.forcedCalc || root.forcedRun
+	readonly property string body: root.forcedCalc || root.forcedRun || root.forcedClip
 		? root.query.replace(/^\s+/, "").slice(1).trim() : root.query.trim()
+
+	onForcedClipChanged: if (root.forcedClip) root.clipboard?.refresh()
 
 	// Digits and operators and nothing else, with at least one of each.
 	readonly property bool looksLikeMath:
@@ -134,6 +140,7 @@ Scope {
 
 	readonly property string mode: root.forcedCalc ? "calc"
 		: root.forcedRun ? "run"
+		: root.forcedClip ? "clip"
 		: root.looksLikeMath ? "calc"
 		: root.looksLikeCommand ? "run"
 		: "all"
@@ -297,7 +304,7 @@ Scope {
 
 	// Forced modes search nothing; recognised ones still do.
 	readonly property var matches: {
-		if (root.term === "" || root.forcedCalc || root.forcedRun)
+		if (root.term === "" || root.forcedCalc || root.forcedRun || root.forcedClip)
 			return [];
 
 		const term = root.body.toLowerCase();
@@ -344,6 +351,14 @@ Scope {
 	readonly property var items: {
 		const out = [];
 		const term = root.term;
+
+		if (root.forcedClip) {
+			const needle = root.body.toLowerCase();
+			for (const entry of (root.clipboard?.entries ?? []))
+				if (needle === "" || entry.preview.toLowerCase().includes(needle))
+					out.push({ kind: "clip", key: "clip:" + entry.id, id: entry.id, preview: entry.preview });
+			return out;
+		}
 
 		if (term === "") {
 			for (const entry of root.everything)
@@ -461,6 +476,15 @@ Scope {
 		switch (item.kind) {
 		case "action":
 			item.run();
+			return;
+		case "clip":
+			if (alternate) {
+				root.clipboard?.remove(item.id);
+				root.clipboard?.refresh();
+			} else {
+				root.clipboard?.copy(item.id);
+				root.close();
+			}
 			return;
 		case "app": {
 			const open = alternate ? [] : root.windowsFor(item.entry);
@@ -738,11 +762,12 @@ Scope {
 						Text {
 							anchors.centerIn: parent
 							visible: root.mode !== "all"
-							text: root.mode === "calc" ? "=" : ">_"
-							font.pixelSize: root.mode === "calc" ? 20 : 14
+							text: root.mode === "calc" ? "=" : root.mode === "clip" ? "⧉" : ">_"
+							font.pixelSize: root.mode === "calc" ? 20 : root.mode === "clip" ? 17 : 14
 							font.family: root.mode === "run" ? "monospace" : label.font.family
 							font.weight: Font.Black
-							color: root.mode === "calc" ? Theme.calcInk : Theme.runInk
+							color: root.mode === "calc" ? Theme.calcInk
+								: root.mode === "clip" ? Theme.glassOnLens : Theme.runInk
 						}
 					}
 
@@ -758,10 +783,12 @@ Scope {
 						verticalCenter: parent.verticalCenter
 					}
 
-					text: root.mode === "calc" ? "Calc" : root.mode === "run" ? "Run" : "All"
+					text: root.mode === "calc" ? "Calc" : root.mode === "run" ? "Run"
+						: root.mode === "clip" ? "Clipboard" : "All"
 					active: true
 					accent: root.mode === "calc" ? Theme.warning
-						: root.mode === "run" ? Theme.success : "transparent"
+						: root.mode === "run" ? Theme.success
+						: root.mode === "clip" ? Theme.desktopWashB : "transparent"
 				}
 			}
 
@@ -939,6 +966,7 @@ Scope {
 								width: rows.width
 
 								sourceComponent: modelData.kind === "calc" ? calcCard
+									: modelData.kind === "clip" ? clipRow
 									: modelData.kind === "run" ? runCard
 									: modelData.kind === "output" ? outputCard
 									: modelData.kind === "history" ? historyRow
@@ -954,10 +982,14 @@ Scope {
 			Text {
 				width: parent.width
 				horizontalAlignment: Text.AlignHCenter
-				visible: root.term !== "" && root.items.length === 0
+				visible: root.term !== "" && root.items.length === 0 && root.actionsFor === null
 				topPadding: 16
 				bottomPadding: 8
 				text: root.mode === "calc" ? "Not a calculation I can do"
+					: root.mode === "clip" && !(root.clipboard?.available ?? false)
+						? "Clipboard history needs cliphist and wl-clipboard installed"
+					: root.mode === "clip" && root.body === "" ? "Nothing copied yet"
+					: root.mode === "clip" ? `Nothing on the clipboard matches “${root.body}”`
 					: `Nothing matches “${root.query.trim()}”`
 				font.pixelSize: Theme.fontTitle
 				font.weight: Font.DemiBold
@@ -1017,8 +1049,13 @@ Scope {
 						model: {
 							// Only promise what Enter can do: without wl-copy a result
 							// can be read but not copied.
+							// Nothing to act on: only the way out is true.
+							if (root.current === null && root.actionsFor === null)
+								return [["Esc", "Close"]];
+
 							const kind = root.current?.kind ?? "app";
 							const enter = kind === "calc" ? (root.hasCopy ? "Copy" : null)
+								: kind === "clip" ? "Copy"
 								: kind === "run" || kind === "history" ? "Run"
 								: root.currentWindows.length > 0 ? "Switch" : "Open";
 							const rows = [["↑↓", "Move"]];
@@ -1028,6 +1065,7 @@ Scope {
 							}
 							if (enter) rows.push(["↵", enter]);
 							if (kind === "run" || kind === "history") rows.push(["⇧↵", "In terminal"]);
+							if (kind === "clip") rows.push(["⇧↵", "Delete"]);
 							if (kind === "app") rows.push(["Tab", "Actions"]);
 							rows.push(["Esc", "Close"]);
 							return rows;
@@ -1566,6 +1604,94 @@ Scope {
 					lineHeight: 1.3
 					color: Theme.glassTextPrimary
 					opacity: lines.length === 0 ? 0.6 : 1
+				}
+			}
+		}
+	}
+
+	// Something copied earlier. One line of it; Enter puts it back, Shift+Enter
+	// forgets it. cliphist describes binary entries itself.
+	Component {
+		id: clipRow
+
+		Item {
+			readonly property bool selected: root.current?.key === modelData.key
+			readonly property bool first: index === 0
+
+			height: Theme.launcherRowHeight + (first ? clipLabel.height + 8 : 0)
+
+			Item {
+				width: parent.width
+				height: clipLabel.height
+				visible: first
+
+				Text {
+					id: clipLabel
+
+					x: 10
+					text: "CLIPBOARD"
+					font.pixelSize: Theme.fontCaption
+					font.bold: true
+					font.letterSpacing: 0.66
+					opacity: 0.6
+					color: Theme.glassTextPrimary
+				}
+
+				Text {
+					anchors.right: parent.right
+					anchors.rightMargin: 10
+					text: "Clear"
+					font.pixelSize: Theme.fontCaption
+					font.weight: Font.DemiBold
+					opacity: wipeMouse.containsMouse ? 1.0 : 0.6
+					color: Theme.glassTextPrimary
+
+					MouseArea {
+						id: wipeMouse
+
+						anchors.fill: parent
+						anchors.margins: -6
+						hoverEnabled: true
+						cursorShape: Qt.PointingHandCursor
+						onClicked: root.clipboard?.wipe()
+					}
+				}
+			}
+
+			Rectangle {
+				anchors.bottom: parent.bottom
+				width: parent.width
+				height: Theme.launcherRowHeight
+				radius: Theme.radiusRow
+				color: selected ? Theme.glassChipActive : clipMouse.containsMouse ? Theme.glassControlHover : "transparent"
+				border.width: selected ? 1 : 0
+				border.color: Theme.glassTrackBorderFocus
+
+				Text {
+					anchors {
+						left: parent.left
+						right: parent.right
+						leftMargin: 14
+						rightMargin: 14
+						verticalCenter: parent.verticalCenter
+					}
+
+					elide: Text.ElideRight
+					text: modelData.preview
+					font.pixelSize: Theme.fontTitle
+					font.family: modelData.preview.startsWith("[[") ? label.font.family : "monospace"
+					font.weight: selected ? Font.Bold : Font.DemiBold
+					opacity: modelData.preview.startsWith("[[") ? 0.7 : 1
+					color: Theme.glassTextPrimary
+				}
+
+				MouseArea {
+					id: clipMouse
+
+					anchors.fill: parent
+					hoverEnabled: true
+					cursorShape: Qt.PointingHandCursor
+					onClicked: { root.picked = modelData.key; root.act(false); }
 				}
 			}
 		}

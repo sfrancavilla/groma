@@ -52,8 +52,15 @@ ShellRoot {
 		controller: networkControl
 	}
 
+	// Keeps what passes through the clipboard, for the launcher's ":" mode.
+	Clipboard {
+		id: clipboard
+	}
+
 	// Type, pick, Enter.
-	Launcher {}
+	Launcher {
+		clipboard: clipboard
+	}
 
 	// Feedback for the volume and brightness keys, and for things that
 	// happened to the sound.
