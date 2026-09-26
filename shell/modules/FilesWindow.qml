@@ -2913,9 +2913,11 @@ Scope {
 						onPressed: mouse => {
 							const view = root.grid ? gridView : listView;
 							const inView = view.mapFromItem(content, mouse.x, mouse.y);
-							const overRow = inView.x >= 0 && inView.y >= 0 && inView.x < view.width && inView.y < view.height
-								&& view.indexAt(inView.x + view.contentX, inView.y + view.contentY) >= 0;
-							mouse.accepted = !overRow;
+							// Only the list's own empty space: the banner and the
+							// headings above it are buttons, and a row takes its own.
+							const inside = inView.x >= 0 && inView.y >= 0 && inView.x < view.width && inView.y < view.height;
+							const overRow = inside && view.indexAt(inView.x + view.contentX, inView.y + view.contentY) >= 0;
+							mouse.accepted = inside && !overRow;
 						}
 						onClicked: {
 							body.forceActiveFocus();
