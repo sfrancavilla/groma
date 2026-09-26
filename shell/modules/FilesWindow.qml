@@ -2297,11 +2297,19 @@ Scope {
 					}
 
 					// A left click on nothing: the keys come back to the list and
-					// the selection lets go. Under the views, so rows and tiles
-					// take theirs first.
+					// the selection lets go. Above the views, because a list takes
+					// every press for itself; a press over a row or tile is
+					// refused here so it falls through to them.
 					MouseArea {
 						anchors.fill: parent
-						z: -1
+						acceptedButtons: Qt.LeftButton
+						onPressed: mouse => {
+							const view = root.grid ? gridView : listView;
+							const inView = view.mapFromItem(content, mouse.x, mouse.y);
+							const overRow = inView.x >= 0 && inView.y >= 0 && inView.x < view.width && inView.y < view.height
+								&& view.indexAt(inView.x + view.contentX, inView.y + view.contentY) >= 0;
+							mouse.accepted = !overRow;
+						}
 						onClicked: {
 							body.forceActiveFocus();
 							root.picked = "";
