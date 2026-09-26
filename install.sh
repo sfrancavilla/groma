@@ -40,6 +40,7 @@ PACKAGES=(
 	wl-clipboard        # wl-copy and wl-paste: copying from the launcher, and feeding cliphist
 	cliphist            # clipboard history, kept by the shell for the launcher's ":" mode
 	libqalculate        # qalc: units and conversions in the launcher; arithmetic works without it
+	fd                  # file search in the launcher, under the applications and behind "/"
 	libnotify           # notify-send, for testing the notification daemon
 
 	# Screenshots. hyprshot is a script over grim and slurp, so this is also

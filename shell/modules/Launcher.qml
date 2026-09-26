@@ -57,8 +57,8 @@ Scope {
 		}
 
 		const item = root.current;
-		if (item !== null && item.kind === "app") {
-			root.actionsFor = item.entry;
+		if (item !== null && (item.kind === "app" || item.kind === "file")) {
+			root.actionsFor = item.kind === "app" ? item.entry : item.file;
 			root.picked = "";
 		}
 	}
@@ -69,6 +69,22 @@ Scope {
 			return [];
 
 		const out = [];
+
+		// A file: open it, open where it is, or take its path.
+		if (entry.path !== undefined) {
+			out.push({ kind: "action", key: "act:open", label: entry.folder ? "Open folder" : "Open",
+				run: () => { root.openFile(entry.path); } });
+			out.push({ kind: "action", key: "act:parent", label: "Open containing folder",
+				run: () => { root.openFile(entry.parent); } });
+			if (root.hasCopy)
+				out.push({ kind: "action", key: "act:copy", label: "Copy path",
+					run: () => {
+						Quickshell.execDetached(["sh", "-c", "printf %s \"$1\" | wl-copy", "sh", entry.path]);
+						root.close();
+					} });
+			return out;
+		}
+
 		for (const action of (entry.actions ?? []))
 			out.push({ kind: "action", key: "act:" + action.id, label: action.name,
 				run: () => { action.execute(); History.noteLaunch(entry.id); root.close(); } });
@@ -122,9 +138,11 @@ Scope {
 	readonly property bool forcedCalc: root.query.replace(/^\s+/, "").startsWith("=")
 	readonly property bool forcedRun: root.query.replace(/^\s+/, "").startsWith(">")
 	readonly property bool forcedClip: root.query.replace(/^\s+/, "").startsWith(":")
+	readonly property bool forcedFiles: root.query.replace(/^\s+/, "").startsWith("/")
+	readonly property bool forced: root.forcedCalc || root.forcedRun || root.forcedClip || root.forcedFiles
 
 	// The text with any prefix taken off.
-	readonly property string body: root.forcedCalc || root.forcedRun || root.forcedClip
+	readonly property string body: root.forced
 		? root.query.replace(/^\s+/, "").slice(1).trim() : root.query.trim()
 
 	onForcedClipChanged: if (root.forcedClip) root.clipboard?.refresh()
@@ -141,6 +159,7 @@ Scope {
 	readonly property string mode: root.forcedCalc ? "calc"
 		: root.forcedRun ? "run"
 		: root.forcedClip ? "clip"
+		: root.forcedFiles ? "files"
 		: root.looksLikeMath ? "calc"
 		: root.looksLikeCommand ? "run"
 		: "all"
@@ -173,14 +192,99 @@ Scope {
 	Process {
 		id: tools
 
-		command: ["bash", "-c", "command -v wl-copy && echo COPY; command -v qalc && echo QALC; true"]
+		command: ["bash", "-c", "command -v wl-copy && echo COPY; command -v qalc && echo QALC; command -v fd && echo FD; true"]
 
 		stdout: StdioCollector {
 			onStreamFinished: {
 				root.hasCopy = text.includes("COPY");
 				root.hasQalc = text.includes("QALC");
+				root.hasFd = text.includes("FD");
 			}
 		}
+	}
+
+	// --- files -----------------------------------------------------------
+	//
+	// fd, asked a beat after the typing stops. Under "all" a few files sit
+	// beneath the applications, as in the design; "/" gives them the list.
+	// fd leaves hidden and ignored paths out on its own, which is what keeps
+	// ~/.cache and node_modules from answering every query.
+	property bool hasFd: false
+	property var files: []
+
+	readonly property string fileTerm:
+		(root.mode === "all" && root.body.length >= 2) || (root.forcedFiles && root.body !== "")
+			? root.body : ""
+	readonly property int fileLimit: root.forcedFiles ? 12 : 4
+	readonly property bool searchingFiles: fileDebounce.running || finder.running
+
+	onFileTermChanged: {
+		if (root.fileTerm === "") {
+			root.files = [];
+			finder.running = false;
+		} else {
+			fileDebounce.restart();
+		}
+	}
+
+	Timer {
+		id: fileDebounce
+
+		interval: 120
+		onTriggered: root.findFiles()
+	}
+
+	function findFiles() {
+		if (!root.hasFd || root.fileTerm === "")
+			return;
+		finder.running = false;
+		// A slash in the term means a path is being described, so match
+		// against the whole path rather than the name.
+		const flags = root.fileTerm.includes("/") ? "--full-path" : "--max-depth=12";
+		finder.command = ["bash", "-c",
+			'fd --fixed-strings --ignore-case --absolute-path --color never --max-results 80 "$2" "$1" "$HOME" '
+			+ '| while IFS= read -r p; do if [ -d "$p" ]; then printf "d %s\\n" "$p"; else printf "f %s\\n" "$p"; fi; done',
+			"fd", root.fileTerm, flags];
+		finder.running = true;
+	}
+
+	Process {
+		id: finder
+
+		stdout: StdioCollector {
+			onStreamFinished: root.files = root.rankFiles(text)
+		}
+	}
+
+	// fd answers in disk order. What was asked for should come first: a name
+	// that is the term, then one starting with it, then one containing it;
+	// among equals the shallower path, since ~/Documents/x beats a copy six
+	// folders down.
+	function rankFiles(text) {
+		const term = root.fileTerm.toLowerCase();
+		return text.split("\n")
+			.filter(line => line.length > 2)
+			.map(line => {
+				const path = line.slice(2);
+				const cut = path.lastIndexOf("/");
+				const name = path.slice(cut + 1);
+				const lower = name.toLowerCase();
+				return {
+					path: path,
+					name: name,
+					parent: cut === 0 ? "/" : path.slice(0, cut),
+					folder: line.startsWith("d "),
+					rank: lower === term ? 4 : lower.startsWith(term) ? 3 : lower.includes(term) ? 2 : 1,
+					depth: path.split("/").length
+				};
+			})
+			.sort((a, b) => b.rank - a.rank || a.depth - b.depth || a.name.localeCompare(b.name));
+	}
+
+	// ~ for the home directory, as the design writes it.
+	function tilde(path) {
+		const home = Quickshell.env("HOME");
+		return home && path.startsWith(home) ? "~" + path.slice(home.length) : path;
 	}
 
 	// --- arithmetic --------------------------------------------------------
@@ -304,7 +408,7 @@ Scope {
 
 	// Forced modes search nothing; recognised ones still do.
 	readonly property var matches: {
-		if (root.term === "" || root.forcedCalc || root.forcedRun || root.forcedClip)
+		if (root.term === "" || root.forced)
 			return [];
 
 		const term = root.body.toLowerCase();
@@ -347,10 +451,15 @@ Scope {
 	// --- the list, as items of several kinds -------------------------------
 	//
 	// { kind: "app", entry }   { kind: "calc" }   { kind: "run", line }
-	// { kind: "history", line }
+	// { kind: "history", line }   { kind: "clip", id, preview }   { kind: "file", file }
 	readonly property var items: {
 		const out = [];
 		const term = root.term;
+		const fileItems = root.files.slice(0, root.fileLimit)
+			.map(file => ({ kind: "file", key: "file:" + file.path, file: file }));
+
+		if (root.forcedFiles)
+			return fileItems;
 
 		if (root.forcedClip) {
 			const needle = root.body.toLowerCase();
@@ -378,6 +487,9 @@ Scope {
 		if (appsFirst) out.push(...appItems);
 		if (card) out.push(card);
 		if (!appsFirst) out.push(...appItems);
+
+		if (root.mode === "all")
+			out.push(...fileItems);
 
 		if (root.mode === "run" && root.ranLine !== "" && root.ranLine === root.body)
 			out.push({ kind: "output", key: "output" });
@@ -498,6 +610,9 @@ Scope {
 			root.close();
 			return;
 		}
+		case "file":
+			root.openFile(alternate ? item.file.parent : item.file.path);
+			return;
 		case "calc":
 			if (root.hasCopy) {
 				Quickshell.execDetached(["sh", "-c",
@@ -513,6 +628,13 @@ Scope {
 			root.runCommand(root.ranLine, alternate);
 			return;
 		}
+	}
+
+	// Whatever the desktop associates with it: a folder in the file manager,
+	// a document in its editor.
+	function openFile(path) {
+		Quickshell.execDetached(["xdg-open", path]);
+		root.close();
 	}
 
 	// In the terminal, with the shell kept open afterwards; or detached, with
@@ -767,12 +889,15 @@ Scope {
 						Text {
 							anchors.centerIn: parent
 							visible: root.mode !== "all"
-							text: root.mode === "calc" ? "=" : root.mode === "clip" ? "⧉" : ">_"
-							font.pixelSize: root.mode === "calc" ? 20 : root.mode === "clip" ? 17 : 14
+							text: root.mode === "calc" ? "=" : root.mode === "clip" ? "⧉"
+								: root.mode === "files" ? "/" : ">_"
+							font.pixelSize: root.mode === "calc" ? 20 : root.mode === "clip" ? 17
+								: root.mode === "files" ? 19 : 14
 							font.family: root.mode === "run" ? "monospace" : label.font.family
 							font.weight: Font.Black
 							color: root.mode === "calc" ? Theme.calcInk
-								: root.mode === "clip" ? Theme.glassOnLens : Theme.runInk
+								: root.mode === "clip" ? Theme.glassOnLens
+								: root.mode === "files" ? Theme.fileInk : Theme.runInk
 						}
 					}
 
@@ -789,7 +914,7 @@ Scope {
 					}
 
 					text: root.mode === "calc" ? "Calc" : root.mode === "run" ? "Run"
-						: root.mode === "clip" ? "Clipboard" : "All"
+						: root.mode === "clip" ? "Clipboard" : root.mode === "files" ? "Files" : "All"
 					active: true
 					accent: root.mode === "calc" ? Theme.warning
 						: root.mode === "run" ? Theme.success
@@ -972,6 +1097,7 @@ Scope {
 
 								sourceComponent: modelData.kind === "calc" ? calcCard
 									: modelData.kind === "clip" ? clipRow
+									: modelData.kind === "file" ? fileRow
 									: modelData.kind === "run" ? runCard
 									: modelData.kind === "output" ? outputCard
 									: modelData.kind === "history" ? historyRow
@@ -995,6 +1121,10 @@ Scope {
 						? "Clipboard history needs cliphist and wl-clipboard installed"
 					: root.mode === "clip" && root.body === "" ? "Nothing copied yet"
 					: root.mode === "clip" ? `Nothing on the clipboard matches “${root.body}”`
+					: root.mode === "files" && !root.hasFd ? "File search needs fd installed"
+					: root.mode === "files" && root.body === "" ? "Type part of a file name"
+					: root.searchingFiles ? "Searching…"
+					: root.mode === "files" ? `No file matches “${root.body}”`
 					: `Nothing matches “${root.query.trim()}”`
 				font.pixelSize: Theme.fontTitle
 				font.weight: Font.DemiBold
@@ -1061,6 +1191,7 @@ Scope {
 							const kind = root.current?.kind ?? "app";
 							const enter = kind === "calc" ? (root.hasCopy ? "Copy" : null)
 								: kind === "clip" ? "Copy"
+								: kind === "file" ? "Open"
 								: kind === "run" || kind === "history" ? "Run"
 								: root.currentWindows.length > 0 ? "Switch" : "Open";
 							const rows = [["↑↓", "Move"]];
@@ -1071,7 +1202,8 @@ Scope {
 							if (enter) rows.push(["↵", enter]);
 							if (kind === "run" || kind === "history") rows.push(["⇧↵", "In terminal"]);
 							if (kind === "clip") rows.push(["⇧↵", "Delete"]);
-							if (kind === "app") rows.push(["Tab", "Actions"]);
+							if (kind === "file") rows.push(["⇧↵", "Folder"]);
+							if (kind === "app" || kind === "file") rows.push(["Tab", "Actions"]);
 							rows.push(["Esc", "Close"]);
 							return rows;
 						}
@@ -1616,6 +1748,116 @@ Scope {
 
 	// Something copied earlier. One line of it; Enter puts it back, Shift+Enter
 	// forgets it. cliphist describes binary entries itself.
+	// A file or folder: the design's plain lens with an outline in it, the
+	// name, and where it lives.
+	Component {
+		id: fileRow
+
+		Item {
+			id: fileSlot
+
+			readonly property var file: modelData.file
+			readonly property bool selected: root.current?.key === modelData.key
+			readonly property bool labelled: index === root.items.findIndex(item => item.kind === "file")
+
+			height: Theme.launcherRowHeight + (labelled ? fileLabel.height + 8 : 0)
+
+			Text {
+				id: fileLabel
+
+				x: 10
+				visible: fileSlot.labelled
+				text: "FILES"
+				font.pixelSize: Theme.fontCaption
+				font.bold: true
+				font.letterSpacing: 0.66
+				opacity: 0.6
+				color: Theme.glassTextPrimary
+			}
+
+			Rectangle {
+				anchors.bottom: parent.bottom
+				width: parent.width
+				height: Theme.launcherRowHeight
+				radius: Theme.radiusRow
+				color: fileSlot.selected ? Theme.glassChipActive
+					: fileMouse.containsMouse ? Theme.glassControlHover : "transparent"
+				border.width: fileSlot.selected ? 1 : 0
+				border.color: Theme.glassTrackBorderFocus
+
+				Behavior on color {
+					ColorAnimation { duration: 120 }
+				}
+
+				Row {
+					anchors {
+						left: parent.left
+						right: parent.right
+						leftMargin: Theme.spacingM
+						rightMargin: Theme.spacingM
+						verticalCenter: parent.verticalCenter
+					}
+
+					spacing: Theme.spacingM
+
+					Lens {
+						id: fileDisc
+
+						anchors.verticalCenter: parent.verticalCenter
+						width: 30
+						height: 30
+						sheen: false
+
+						// The design's glyphs: a sheet, or a tray with a rounder base.
+						Rectangle {
+							anchors.centerIn: parent
+							width: fileSlot.file.folder ? 14 : 11
+							height: fileSlot.file.folder ? 11 : 14
+							radius: 2
+							bottomLeftRadius: fileSlot.file.folder ? 3 : 2
+							bottomRightRadius: fileSlot.file.folder ? 3 : 2
+							color: "transparent"
+							border.width: 2
+							border.color: Theme.fileInk
+						}
+					}
+
+					Text {
+						anchors.verticalCenter: parent.verticalCenter
+						width: parent.width - fileDisc.width - Theme.spacingM - where.width - Theme.spacingM
+						elide: Text.ElideRight
+						text: fileSlot.file.name
+						font.pixelSize: Theme.fontLead
+						font.weight: fileSlot.selected ? Font.Bold : Font.DemiBold
+						color: Theme.glassTextPrimary
+					}
+
+					Text {
+						id: where
+
+						anchors.verticalCenter: parent.verticalCenter
+						width: Math.min(implicitWidth, fileSlot.width * 0.4)
+						elide: Text.ElideLeft
+						text: root.tilde(fileSlot.file.parent)
+						font.pixelSize: Theme.fontBody
+						font.weight: Font.DemiBold
+						opacity: 0.6
+						color: Theme.glassTextPrimary
+					}
+				}
+
+				MouseArea {
+					id: fileMouse
+
+					anchors.fill: parent
+					hoverEnabled: true
+					cursorShape: Qt.PointingHandCursor
+					onClicked: { root.picked = modelData.key; root.act(false); }
+				}
+			}
+		}
+	}
+
 	Component {
 		id: clipRow
 

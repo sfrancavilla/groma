@@ -147,6 +147,8 @@ Singleton {
 	// the design's oklch(0.5 0.14 60) and oklch(0.45 0.13 150), converted.
 	readonly property color calcInk: "#8a5a10"
 	readonly property color runInk: "#1f6b3a"
+	// The file and folder outlines in the launcher's FILES rows, oklch(0.45 0.08 250).
+	readonly property color fileInk: "#305880"
 	readonly property color glassTextOnLens: "#16161c"
 
 	// Depth cues the design carries as inset box-shadows, for the lens. The
