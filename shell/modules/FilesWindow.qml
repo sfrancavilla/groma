@@ -282,6 +282,7 @@ Scope {
 				if (root.held !== null || root.hasCopy)
 					out.push({ label: "Paste", run: () => root.paste(undefined) });
 				out.push({ label: "New folder", run: () => root.newFolder() });
+				out.push({ label: "Open in Terminal", run: () => root.openTerminal(root.path) });
 			}
 			return out;
 		}
@@ -295,6 +296,8 @@ Scope {
 		if (!several) {
 			out.push({ label: "Open", run: () => root.openEntry(entry) });
 			out.push({ label: "Open with…", run: () => root.probeOpen(entry, true) });
+			if (entry.folder)
+				out.push({ label: "Open in Terminal", run: () => root.openTerminal(entry.path) });
 			out.push({ label: "Rename", run: () => root.startRename(entry) });
 		}
 		out.push({ label: "Copy", run: () => root.hold(them, false) });
@@ -724,6 +727,13 @@ Scope {
 			root.go(entry.path);
 		else
 			root.probeOpen(entry, false);
+	}
+
+	// A terminal with the folder as its working directory. Foot is what
+	// the keybinding opens; a terminal takes no file, so it never appears
+	// in "Open with", and gets a line of its own.
+	function openTerminal(folder) {
+		Quickshell.execDetached(["foot", "--working-directory=" + folder]);
 	}
 
 	// --- opening with an application ------------------------------------------
@@ -1409,6 +1419,8 @@ Scope {
 						root.move(-1, shift);
 					} else if (ctrl && event.key === Qt.Key_A) {
 						root.selectAll();
+					} else if (ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+						root.openTerminal(root.currentEntry?.folder ? root.currentEntry.path : root.path);
 					} else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
 						root.activate();
 					} else if (event.key === Qt.Key_Delete) {
