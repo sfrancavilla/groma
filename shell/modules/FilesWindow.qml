@@ -3049,6 +3049,21 @@ Scope {
 					model: root.openerApps
 					boundsBehavior: Flickable.StopAtBounds
 
+					// Nothing installed takes a file at all: say so, rather than
+					// showing an empty list with a dead Open.
+					Text {
+						anchors.centerIn: parent
+						width: parent.width - 20
+						visible: root.openerApps.length === 0
+						horizontalAlignment: Text.AlignHCenter
+						wrapMode: Text.WordWrap
+						text: "No installed application can open files. Install one and it will be listed here."
+						font.pixelSize: Theme.fontTitle
+						font.weight: Font.DemiBold
+						opacity: 0.6
+						color: Theme.glassTextPrimary
+					}
+
 					delegate: Item {
 						id: appRow
 
