@@ -361,6 +361,11 @@ Scope {
 	function land(where) {
 		root.renaming = "";
 		root.menu = null;
+		const trashOrder = root.sortBy === "origin" || root.sortBy === "deleted";
+		if ((where === root.trashPath) !== trashOrder && root.sortBy !== "name") {
+			root.sortBy = "name";
+			root.sortDescending = false;
+		}
 		root.path = where;
 		root.picked = "";
 		searchField.clear();
@@ -450,6 +455,47 @@ Scope {
 	// want an array to walk.
 	property var entries: []
 
+	// Which column orders the list, and which way. Folders stay above
+	// files whatever the order, as the model draws them.
+	// "name" | "modified" | "size" | "origin" | "deleted"
+	property string sortBy: "name"
+	property bool sortDescending: false
+
+	// A click on the column already in charge turns it round; on another,
+	// it takes over, upward.
+	function sortOn(column) {
+		if (root.sortBy === column) {
+			root.sortDescending = !root.sortDescending;
+		} else {
+			root.sortBy = column;
+			root.sortDescending = false;
+		}
+		root.entries = root.sorted(root.entries);
+	}
+
+	function sorted(list) {
+		const by = root.sortBy;
+		const sign = root.sortDescending ? -1 : 1;
+		const info = name => root.trashInfo[name] ?? {};
+		const key = entry => by === "modified" ? new Date(entry.modified).getTime()
+			: by === "size" ? (entry.folder ? (root.counts[entry.name] ?? 0) : entry.size)
+			: by === "origin" ? (info(entry.name).origin ?? "").toLowerCase()
+			: by === "deleted" ? (info(entry.name).deleted ?? "")
+			: entry.name.toLowerCase();
+		return list.slice().sort((a, b) => {
+			if (a.folder !== b.folder)
+				return a.folder ? -1 : 1;
+			const ka = key(a), kb = key(b);
+			const order = ka < kb ? -1 : ka > kb ? 1 : a.name.localeCompare(b.name);
+			return order * sign;
+		});
+	}
+
+	// The list follows what it is sorted on, when that arrives later: item
+	// counts for a size order, origins and dates for the Trash's.
+	onCountsChanged: if (root.sortBy === "size") root.entries = root.sorted(root.entries)
+	onTrashInfoChanged: if (root.sortBy === "origin" || root.sortBy === "deleted") root.entries = root.sorted(root.entries)
+
 	function rebuild() {
 		const term = root.filter.toLowerCase();
 		const out = [];
@@ -466,7 +512,7 @@ Scope {
 				suffix: (folder.get(i, "fileSuffix") || "").toLowerCase()
 			});
 		}
-		root.entries = out;
+		root.entries = root.sorted(out);
 		if (root.picked !== "" && !out.some(entry => entry.path === root.picked))
 			root.picked = "";
 
@@ -646,6 +692,11 @@ Scope {
 		// The path Tab takes: the actions for the highlighted thing.
 		function actions(): void {
 			root.toggleMenu();
+		}
+
+		// Order the list by a column: name, modified, size, origin, deleted.
+		function sort(column: string): void {
+			root.sortOn(column);
 		}
 
 		// The path F2 takes on the highlighted thing.
@@ -1312,22 +1363,38 @@ Scope {
 							? lastX - gap - deletedWidth : lastX - gap - dateWidth
 						readonly property real firstX: root.inTrash ? midX - gap - originWidth : midX
 
+						// Each heading orders the list when clicked, and the one
+						// in charge carries the arrow.
 						Repeater {
 							model: root.inTrash
-								? [["NAME", 12], ["ORIGINAL LOCATION", listHeader.firstX], ["DELETED", listHeader.midX]]
-								: [["NAME ↑", 12], ["MODIFIED", listHeader.midX], ["SIZE", listHeader.lastX]]
+								? [["NAME", 12, "name"], ["ORIGINAL LOCATION", listHeader.firstX, "origin"], ["DELETED", listHeader.midX, "deleted"]]
+								: [["NAME", 12, "name"], ["MODIFIED", listHeader.midX, "modified"], ["SIZE", listHeader.lastX, "size"]]
 
 							Text {
+								id: heading
+
 								required property var modelData
+
+								readonly property bool inCharge: root.sortBy === modelData[2]
 
 								x: modelData[1]
 								anchors.verticalCenter: parent.verticalCenter
-								text: modelData[0]
+								text: modelData[0] + (inCharge ? (root.sortDescending ? " ↓" : " ↑") : "")
 								font.pixelSize: Theme.fontCaption
 								font.bold: true
 								font.letterSpacing: 0.66
-								opacity: 0.6
+								opacity: inCharge || headingMouse.containsMouse ? 0.9 : 0.6
 								color: Theme.glassTextPrimary
+
+								MouseArea {
+									id: headingMouse
+
+									anchors.fill: parent
+									anchors.margins: -6
+									hoverEnabled: true
+									cursorShape: Qt.PointingHandCursor
+									onClicked: root.sortOn(heading.modelData[2])
+								}
 							}
 						}
 					}
