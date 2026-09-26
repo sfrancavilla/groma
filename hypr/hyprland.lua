@@ -36,7 +36,7 @@ hl.monitor({
 
 -- Set programs that you use
 local terminal = "foot"
-local fileManager = "dolphin"
+local fileManager = "qs -c groma ipc call files toggle"  -- the shell's own Files window
 local menu        = "qs -c groma ipc call launcher toggle"  -- the shell's own launcher
 
 
@@ -386,6 +386,21 @@ hl.window_rule({
 --     no_anim = true,
 -- })
 -- overlayLayerRule:set_enabled(false)
+
+-- Groma's own Files window draws its own 24px corners and shadow into a
+-- padded, transparent frame, so the compositor's frame has to stay out of
+-- it. Floats at the design's size; SUPER+V tiles it like anything else.
+hl.window_rule({
+    name  = "groma-files",
+    match = { class = "^org\\.quickshell$", title = "^Files$" },
+
+    float       = true,
+    size        = "1084 704",
+    center      = true,
+    rounding    = 0,
+    border_size = 0,
+    no_shadow   = true,
+})
 
 -- Hyprland-run windowrule
 hl.window_rule({

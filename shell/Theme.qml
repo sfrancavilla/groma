@@ -233,6 +233,13 @@ Singleton {
 	readonly property int launcherTrackHeight: 60
 	readonly property int launcherRowHeight: 48
 	readonly property int launcherTopHitHeight: 56
+	// The Files window, from the design's turn 10: an ordinary window at 1×,
+	// with its own header and footer since Groma has no global menu bar.
+	readonly property int filesWidth: 1040
+	readonly property int filesHeight: 660
+	readonly property int filesHeaderHeight: 60
+	readonly property int filesFooterHeight: 44
+	readonly property int filesSidebarWidth: 200
 	// Between a prompt and a picker: 8d has to hold six passkey tiles.
 	readonly property int dialogWidthPrompt: 440
 	readonly property int dialogListHeight: 344

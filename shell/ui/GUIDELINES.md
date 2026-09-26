@@ -66,6 +66,7 @@ to any surface.
 | --- | --- |
 | A later page of a sheet | Back chevron |
 | Anything that asks a question | None - the footer answers it |
+| An ordinary window | X disc, at the right of its own header |
 | Anything else over the whole screen | X disc, top right |
 | A bar popup | None - click away, or press its bar icon again |
 
@@ -107,6 +108,7 @@ Which puts every surface built so far in exactly one place:
 | Polkit prompt | none | `Cancel` `Authenticate` |
 | Lock screen | none | none - `Enter` submits |
 | Launcher | X | none - `Enter` runs the pick |
+| Files window | X | none - `Enter` opens the pick; the footer carries the status and the keys |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
 there as well as the X - two chips side by side doing one thing. Note that the

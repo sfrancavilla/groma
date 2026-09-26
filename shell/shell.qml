@@ -62,6 +62,9 @@ ShellRoot {
 		clipboard: clipboard
 	}
 
+	// The file manager: an ordinary window, opened from SUPER+E.
+	FilesWindow {}
+
 	// Feedback for the volume and brightness keys, and for things that
 	// happened to the sound.
 	Osd { id: osd }

@@ -1809,17 +1809,9 @@ Scope {
 						height: 30
 						sheen: false
 
-						// The design's glyphs: a sheet, or a tray with a rounder base.
-						Rectangle {
+						FileGlyph {
 							anchors.centerIn: parent
-							width: fileSlot.file.folder ? 14 : 11
-							height: fileSlot.file.folder ? 11 : 14
-							radius: 2
-							bottomLeftRadius: fileSlot.file.folder ? 3 : 2
-							bottomRightRadius: fileSlot.file.folder ? 3 : 2
-							color: "transparent"
-							border.width: 2
-							border.color: Theme.fileInk
+							kind: fileSlot.file.folder ? "folder" : "file"
 						}
 					}
 
