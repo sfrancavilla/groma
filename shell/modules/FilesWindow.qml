@@ -771,6 +771,10 @@ Scope {
 				}
 				root.opener = { entry: typeProbe.entry, type: type, defaultId: defaultId,
 					suggested: suggested, always: false, index: 0 };
+				// The highlight starts on the current default, when there is one.
+				const at = root.openerApps.findIndex(app => app.entry.id === defaultId);
+				if (at > 0)
+					root.opener = Object.assign({}, root.opener, { index: at });
 			}
 		}
 	}
@@ -3142,6 +3146,7 @@ Scope {
 						readonly property bool labelled: index === 0
 							|| (!modelData.suggested && root.openerApps[index - 1].suggested)
 						readonly property string iconFile: Quickshell.iconPath(modelData.entry.icon, true)
+						readonly property bool isDefault: root.opener !== null && root.opener.defaultId === modelData.entry.id
 
 						width: openerList.width
 						height: 48 + (labelled ? 20 : 0)
@@ -3210,6 +3215,7 @@ Scope {
 								Column {
 									anchors.verticalCenter: parent.verticalCenter
 									width: parent.width - appDisc.width - Theme.spacingM
+										- (appRow.isDefault ? defaultChip.width + Theme.spacingM : 0)
 									spacing: 2
 
 									Text {
@@ -3232,6 +3238,21 @@ Scope {
 										color: Theme.glassTextPrimary
 									}
 								}
+							}
+
+							// The application the desktop already opens these with.
+							Chip {
+								id: defaultChip
+
+								anchors {
+									right: parent.right
+									rightMargin: Theme.spacingM
+									verticalCenter: parent.verticalCenter
+								}
+
+								visible: appRow.isDefault
+								text: "Default"
+								active: true
 							}
 
 							MouseArea {
