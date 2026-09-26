@@ -143,6 +143,10 @@ The panel is 2880×1920 at scale 2, so one logical pixel is two physical ones.
   the picker's row column and its page slide are built around this.
 - **Convert every colour, never match one by eye.** The desktop base looks like
   a mid slate and is `#0d3242`.
+- **A window's corners are 20, not the design's 24.** Hyprland caps its
+  rounding at 20, the compositor cuts the corners and blurs the whole window
+  rectangle, so the pane has to match it exactly: `Theme.radiusWindow`, and the
+  rule in `hypr/hyprland.lua`. Sheets on layer surfaces keep `radiusPanel`.
 
 
 ## Where a thing belongs

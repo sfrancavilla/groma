@@ -387,10 +387,12 @@ hl.window_rule({
 -- })
 -- overlayLayerRule:set_enabled(false)
 
--- Groma's own Files window: a pane of glass edge to edge, rounded to the
--- design's 24px by the compositor, which also casts its shadow. No border,
--- since the glass draws its own edge. Floats at the design's size; SUPER+V
--- tiles it like anything else.
+-- Groma's own Files window: a pane of glass edge to edge, rounded by the
+-- compositor, which also casts its shadow. 20 is Hyprland's ceiling, so
+-- the design's 24 is 20 here and Theme.radiusWindow matches it - a pane
+-- rounder than its window shows blurred corners. No border, since the
+-- glass draws its own edge. Floats at the design's size; SUPER+V tiles
+-- it like anything else.
 hl.window_rule({
     name  = "groma-files",
     match = { class = "^org\\.quickshell$", title = "^Files$" },
@@ -398,7 +400,7 @@ hl.window_rule({
     float       = true,
     size        = "1040 660",
     center      = true,
-    rounding    = 24,
+    rounding    = 20,
     border_size = 0,
 })
 

@@ -267,4 +267,8 @@ Singleton {
 	// correspondingly rounder corner.
 	readonly property int radiusRow: 16
 	readonly property int radiusPanel: 24
+	// A window's corners are cut by the compositor, and Hyprland caps its
+	// rounding at 20. A pane rounder than its window shows the blur in the
+	// corners, so the two are the same number, and the design's 24 is not.
+	readonly property int radiusWindow: 20
 }

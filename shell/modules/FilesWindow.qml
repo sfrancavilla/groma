@@ -354,7 +354,7 @@ Scope {
 			id: pane
 
 			anchors.fill: parent
-			radius: Theme.radiusPanel
+			radius: Theme.radiusWindow
 			shadowLayers: 0
 
 			Item {
