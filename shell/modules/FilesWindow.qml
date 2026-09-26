@@ -774,17 +774,48 @@ Scope {
 		}
 	}
 
-	// The applications on offer: those claiming the type, then the rest.
+	// Which desktop categories are a fit for a kind of file, when nothing
+	// claims the type outright.
+	function fittingCategories(type) {
+		if (type === "inode/directory")
+			return ["FileManager", "IDE", "TextEditor"];
+		if (type.startsWith("text/") || type === "application/json" || type === "application/xml"
+				|| type === "application/x-shellscript" || type === "application/javascript")
+			return ["TextEditor", "IDE", "Development", "Office", "WordProcessor"];
+		if (type.startsWith("image/"))
+			return ["Viewer", "Graphics", "Photography", "RasterGraphics", "VectorGraphics"];
+		if (type.startsWith("audio/"))
+			return ["Audio", "Player", "AudioVideo", "Music"];
+		if (type.startsWith("video/"))
+			return ["Video", "Player", "AudioVideo"];
+		if (type === "application/pdf" || type.startsWith("application/vnd.") || type === "application/msword")
+			return ["Office", "Viewer", "WordProcessor", "Spreadsheet", "Presentation"];
+		if (type.startsWith("application/") && (type.includes("zip") || type.includes("tar") || type.includes("compress")))
+			return ["Archiving", "Compression", "FileManager"];
+		return [];
+	}
+
+	// Only an entry that takes a file can open one: Exec must carry a %f,
+	// %F, %u or %U. Volume Control does not, and has no business in the list.
+	function takesFiles(entry) {
+		return /%[fFuU]/.test(entry.execString ?? "");
+	}
+
+	// The applications on offer: those claiming the type, then those whose
+	// categories fit it, both as suggestions; then everything else that can
+	// take a file at all.
 	readonly property var openerApps: {
 		const o = root.opener;
 		if (o === null)
 			return [];
-		const suggested = o.suggested.map(id => DesktopEntries.byId(id)).filter(e => e !== null && !e.noDisplay);
-		const rest = DesktopEntries.applications.values
-			.filter(e => !e.noDisplay && !suggested.some(sug => sug.id === e.id))
-			.sort((a, b) => a.name.localeCompare(b.name));
-		return suggested.map(e => ({ entry: e, suggested: true }))
-			.concat(rest.map(e => ({ entry: e, suggested: false })));
+		const fitting = root.fittingCategories(o.type);
+		const claims = e => o.suggested.includes(e.id);
+		const fits = e => (e.categories ?? []).some(c => fitting.includes(c));
+		const all = DesktopEntries.applications.values.filter(e => !e.noDisplay && root.takesFiles(e));
+		const rank = e => claims(e) ? 2 : fits(e) ? 1 : 0;
+		return all
+			.map(e => ({ entry: e, suggested: rank(e) > 0, rank: rank(e) }))
+			.sort((a, b) => b.rank - a.rank || a.entry.name.localeCompare(b.entry.name));
 	}
 
 	function moveOpener(delta) {
@@ -2987,7 +3018,9 @@ Scope {
 				body: root.opener === null ? ""
 					: root.opener.defaultId !== ""
 						? `A ${root.opener.type} file. ${DesktopEntries.byId(root.opener.defaultId)?.name ?? root.opener.defaultId} opens these unless you choose otherwise.`
-						: `A ${root.opener.type} file. Nothing is set to open these yet.`
+						: root.openerApps.some(app => app.suggested)
+							? `A ${root.opener.type} file. Nothing is set to open these yet; these look like a fit.`
+							: `A ${root.opener.type} file. Nothing is set to open these yet.`
 
 				icon: Lens {
 					width: 44
@@ -3005,7 +3038,12 @@ Scope {
 					id: openerList
 
 					width: parent.width
-					height: Math.min(5, Math.max(1, root.openerApps.length)) * 48 + Math.max(0, Math.min(5, root.openerApps.length) - 1) * 4 + 20
+					// Up to five rows, plus the headings among them.
+					readonly property int shown: Math.min(5, Math.max(1, root.openerApps.length))
+					readonly property int headings: root.openerApps.slice(0, shown).some(a => a.suggested)
+						&& root.openerApps.slice(0, shown).some(a => !a.suggested) ? 2 : 1
+
+					height: shown * 48 + (shown - 1) * 4 + headings * 20
 					clip: true
 					spacing: 4
 					model: root.openerApps
