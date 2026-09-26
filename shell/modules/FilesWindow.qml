@@ -612,10 +612,14 @@ Scope {
 
 	function endDrag() {
 		const d = root.drag;
+		if (d === null)
+			return;
 		root.drag = null;
+		// The click that follows the release must not pick anything - but
+		// only when there was a drag. Marking every release ate every click.
 		root.dragJustEnded = true;
 		Qt.callLater(() => { root.dragJustEnded = false; });
-		if (d === null || d.exported || d.target === null)
+		if (d.exported || d.target === null)
 			return;
 		if (d.target.path === root.trashPath) {
 			root.trashEntries(root.entries.filter(e => d.paths.includes(e.path)));
