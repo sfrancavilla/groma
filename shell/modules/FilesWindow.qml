@@ -1075,7 +1075,13 @@ Scope {
 				|| ["usb", "mmc", "sd"].includes(node.tran ?? "") || top.rm === true || top.hotplug === true;
 			const byHand = /^\/(run\/media|media|mnt)(\/|$)/.test(mount);
 			const usable = fs !== "" && !["crypto_LUKS", "swap", "LVM2_member", "linux_raid_member"].includes(fs);
-			if (usable && (plugged || byHand))
+			// A hybrid ISO written to a stick shows its filesystem on the whole
+			// disk as well as on the first partition: the partitions are what
+			// count. And lsblk hangs the encrypted root off whatever it likes;
+			// anything mounted at a system path is the system's, not a drive.
+			const wholeDiskWithParts = node.type === "disk" && (node.children ?? []).length > 0;
+			const system = /^\/(home|boot|var|usr|etc|nix|\.snapshots|efi)?(\/|$)/.test(mount) && mount !== "";
+			if (usable && (plugged || byHand) && !wholeDiskWithParts && !system)
 				out.push({
 					dev: node.path,
 					disk: top.path,
