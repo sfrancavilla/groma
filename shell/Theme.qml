@@ -198,6 +198,18 @@ Singleton {
 	// The selected stem of a name being renamed, oklch(0.7 0.12 250) at .7.
 	readonly property color renameSelection: Qt.rgba(0x61 / 255, 0xa3 / 255, 0xe6 / 255, 0.70)
 
+	// Drag and drop in the Files window, from the design's 10d: the folder a
+	// drag is over is oklch(0.8 0.1 250) at .38 with a bright edge and a soft
+	// ring of the same blue; the rows being dragged fade; the count badge on
+	// the ghost is white with oklch(0.35 0.08 250) ink.
+	readonly property color dropTarget: Qt.rgba(0x8c / 255, 0xc3 / 255, 0xfc / 255, 0.38)
+	readonly property color dropTargetEdge: Qt.rgba(1, 1, 1, 0.75)
+	readonly property color dropTargetRing: Qt.rgba(0x8c / 255, 0xc3 / 255, 0xfc / 255, 0.20)
+	readonly property color dragSource: Qt.rgba(1, 1, 1, 0.20)
+	readonly property color dragSourceEdge: Qt.rgba(1, 1, 1, 0.32)
+	readonly property color dragBadgeInk: "#143c62"
+	readonly property color dragCaption: Qt.rgba(0, 0, 0, 0.28)
+
 	// A ring rather than a thicker border, so focus does not move anything.
 	readonly property color focusRing: Qt.rgba(1, 1, 1, 0.18)
 

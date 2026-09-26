@@ -38,8 +38,56 @@ Scope {
 	property var behind: []
 	property var ahead: []
 
-	// The path of the highlighted entry, or "" for none.
+	// The path of the highlighted entry, or "" for none: where the keyboard
+	// is. The selection is what an action applies to; usually the same one
+	// thing, more after Shift or Ctrl.
 	property string picked: ""
+	property var selection: []
+	property bool selectionHeld: false
+
+	onPickedChanged: if (!root.selectionHeld) root.selection = root.picked === "" ? [] : [root.picked]
+
+	// "only" | "toggle" | "range" | "extend"
+	function select(entry, mode) {
+		if (mode === "toggle") {
+			const has = root.selection.includes(entry.path);
+			root.selectionHeld = true;
+			root.picked = entry.path;
+			root.selection = has ? root.selection.filter(p => p !== entry.path) : root.selection.concat([entry.path]);
+			root.selectionHeld = false;
+		} else if (mode === "range" || mode === "extend") {
+			const from = Math.max(0, root.current);
+			const to = root.entries.findIndex(e => e.path === entry.path);
+			const lo = Math.min(from, to), hi = Math.max(from, to);
+			const span = root.entries.slice(lo, hi + 1).map(e => e.path);
+			root.selectionHeld = true;
+			root.picked = entry.path;
+			root.selection = mode === "extend"
+				? root.selection.concat(span.filter(p => !root.selection.includes(p))) : span;
+			root.selectionHeld = false;
+		} else {
+			root.picked = entry.path;
+			root.selection = [entry.path];
+		}
+	}
+
+	function selectAll() {
+		root.selectionHeld = true;
+		root.selection = root.entries.map(e => e.path);
+		if (root.picked === "" && root.entries.length > 0)
+			root.picked = root.entries[0].path;
+		root.selectionHeld = false;
+	}
+
+	// What an action is for: the selection when the highlighted thing is
+	// part of it, else just the highlighted thing.
+	function chosen() {
+		if (root.currentEntry === null)
+			return [];
+		if (root.selection.includes(root.picked))
+			return root.entries.filter(e => root.selection.includes(e.path));
+		return [root.currentEntry];
+	}
 
 	readonly property string filter: searchField.text.trim()
 
@@ -158,15 +206,26 @@ Scope {
 		root.ask("mkdir", { parent: root.path }, msg => { root.pendingRename = msg.path; });
 	}
 
-	function trashEntry(entry) {
-		root.ask("trash", { paths: [entry.path] }, msg => {
-			root.say(`Moved ${entry.name} to Trash · Ctrl+Z undoes`);
+	// One thing, or several: the words say which.
+	function nameThem(entries) {
+		return entries.length === 1 ? entries[0].name : root.things(entries.length);
+	}
+
+	function trashEntries(entries) {
+		if (entries.length === 0)
+			return;
+		root.ask("trash", { paths: entries.map(e => e.path) }, msg => {
+			root.say(`Moved ${root.nameThem(entries)} to Trash · Ctrl+Z undoes`);
 		});
 	}
 
-	function restoreEntry(entry) {
-		root.ask("restore", { names: [entry.name] }, msg => {
-			root.say(`Restored ${entry.name} to ${root.tilde(root.parentOf(msg.paths[0]))}`);
+	function restoreEntries(entries) {
+		if (entries.length === 0)
+			return;
+		root.ask("restore", { names: entries.map(e => e.name) }, msg => {
+			root.say(entries.length === 1
+				? `Restored ${entries[0].name} to ${root.tilde(root.parentOf(msg.paths[0]))}`
+				: `Restored ${root.things(entries.length)}`);
 		});
 	}
 
@@ -178,12 +237,15 @@ Scope {
 	// answers yes, and what yes does.
 	property var confirm: null
 
-	function askDelete(entry) {
+	function askDelete(entries) {
+		if (entries.length === 0)
+			return;
+		const what = root.nameThem(entries);
 		root.confirm = {
-			title: `Delete ${entry.name} forever?`,
-			body: "It will not go to the Trash, and there is no undo.",
+			title: `Delete ${what} forever?`,
+			body: (entries.length === 1 ? "It" : "They") + " will not go to the Trash, and there is no undo.",
 			verb: "Delete",
-			run: () => root.ask("delete", { paths: [entry.path] }, msg => root.say(`Deleted ${entry.name}`))
+			run: () => root.ask("delete", { paths: entries.map(e => e.path) }, msg => root.say(`Deleted ${what}`))
 		};
 	}
 
@@ -219,24 +281,28 @@ Scope {
 			}
 			return out;
 		}
+		const them = root.chosen();
+		const several = them.length > 1;
 		if (root.inTrash) {
-			out.push({ label: "Restore", run: () => root.restoreEntry(entry) });
-			out.push({ label: "Delete forever…", run: () => root.askDelete(entry) });
+			out.push({ label: "Restore", run: () => root.restoreEntries(them) });
+			out.push({ label: "Delete forever…", run: () => root.askDelete(them) });
 			return out;
 		}
-		out.push({ label: "Open", run: () => root.openEntry(entry) });
-		out.push({ label: "Rename", run: () => root.startRename(entry) });
-		out.push({ label: "Copy", run: () => root.hold(entry, false) });
-		out.push({ label: "Cut", run: () => root.hold(entry, true) });
-		if (entry.folder && (root.held !== null || root.hasCopy))
+		if (!several) {
+			out.push({ label: "Open", run: () => root.openEntry(entry) });
+			out.push({ label: "Rename", run: () => root.startRename(entry) });
+		}
+		out.push({ label: "Copy", run: () => root.hold(them, false) });
+		out.push({ label: "Cut", run: () => root.hold(them, true) });
+		if (!several && entry.folder && (root.held !== null || root.hasCopy))
 			out.push({ label: "Paste into " + entry.name, run: () => root.paste(entry.path) });
 		out.push({ label: "Copy path", run: () => {
 			Quickshell.execDetached(["sh", "-c", "printf %s \"$1\" | wl-copy", "sh", entry.path]);
 			root.say(`Copied ${root.tilde(entry.path)}`);
 		} });
 		out.push({ label: "New folder", run: () => root.newFolder() });
-		out.push({ label: "Move to Trash", run: () => root.trashEntry(entry) });
-		out.push({ label: "Delete forever…", run: () => root.askDelete(entry) });
+		out.push({ label: "Move to Trash", run: () => root.trashEntries(them) });
+		out.push({ label: "Delete forever…", run: () => root.askDelete(them) });
 		return out;
 	}
 
@@ -250,7 +316,9 @@ Scope {
 	// a gap, or sits above it when the bottom of the window is too close.
 	// Without an anchor it opens at the point and flips up or left to fit.
 	function openMenu(entry, x, y, anchor) {
-		if (entry !== null)
+		if (entry !== null && !root.selection.includes(entry.path))
+			root.select(entry, "only");
+		else if (entry !== null)
 			root.picked = entry.path;
 		const items = root.actionsFor(entry);
 		if (items.length === 0)
@@ -317,7 +385,7 @@ Scope {
 		if (root.currentEntry === null)
 			return;
 		if (root.inTrash)
-			root.restoreEntry(root.currentEntry);
+			root.restoreEntries(root.chosen());
 		else
 			root.openEntry(root.currentEntry);
 	}
@@ -332,10 +400,12 @@ Scope {
 	// { paths, cut } or null.
 	property var held: null
 
-	function hold(entry, cut) {
-		root.held = { paths: [entry.path], cut: cut };
+	function hold(entries, cut) {
+		if (entries.length === 0)
+			return;
+		root.held = { paths: entries.map(e => e.path), cut: cut };
 		root.publishHeld();
-		root.say((cut ? "Cut " : "Copied ") + entry.name + " · Ctrl+V pastes");
+		root.say((cut ? "Cut " : "Copied ") + root.nameThem(entries) + " · Ctrl+V pastes");
 	}
 
 	function publishHeld() {
@@ -468,6 +538,95 @@ Scope {
 		if (left < 90)
 			return "about " + Math.ceil(left) + " s left";
 		return "about " + Math.ceil(left / 60) + " min left";
+	}
+
+	// --- drag and drop ----------------------------------------------------------
+	//
+	// Inside the window the drag is ours: a ghost of the rows follows the
+	// pointer, a folder or a place lights up as the target, release moves
+	// there - or copies, with Ctrl held - and the Trash place trashes. When
+	// the pointer leaves the window the same list is handed to the platform
+	// as file URLs, so another application can take the drop.
+	//
+	// { paths, names, folder, count, x, y, target: { path, name } | null,
+	//   copy, exported } or null.
+	property var drag: null
+	property bool dragJustEnded: false
+
+	readonly property int dragThreshold: 8
+
+	function beginDrag(entry, at) {
+		if (root.inTrash || root.renaming !== "")
+			return;
+		const them = root.selection.includes(entry.path) ? root.chosen() : [entry];
+		root.drag = { paths: them.map(e => e.path), names: them.map(e => e.name),
+			folder: them[0].folder, count: them.length, x: at.x, y: at.y,
+			target: null, copy: false, exported: false };
+	}
+
+	function dragTo(at, copy) {
+		if (root.drag === null || root.drag.exported)
+			return;
+		if (at.x < 0 || at.y < 0 || at.x > body.width || at.y > body.height) {
+			root.exportDrag();
+			return;
+		}
+		root.drag = Object.assign({}, root.drag, { x: at.x, y: at.y, copy: copy, target: root.targetAt(at) });
+	}
+
+	function endDrag() {
+		const d = root.drag;
+		root.drag = null;
+		root.dragJustEnded = true;
+		Qt.callLater(() => { root.dragJustEnded = false; });
+		if (d === null || d.exported || d.target === null)
+			return;
+		if (d.target.path === root.trashPath) {
+			root.trashEntries(root.entries.filter(e => d.paths.includes(e.path)));
+			return;
+		}
+		if (!d.copy && d.paths.every(p => root.parentOf(p) === d.target.path))
+			return;
+		root.startTransfer(d.copy ? "copy" : "move", d.paths, d.target.path);
+	}
+
+	function cancelDrag() {
+		root.drag = null;
+	}
+
+	// A folder row or tile under the point, or a place, that is not one of
+	// the things being dragged.
+	function targetAt(at) {
+		for (const child of placesColumn.children) {
+			if (child.modelData === undefined)
+				continue;
+			const local = child.mapFromItem(body, at.x, at.y);
+			if (local.x >= 0 && local.y >= 0 && local.x < child.width && local.y < child.height)
+				return { path: child.modelData.path, name: child.modelData.name };
+		}
+		const view = root.grid ? gridView : listView;
+		const inView = view.mapFromItem(body, at.x, at.y);
+		if (inView.x >= 0 && inView.y >= 0 && inView.x < view.width && inView.y < view.height) {
+			const index = view.indexAt(inView.x + view.contentX, inView.y + view.contentY);
+			const entry = index >= 0 ? root.entries[index] : null;
+			if (entry !== null && entry.folder && !root.drag.paths.includes(entry.path))
+				return { path: entry.path, name: entry.name };
+		}
+		return null;
+	}
+
+	// Over to the platform: the ghost as the drag's picture, the list as
+	// file URLs. Qt runs the rest and says when it is over.
+	function exportDrag() {
+		const d = root.drag;
+		root.drag = Object.assign({}, d, { exported: true, target: null });
+		dragProxy.Drag.mimeData = {
+			"text/uri-list": d.paths.map(path => "file://" + encodeURI(path)).join("\r\n") + "\r\n"
+		};
+		ghost.grabToImage(result => {
+			dragProxy.Drag.imageSource = result.url;
+			dragProxy.Drag.active = true;
+		});
 	}
 
 	// Where each thing in the Trash came from, by name, from the worker.
@@ -683,6 +842,11 @@ Scope {
 		root.entries = root.sorted(out);
 		if (root.picked !== "" && !out.some(entry => entry.path === root.picked))
 			root.picked = "";
+		if (root.selection.some(p => !out.some(entry => entry.path === p))) {
+			root.selectionHeld = true;
+			root.selection = root.selection.filter(p => out.some(entry => entry.path === p));
+			root.selectionHeld = false;
+		}
 
 		const made = out.find(entry => entry.path === root.pendingRename);
 		if (made !== undefined) {
@@ -709,13 +873,13 @@ Scope {
 	readonly property int current: root.entries.findIndex(entry => entry.path === root.picked)
 	readonly property var currentEntry: root.current >= 0 ? root.entries[root.current] : null
 
-	function move(delta) {
+	function move(delta, extend) {
 		if (root.entries.length === 0)
 			return;
 		const next = root.current < 0
 			? (delta > 0 ? 0 : root.entries.length - 1)
 			: Math.max(0, Math.min(root.entries.length - 1, root.current + delta));
-		root.picked = root.entries[next].path;
+		root.select(root.entries[next], extend ? "extend" : "only");
 	}
 
 	// How many things each folder holds, for the design's "14 items". One
@@ -821,6 +985,8 @@ Scope {
 	readonly property string status: {
 		const n = root.entries.length;
 		let text = n === 1 ? "1 item" : n + " items";
+		if (root.selection.length > 1)
+			return text + " · " + root.selection.length + " selected";
 		if (root.currentEntry !== null) {
 			const entry = root.currentEntry;
 			const what = entry.folder ? root.detail(entry) : root.size(entry.size);
@@ -852,9 +1018,18 @@ Scope {
 			root.grid = mode === "grid";
 		}
 
-		// Highlight a thing in the folder on screen, as a click would.
+		// Highlight a thing in the folder on screen, as a click would; with
+		// "add", as a Ctrl-click would.
 		function pick(path: string): void {
-			root.picked = path;
+			const entry = root.entries.find(e => e.path === path);
+			if (entry)
+				root.select(entry, "only");
+		}
+
+		function add(path: string): void {
+			const entry = root.entries.find(e => e.path === path);
+			if (entry)
+				root.select(entry, "toggle");
 		}
 
 		// The path Tab takes: the actions for the highlighted thing.
@@ -864,13 +1039,13 @@ Scope {
 
 		// The paths Ctrl+C, Ctrl+X and Ctrl+V take.
 		function copy(): void {
-			if (root.currentEntry !== null && !root.inTrash)
-				root.hold(root.currentEntry, false);
+			if (!root.inTrash)
+				root.hold(root.chosen(), false);
 		}
 
 		function cut(): void {
-			if (root.currentEntry !== null && !root.inTrash)
-				root.hold(root.currentEntry, true);
+			if (!root.inTrash)
+				root.hold(root.chosen(), true);
 		}
 
 		function paste(): void {
@@ -933,6 +1108,13 @@ Scope {
 					const shift = event.modifiers & Qt.ShiftModifier;
 					const columns = root.grid ? gridView.columnCount : 1;
 
+					if (root.drag !== null) {
+						if (event.key === Qt.Key_Escape)
+							root.cancelDrag();
+						event.accepted = true;
+						return;
+					}
+
 					// The conflict sheet: Escape skips, Return keeps both.
 					if (root.conflict !== null) {
 						if (event.key === Qt.Key_Escape)
@@ -994,22 +1176,22 @@ Scope {
 							root.close();
 						}
 					} else if (event.key === Qt.Key_Down) {
-						root.move(columns);
+						root.move(columns, shift);
 					} else if (event.key === Qt.Key_Up) {
-						root.move(-columns);
+						root.move(-columns, shift);
 					} else if (event.key === Qt.Key_Right && !searchField.activeFocus && !alt) {
-						root.move(1);
+						root.move(1, shift);
 					} else if (event.key === Qt.Key_Left && !searchField.activeFocus && !alt) {
-						root.move(-1);
+						root.move(-1, shift);
+					} else if (ctrl && event.key === Qt.Key_A) {
+						root.selectAll();
 					} else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
 						root.activate();
 					} else if (event.key === Qt.Key_Delete) {
-						if (root.currentEntry !== null) {
-							if (root.inTrash || shift)
-								root.askDelete(root.currentEntry);
-							else
-								root.trashEntry(root.currentEntry);
-						}
+						if (root.inTrash || shift)
+							root.askDelete(root.chosen());
+						else
+							root.trashEntries(root.chosen());
 					} else if (event.key === Qt.Key_F2) {
 						if (root.currentEntry !== null && !root.inTrash)
 							root.startRename(root.currentEntry);
@@ -1019,11 +1201,11 @@ Scope {
 					} else if (ctrl && event.key === Qt.Key_Z) {
 						root.undo();
 					} else if (ctrl && event.key === Qt.Key_C) {
-						if (root.currentEntry !== null && !root.inTrash)
-							root.hold(root.currentEntry, false);
+						if (!root.inTrash)
+							root.hold(root.chosen(), false);
 					} else if (ctrl && event.key === Qt.Key_X) {
-						if (root.currentEntry !== null && !root.inTrash)
-							root.hold(root.currentEntry, true);
+						if (!root.inTrash)
+							root.hold(root.chosen(), true);
 					} else if (ctrl && event.key === Qt.Key_V) {
 						root.paste(undefined);
 					} else if (event.key === Qt.Key_Backspace && !searchField.activeFocus) {
@@ -1394,6 +1576,8 @@ Scope {
 					}
 
 					Column {
+						id: placesColumn
+
 						anchors {
 							left: parent.left
 							right: parent.right
@@ -1426,14 +1610,27 @@ Scope {
 								required property var modelData
 
 								readonly property bool here: root.path === modelData.path
+								readonly property bool dropTarget: root.drag !== null && root.drag.target !== null
+									&& root.drag.target.path === modelData.path
 
 								width: parent.width
 								height: 38
 								radius: Theme.radiusPill
-								color: here ? Theme.glassChipActive
+								color: dropTarget ? Theme.dropTarget
+									: here ? Theme.glassChipActive
 									: placeMouse.containsMouse ? Theme.glassControlHover : "transparent"
-								border.width: here ? 1 : 0
-								border.color: Theme.glassTrackBorderFocus
+								border.width: dropTarget ? 1.5 : here ? 1 : 0
+								border.color: dropTarget ? Theme.dropTargetEdge : Theme.glassTrackBorderFocus
+
+								Rectangle {
+									anchors.fill: parent
+									anchors.margins: -4
+									radius: parent.radius + 4
+									visible: place.dropTarget
+									color: "transparent"
+									border.width: 4
+									border.color: Theme.dropTargetRing
+								}
 
 								Row {
 									anchors {
@@ -1630,7 +1827,10 @@ Scope {
 
 							required property var modelData
 
-							readonly property bool selected: root.picked === modelData.path
+							readonly property bool selected: root.selection.includes(modelData.path)
+							readonly property bool dragged: root.drag !== null && root.drag.paths.includes(modelData.path)
+							readonly property bool dropTarget: root.drag !== null && root.drag.target !== null
+								&& root.drag.target.path === modelData.path
 
 							width: listView.width
 							height: Theme.launcherRowHeight
@@ -1638,13 +1838,26 @@ Scope {
 							Rectangle {
 								anchors.fill: parent
 								radius: Theme.radiusRow
-								color: row.selected ? Theme.glassChipActive
+								color: row.dropTarget ? Theme.dropTarget
+									: row.dragged ? Theme.dragSource
+									: row.selected ? Theme.glassChipActive
 									: rowMouse.containsMouse ? Theme.glassControlHover : "transparent"
-								border.width: row.selected ? 1 : 0
-								border.color: Theme.glassTrackBorderFocus
+								border.width: row.dropTarget ? 1.5 : row.selected || row.dragged ? 1 : 0
+								border.color: row.dropTarget ? Theme.dropTargetEdge
+									: row.dragged ? Theme.dragSourceEdge : Theme.glassTrackBorderFocus
 
 								Behavior on color {
 									ColorAnimation { duration: 120 }
+								}
+
+								Rectangle {
+									anchors.fill: parent
+									anchors.margins: -4
+									radius: parent.radius + 4
+									visible: row.dropTarget
+									color: "transparent"
+									border.width: 4
+									border.color: Theme.dropTargetRing
 								}
 							}
 
@@ -1667,7 +1880,7 @@ Scope {
 							readonly property var trashed: root.trashInfo[modelData.name]
 							readonly property bool cutAway: root.held !== null && root.held.cut && root.held.paths.includes(modelData.path)
 
-							opacity: cutAway ? 0.5 : 1
+							opacity: cutAway ? 0.5 : dragged ? 0.55 : 1
 
 							Text {
 								anchors {
@@ -1781,20 +1994,44 @@ Scope {
 								MouseArea {
 									anchors.fill: parent
 									cursorShape: Qt.PointingHandCursor
-									onClicked: root.restoreEntry(row.modelData)
+									onClicked: root.restoreEntries([row.modelData])
 								}
 							}
 
 							MouseArea {
 								id: rowMouse
 
+								property point pressedAt
+
 								// Under the texts, so the Restore chip and the
-								// editor get their clicks first.
+								// editor get their clicks first. The list would
+								// take a vertical drag as a flick without
+								// preventStealing.
 								anchors.fill: parent
 								z: -1
 								hoverEnabled: true
-								onClicked: root.picked = row.modelData.path
-								onDoubleClicked: root.inTrash ? root.restoreEntry(row.modelData) : root.openEntry(row.modelData)
+								preventStealing: true
+								onPressed: mouse => pressedAt = Qt.point(mouse.x, mouse.y)
+								onPositionChanged: mouse => {
+									if (!pressed)
+										return;
+									const at = mapToItem(body, mouse.x, mouse.y);
+									if (root.drag === null) {
+										if (Math.abs(mouse.x - pressedAt.x) + Math.abs(mouse.y - pressedAt.y) > root.dragThreshold)
+											root.beginDrag(row.modelData, at);
+									} else {
+										root.dragTo(at, (mouse.modifiers & Qt.ControlModifier) !== 0);
+									}
+								}
+								onReleased: root.endDrag()
+								onCanceled: root.cancelDrag()
+								onClicked: mouse => {
+									if (root.dragJustEnded)
+										return;
+									root.select(row.modelData, mouse.modifiers & Qt.ControlModifier ? "toggle"
+										: mouse.modifiers & Qt.ShiftModifier ? "range" : "only");
+								}
+								onDoubleClicked: root.inTrash ? root.restoreEntries([row.modelData]) : root.openEntry(row.modelData)
 							}
 						}
 					}
@@ -1831,12 +2068,15 @@ Scope {
 
 							required property var modelData
 
-							readonly property bool selected: root.picked === modelData.path
+							readonly property bool selected: root.selection.includes(modelData.path)
 							readonly property bool editing: root.renaming === modelData.path
 							readonly property bool image: !modelData.folder && root.imageTypes.includes(modelData.suffix)
 							readonly property bool cutAway: root.held !== null && root.held.cut && root.held.paths.includes(modelData.path)
+							readonly property bool dragged: root.drag !== null && root.drag.paths.includes(modelData.path)
+							readonly property bool dropTarget: root.drag !== null && root.drag.target !== null
+								&& root.drag.target.path === modelData.path
 
-							opacity: cutAway ? 0.5 : 1
+							opacity: cutAway ? 0.5 : dragged ? 0.55 : 1
 
 							width: gridView.cellWidth
 							height: gridView.cellHeight
@@ -1847,11 +2087,25 @@ Scope {
 								anchors.fill: parent
 								anchors.margins: 4
 								radius: 18
-								color: cell.editing ? Theme.glassControl
+								color: cell.dropTarget ? Theme.dropTarget
+									: cell.dragged ? Theme.dragSource
+									: cell.editing ? Theme.glassControl
 									: cell.selected ? Theme.glassChipActive
 									: tileMouse.containsMouse ? Theme.glassControlHover : "transparent"
-								border.width: cell.selected || cell.editing ? 1 : 0
-								border.color: cell.editing ? Theme.glassEdge : Theme.glassTrackBorderFocus
+								border.width: cell.dropTarget ? 1.5 : cell.selected || cell.editing || cell.dragged ? 1 : 0
+								border.color: cell.dropTarget ? Theme.dropTargetEdge
+									: cell.dragged ? Theme.dragSourceEdge
+									: cell.editing ? Theme.glassEdge : Theme.glassTrackBorderFocus
+
+								Rectangle {
+									anchors.fill: parent
+									anchors.margins: -4
+									radius: parent.radius + 4
+									visible: cell.dropTarget
+									color: "transparent"
+									border.width: 4
+									border.color: Theme.dropTargetRing
+								}
 
 								Behavior on color {
 									ColorAnimation { duration: 120 }
@@ -1968,13 +2222,70 @@ Scope {
 								MouseArea {
 									id: tileMouse
 
+									property point pressedAt
+
 									anchors.fill: parent
 									z: -1
 									hoverEnabled: true
-									onClicked: root.picked = cell.modelData.path
-									onDoubleClicked: root.inTrash ? root.restoreEntry(cell.modelData) : root.openEntry(cell.modelData)
+									preventStealing: true
+									onPressed: mouse => pressedAt = Qt.point(mouse.x, mouse.y)
+									onPositionChanged: mouse => {
+										if (!pressed)
+											return;
+										const at = mapToItem(body, mouse.x, mouse.y);
+										if (root.drag === null) {
+											if (Math.abs(mouse.x - pressedAt.x) + Math.abs(mouse.y - pressedAt.y) > root.dragThreshold)
+												root.beginDrag(cell.modelData, at);
+										} else {
+											root.dragTo(at, (mouse.modifiers & Qt.ControlModifier) !== 0);
+										}
+									}
+									onReleased: root.endDrag()
+									onCanceled: root.cancelDrag()
+									onClicked: mouse => {
+										if (root.dragJustEnded)
+											return;
+										root.select(cell.modelData, mouse.modifiers & Qt.ControlModifier ? "toggle"
+											: mouse.modifiers & Qt.ShiftModifier ? "range" : "only");
+									}
+									onDoubleClicked: root.inTrash ? root.restoreEntries([cell.modelData]) : root.openEntry(cell.modelData)
 								}
 							}
+						}
+					}
+
+					// Files dropped in from another application: into the folder
+					// under the pointer, or into this one.
+					DropArea {
+						id: incoming
+
+						anchors.fill: parent
+						keys: ["text/uri-list"]
+
+						onEntered: drag => { drag.accept(); }
+						onPositionChanged: drag => {
+							const at = content.mapToItem(body, drag.x, drag.y);
+							const state = { paths: [], names: [], folder: false, count: 0, x: at.x, y: at.y,
+								target: null, copy: drag.proposedAction === Qt.CopyAction, exported: true };
+							root.drag = state;
+							root.drag = Object.assign({}, state, { target: root.targetAt(at) });
+						}
+						onExited: root.drag = null
+						onDropped: drop => {
+							const target = root.drag?.target?.path ?? root.path;
+							root.drag = null;
+							const paths = (drop.urls ?? []).map(url => decodeURI(String(url).replace(/^file:\/\//, "")))
+								.filter(path => path !== "");
+							if (paths.length === 0 || drop.source === dragProxy)
+								return;
+							if (target === root.trashPath) {
+								root.ask("trash", { paths: paths }, msg => root.say(`Moved ${root.things(paths.length)} to Trash`));
+								drop.accept(Qt.MoveAction);
+								return;
+							}
+							const copy = drop.proposedAction === Qt.CopyAction || drop.proposedAction === Qt.LinkAction;
+							root.startTransfer(copy ? "copy" : "move", paths, target);
+							drop.accept(copy ? Qt.CopyAction : Qt.MoveAction);
 						}
 					}
 
@@ -2107,6 +2418,147 @@ Scope {
 						}
 					}
 				}
+			}
+
+			// The ghost of what is being dragged, from 10d: up to three cards
+			// fanned behind the front one, a count on its corner, and a line
+			// under it saying what letting go will do.
+			Item {
+				id: ghost
+
+				readonly property var d: root.drag
+
+				// Beside the pointer, and kept inside the window.
+				x: Math.min((d?.x ?? 0) + 14, body.width - width - 12)
+				y: Math.min((d?.y ?? 0) + 10, body.height - height - 40)
+				width: 260
+				height: 44
+				visible: d !== null && !d.exported && (d.count ?? 0) > 0
+				rotation: -2
+
+				Repeater {
+					model: ghost.d === null ? 0 : Math.min(3, ghost.d.count) - 1
+
+					Rectangle {
+						required property int index
+
+						x: (index + 1) * 5
+						y: (index + 1) * 5
+						z: -index - 1
+						width: 260
+						height: 44
+						radius: 14
+						color: Theme.dragSource
+						border.width: 1
+						border.color: Theme.glassTrackBorderFocus
+					}
+				}
+
+				Rectangle {
+					anchors.fill: parent
+					radius: 14
+					color: Theme.glassTrackFill
+					border.width: 1
+					border.color: Theme.glassTrackBorderFocus
+
+					Row {
+						anchors {
+							left: parent.left
+							right: parent.right
+							leftMargin: 8
+							rightMargin: 8
+							verticalCenter: parent.verticalCenter
+						}
+
+						spacing: 10
+
+						Lens {
+							id: ghostDisc
+
+							anchors.verticalCenter: parent.verticalCenter
+							width: 28
+							height: 28
+							sheen: false
+
+							FileGlyph {
+								anchors.centerIn: parent
+								kind: ghost.d?.folder ? "folder" : "file"
+							}
+						}
+
+						Text {
+							anchors.verticalCenter: parent.verticalCenter
+							width: parent.width - ghostDisc.width - 10
+							elide: Text.ElideRight
+							text: ghost.d?.names?.[0] ?? ""
+							font.pixelSize: Theme.fontTitle
+							font.bold: true
+							color: Theme.glassTextPrimary
+						}
+					}
+				}
+
+				Rectangle {
+					anchors {
+						right: parent.right
+						top: parent.top
+						rightMargin: -8
+						topMargin: -9
+					}
+
+					width: Math.max(22, badge.implicitWidth + 12)
+					height: 22
+					radius: 11
+					visible: (ghost.d?.count ?? 0) > 1
+					color: Theme.glassTextPrimary
+
+					Text {
+						id: badge
+
+						anchors.centerIn: parent
+						text: ghost.d?.count ?? ""
+						font.pixelSize: Theme.fontBody
+						font.weight: Font.Black
+						color: Theme.dragBadgeInk
+					}
+				}
+
+				Rectangle {
+					anchors {
+						left: parent.left
+						top: parent.bottom
+						leftMargin: 10
+						topMargin: 8
+					}
+
+					width: caption.implicitWidth + 16
+					height: caption.implicitHeight + 6
+					radius: 8
+					color: Theme.dragCaption
+
+					Text {
+						id: caption
+
+						anchors.centerIn: parent
+						text: ghost.d === null ? ""
+							: ghost.d.target === null ? "Drop on a folder · hold Ctrl to copy"
+							: ghost.d.target.path === root.trashPath ? "Move to Trash"
+							: (ghost.d.copy ? "Copy to " : "Move to ") + ghost.d.target.name + " · hold Ctrl to copy"
+						font.pixelSize: Theme.fontCaption
+						font.bold: true
+						color: Theme.glassTextPrimary
+					}
+				}
+			}
+
+			// The platform's drag, for drops in other windows.
+			Item {
+				id: dragProxy
+
+				Drag.dragType: Drag.Automatic
+				Drag.supportedActions: Qt.CopyAction | Qt.MoveAction
+				Drag.proposedAction: Qt.CopyAction
+				Drag.onDragFinished: root.drag = null
 			}
 
 			// The breadcrumb's whole path, when the chips could not say it.
