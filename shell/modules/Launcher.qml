@@ -434,6 +434,12 @@ Scope {
 	property int ranExit: -1
 	readonly property bool ranDone: root.ranExit >= 0
 
+	// Each run stamps the file with a token, and only a file carrying the
+	// current token is read. Without it the previous run's "exit:0" was still
+	// on disk when the sheet next opened, read as a finished silent action,
+	// and the sheet closed itself a third of a second after appearing.
+	property string ranToken: ""
+
 	readonly property string outputPath:
 		(Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/groma-launcher-output"
 
@@ -449,10 +455,11 @@ Scope {
 		root.ranLine = line;
 		root.ranOutput = "";
 		root.ranExit = -1;
+		root.ranToken = String(Date.now());
 		Quickshell.execDetached(["sh", "-c",
-			'out="$1"; shift; : > "$out"; (eval "$1") > "$out" 2>&1; printf "\\n\\036exit:%s\\n" "$?" >> "$out"',
-			"sh", root.outputPath, line]);
-		outputFile.reload();
+			'out="$1"; tok="$2"; shift 2; printf "\\036run:%s\\n" "$tok" > "$out"; '
+				+ '(eval "$1") >> "$out" 2>&1; printf "\\n\\036exit:%s\\n" "$?" >> "$out"',
+			"sh", root.outputPath, root.ranToken, line]);
 		settle.start();
 	}
 
@@ -467,7 +474,15 @@ Scope {
 	}
 
 	function readOutput() {
-		const raw = outputFile.text() ?? "";
+		if (root.ranLine === "")
+			return;
+
+		let raw = outputFile.text() ?? "";
+		const head = "\u001erun:" + root.ranToken + "\n";
+		if (!raw.startsWith(head))
+			return;
+		raw = raw.slice(head.length);
+
 		const mark = raw.lastIndexOf("\u001eexit:");
 		if (mark >= 0) {
 			root.ranExit = parseInt(raw.slice(mark + 6)) || 0;
