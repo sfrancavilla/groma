@@ -39,6 +39,9 @@ Scope {
 
 	function show() {
 		root.picked = "";
+		root.ranLine = "";
+		root.ranOutput = "";
+		root.ranExit = -1;
 		searchField.clear();
 		root.open = true;
 		list.contentY = 0;
@@ -300,6 +303,9 @@ Scope {
 		if (card) out.push(card);
 		if (!appsFirst) out.push(...appItems);
 
+		if (root.mode === "run" && root.ranLine !== "" && root.ranLine === root.body)
+			out.push({ kind: "output", key: "output" });
+
 		if (root.mode === "run")
 			for (const line of History.recentCommands(6))
 				if (line !== root.body)
@@ -412,19 +418,77 @@ Scope {
 		case "history":
 			root.runCommand(item.line, alternate);
 			return;
+		case "output":
+			root.runCommand(root.ranLine, alternate);
+			return;
 		}
 	}
 
-	// Detached, or in the terminal with the shell kept open afterwards so the
-	// output can be read.
-	function runCommand(line, inTerminal) {
-		if (inTerminal)
-			Quickshell.execDetached(["foot", "-e", "sh", "-c", line + '; exec "$SHELL"']);
-		else
-			Quickshell.execDetached(["sh", "-c", line]);
+	// In the terminal, with the shell kept open afterwards; or detached, with
+	// the output written to a file the sheet watches. A command that finishes
+	// silently was an action and the sheet closes; one that prints, or fails,
+	// is a question and the answer stays on screen. Detached rather than a
+	// child of the shell, so a long-running one survives the sheet closing.
+	property string ranLine: ""
+	property string ranOutput: ""
+	property int ranExit: -1
+	readonly property bool ranDone: root.ranExit >= 0
 
+	readonly property string outputPath:
+		(Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/groma-launcher-output"
+
+	function runCommand(line, inTerminal) {
 		History.noteCommand(line);
-		root.close();
+
+		if (inTerminal) {
+			Quickshell.execDetached(["foot", "-e", "sh", "-c", line + '; exec "$SHELL"']);
+			root.close();
+			return;
+		}
+
+		root.ranLine = line;
+		root.ranOutput = "";
+		root.ranExit = -1;
+		Quickshell.execDetached(["sh", "-c",
+			'out="$1"; shift; : > "$out"; (eval "$1") > "$out" 2>&1; printf "\\n\\036exit:%s\\n" "$?" >> "$out"',
+			"sh", root.outputPath, line]);
+		outputFile.reload();
+		settle.start();
+	}
+
+	FileView {
+		id: outputFile
+
+		path: root.outputPath
+		printErrors: false
+		watchChanges: true
+		onFileChanged: reload()
+		onLoaded: root.readOutput()
+	}
+
+	function readOutput() {
+		const raw = outputFile.text() ?? "";
+		const mark = raw.lastIndexOf("\u001eexit:");
+		if (mark >= 0) {
+			root.ranExit = parseInt(raw.slice(mark + 6)) || 0;
+			root.ranOutput = raw.slice(0, mark).replace(/\n+$/, "");
+		} else {
+			root.ranOutput = raw;
+		}
+		settle.restart();
+	}
+
+	// A short grace after the file settles: exit 0 with nothing printed was
+	// an action, and the sheet goes.
+	Timer {
+		id: settle
+
+		interval: 350
+		onTriggered: {
+			outputFile.reload();
+			if (root.ranDone && root.ranExit === 0 && root.ranOutput.trim() === "")
+				root.close();
+		}
 	}
 
 	function searchWeb() {
@@ -502,6 +566,13 @@ Scope {
 
 		function search(text: string): void {
 			root.setSearch(text);
+		}
+
+		// The path Enter takes on a command, for scripts and for testing.
+		function run(line: string): void {
+			root.show();
+			root.setSearch(line);
+			root.runCommand(line, false);
 		}
 	}
 
@@ -775,6 +846,7 @@ Scope {
 
 								sourceComponent: modelData.kind === "calc" ? calcCard
 									: modelData.kind === "run" ? runCard
+									: modelData.kind === "output" ? outputCard
 									: modelData.kind === "history" ? historyRow
 									: appRow
 							}
@@ -1235,6 +1307,80 @@ Scope {
 					anchors.fill: parent
 					cursorShape: Qt.PointingHandCursor
 					onClicked: { root.picked = modelData.key; root.act(false); }
+				}
+			}
+		}
+	}
+
+	// What the command printed, and how it ended. Twelve lines, then a count
+	// and the way to see the rest.
+	Component {
+		id: outputCard
+
+		Column {
+			spacing: 6
+
+			readonly property var lines: root.ranOutput === "" ? [] : root.ranOutput.split("\n")
+			readonly property int shown: Math.min(12, lines.length)
+
+			Item {
+				width: parent.width
+				height: outputLabel.height
+
+				Text {
+					id: outputLabel
+
+					x: 10
+					text: "OUTPUT"
+					font.pixelSize: Theme.fontCaption
+					font.bold: true
+					font.letterSpacing: 0.66
+					opacity: 0.6
+					color: Theme.glassTextPrimary
+				}
+
+				Text {
+					anchors.right: parent.right
+					anchors.rightMargin: 10
+					text: !root.ranDone ? "Running…"
+						: root.ranExit === 0 ? "Done" : `Exit ${root.ranExit}`
+					font.pixelSize: Theme.fontCaption
+					font.weight: Font.DemiBold
+					opacity: 0.8
+					color: root.ranDone && root.ranExit !== 0 ? Theme.warning : Theme.glassTextPrimary
+				}
+			}
+
+			Rectangle {
+				width: parent.width
+				height: body.implicitHeight + 24
+				radius: 16
+				color: Theme.glassControl
+				border.width: 1
+				border.color: Theme.glassControlBorder
+
+				Text {
+					id: body
+
+					anchors {
+						left: parent.left
+						right: parent.right
+						top: parent.top
+						margins: 12
+						leftMargin: 14
+						rightMargin: 14
+					}
+
+					text: (lines.slice(0, shown).join("\n") || (root.ranDone ? "(no output)" : ""))
+						+ (lines.length > shown
+							? `\n… ${lines.length - shown} more lines · ⇧↵ to see them in a terminal` : "")
+					wrapMode: Text.NoWrap
+					elide: Text.ElideRight
+					font.pixelSize: Theme.fontTitle
+					font.family: "monospace"
+					lineHeight: 1.3
+					color: Theme.glassTextPrimary
+					opacity: lines.length === 0 ? 0.6 : 1
 				}
 			}
 		}
