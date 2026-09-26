@@ -48,9 +48,13 @@ Scope {
 		onTriggered: if (root.available && !watcher.running) watcher.running = true
 	}
 
+	// Re-checks for the tools when asked while idle, so installing them does
+	// not need a reload: the next ":" finds them and starts the watcher.
 	function refresh() {
 		if (root.available)
 			lister.running = true;
+		else
+			tools.running = true;
 	}
 
 	Process {
