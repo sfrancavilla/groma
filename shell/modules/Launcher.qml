@@ -683,6 +683,11 @@ Scope {
 			root.actionsFor = DesktopEntries.byId(id);
 		}
 
+		// The path Enter (or Shift+Enter) takes on the highlighted item.
+		function pick(alternate: bool): void {
+			root.act(alternate);
+		}
+
 		// The path Enter takes on a command, for scripts and for testing.
 		function run(line: string): void {
 			root.show();
