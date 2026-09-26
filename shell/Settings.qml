@@ -21,6 +21,20 @@ Singleton {
 		adapter.publicAddressLookup = value;
 	}
 
+	// Applications pinned to the launcher, by desktop-entry id, in order.
+	readonly property alias pinnedApps: adapter.pinnedApps
+
+	function isPinned(id) {
+		return (adapter.pinnedApps ?? []).includes(id);
+	}
+
+	function togglePin(id) {
+		const now = adapter.pinnedApps ?? [];
+		adapter.pinnedApps = now.includes(id)
+			? now.filter(entry => entry !== id)
+			: [...now, id].slice(0, 5);
+	}
+
 	// --- Integration: Nothing earbuds (integrations/nothingear) ----------
 	// One settings file for everything, so these keep the baseline's store;
 	// the prefix in the comment is the only namespacing there is.
@@ -60,6 +74,7 @@ Singleton {
 			id: adapter
 
 			property bool publicAddressLookup: false
+			property var pinnedApps: []
 			property bool pauseOnBudRemoved: true
 			property bool resumeOnBudReplaced: true
 		}

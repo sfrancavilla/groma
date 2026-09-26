@@ -25,6 +25,8 @@ Item {
 	// Return with Shift held. The input owns Return, so the modifier has to
 	// be read here, not on whatever contains the field.
 	signal acceptedAlternate
+	// Tab, which the input would otherwise hand to focus navigation.
+	signal tabbed
 
 	function clear() {
 		input.text = "";
@@ -135,6 +137,9 @@ Item {
 						&& (event.modifiers & Qt.ShiftModifier)) {
 					event.accepted = true;
 					field.acceptedAlternate();
+				} else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+					event.accepted = true;
+					field.tabbed();
 				}
 			}
 

@@ -37,8 +37,62 @@ Scope {
 	readonly property string query: searchField.text
 	readonly property string term: root.query.trim().toLowerCase()
 
+	// --- actions on an application -------------------------------------------
+	//
+	// Tab on an application opens what can be done with it besides opening
+	// it: the actions its .desktop file declares - a private window, an empty
+	// window - and then Groma's own. They replace the list; Esc or Tab brings
+	// the list back. The sheet stays, because the answer to "what else can I
+	// do with this" is not "close".
+	property var actionsFor: null
+
+	function toggleActions() {
+		if (root.actionsFor !== null) {
+			root.actionsFor = null;
+			root.picked = "";
+			return;
+		}
+
+		const item = root.current;
+		if (item !== null && item.kind === "app") {
+			root.actionsFor = item.entry;
+			root.picked = "";
+		}
+	}
+
+	readonly property var actionItems: {
+		const entry = root.actionsFor;
+		if (entry === null)
+			return [];
+
+		const out = [];
+		for (const action of (entry.actions ?? []))
+			out.push({ kind: "action", key: "act:" + action.id, label: action.name,
+				run: () => { action.execute(); History.noteLaunch(entry.id); root.close(); } });
+
+		// Only where the entry declares nothing of its own: Chromium's "New
+		// Window" and a Groma "Open a new window" beneath it say one thing twice.
+		const open = root.windowsFor(entry);
+		if (open.length > 0 && out.length === 0)
+			out.push({ kind: "action", key: "act:new", label: "Open a new window",
+				run: () => { entry.execute(); History.noteLaunch(entry.id); root.close(); } });
+
+		for (const win of open.slice(0, 5))
+			out.push({ kind: "action", key: "act:win:" + win.address,
+				label: `Switch to window on workspace ${win.workspace}`,
+				run: () => { Quickshell.execDetached(["hyprctl", "dispatch",
+					`hl.dsp.focus({ window = "address:${win.address}" })`]); root.close(); } });
+
+		out.push({ kind: "action", key: "act:pin",
+			label: Settings.isPinned(entry.id) ? "Unpin from launcher" : "Pin to launcher",
+			run: () => { Settings.togglePin(entry.id); root.actionsFor = null; root.picked = ""; } });
+
+		return out;
+	}
+
 	function show() {
 		root.picked = "";
+		root.actionsFor = null;
 		root.ranLine = "";
 		root.ranOutput = "";
 		root.ranExit = -1;
@@ -270,9 +324,15 @@ Scope {
 
 	readonly property int recentLimit: 5
 
-	readonly property var recent: History.recent(root.recentLimit)
+	readonly property var pinned: (Settings.pinnedApps ?? [])
 		.map(id => DesktopEntries.byId(id))
 		.filter(entry => entry !== null && !entry.noDisplay)
+
+	readonly property var recent: History.recent(root.recentLimit + root.pinned.length)
+		.map(id => DesktopEntries.byId(id))
+		.filter(entry => entry !== null && !entry.noDisplay
+			&& !root.pinned.some(pin => pin.id === entry.id))
+		.slice(0, root.recentLimit)
 
 	readonly property var everything: root.apps.slice()
 		.sort((a, b) => a.name.localeCompare(b.name))
@@ -287,7 +347,8 @@ Scope {
 
 		if (term === "") {
 			for (const entry of root.everything)
-				if (!root.recent.some(seen => seen.id === entry.id))
+				if (!root.recent.some(seen => seen.id === entry.id)
+						&& !root.pinned.some(pin => pin.id === entry.id))
 					out.push({ kind: "app", entry: entry, key: "app:" + entry.id });
 			return out;
 		}
@@ -317,8 +378,10 @@ Scope {
 	// Everything on screen in the order it is drawn - tiles first - so the
 	// arrow keys walk what is there. The field owns left and right for its
 	// caret, so the tiles are walked with up and down like the rows.
-	readonly property var ordered: root.term !== "" ? root.items
-		: root.recent.map(entry => ({ kind: "app", entry: entry, key: "app:" + entry.id }))
+	readonly property var ordered: root.actionsFor !== null ? root.actionItems
+		: root.term !== "" ? root.items
+		: root.pinned.concat(root.recent)
+			.map(entry => ({ kind: "app", entry: entry, key: "app:" + entry.id }))
 			.concat(root.items)
 
 	readonly property var current: root.ordered.find(item => item.key === root.picked)
@@ -356,6 +419,7 @@ Scope {
 						cls: String(win.class ?? "").toLowerCase(),
 						initial: String(win.initialClass ?? "").toLowerCase(),
 						address: win.address,
+						workspace: win.workspace?.id ?? 0,
 						recency: win.focusHistoryID ?? 999
 					}));
 				} catch (err) {
@@ -395,6 +459,9 @@ Scope {
 		}
 
 		switch (item.kind) {
+		case "action":
+			item.run();
+			return;
 		case "app": {
 			const open = alternate ? [] : root.windowsFor(item.entry);
 			if (open.length > 0) {
@@ -583,6 +650,15 @@ Scope {
 			root.setSearch(text);
 		}
 
+		function pin(id: string): void {
+			Settings.togglePin(id);
+		}
+
+		function actions(id: string): void {
+			root.show();
+			root.actionsFor = DesktopEntries.byId(id);
+		}
+
 		// The path Enter takes on a command, for scripts and for testing.
 		function run(line: string): void {
 			root.show();
@@ -627,7 +703,7 @@ Scope {
 			radius: Theme.launcherRadius
 			topFraction: Theme.launcherTop
 
-			Keys.onEscapePressed: root.close()
+			Keys.onEscapePressed: root.actionsFor !== null ? root.toggleActions() : root.close()
 			Keys.onDownPressed: root.move(1)
 			Keys.onUpPressed: root.move(-1)
 
@@ -672,6 +748,7 @@ Scope {
 
 					onAccepted: root.act(false)
 					onAcceptedAlternate: root.act(true)
+					onTabbed: root.toggleActions()
 				}
 
 				Chip {
@@ -688,11 +765,38 @@ Scope {
 				}
 			}
 
+			// Pinned applications as tiles, when there are any.
+			Column {
+				width: parent.width
+				visible: root.term === "" && root.actionsFor === null && root.pinned.length > 0
+				spacing: 6
+
+				Text {
+					x: 10
+					text: "PINNED"
+					font.pixelSize: Theme.fontCaption
+					font.bold: true
+					font.letterSpacing: 0.66
+					opacity: 0.6
+					color: Theme.glassTextPrimary
+				}
+
+				Row {
+					width: parent.width
+					spacing: 6
+
+					Repeater {
+						model: root.pinned
+						delegate: tileDelegate
+					}
+				}
+			}
+
 			// Recent applications as tiles, with the one way to be rid of
 			// them beside the label - a secondary action in the header slot.
 			Column {
 				width: parent.width
-				visible: root.term === "" && root.recent.length > 0
+				visible: root.term === "" && root.actionsFor === null && root.recent.length > 0
 				spacing: 6
 
 				Item {
@@ -736,95 +840,70 @@ Scope {
 				}
 
 				Row {
-					id: tiles
-
-					readonly property real tileWidth:
-						(width - (root.recentLimit - 1) * 6) / root.recentLimit
-
 					width: parent.width
 					spacing: 6
 
 					Repeater {
 						model: root.recent
+						delegate: tileDelegate
+					}
+				}
+			}
 
-						Rectangle {
-							id: tile
+			// What can be done with the application Tab was pressed on.
+			Column {
+				width: parent.width
+				visible: root.actionsFor !== null
+				spacing: 4
 
-							required property var modelData
+				Text {
+					x: 10
+					text: (root.actionsFor?.name ?? "").toUpperCase()
+					font.pixelSize: Theme.fontCaption
+					font.bold: true
+					font.letterSpacing: 0.66
+					opacity: 0.6
+					color: Theme.glassTextPrimary
+				}
 
-							readonly property bool selected: root.current?.key === "app:" + modelData.id
-							readonly property string iconFile: Quickshell.iconPath(modelData.icon, true)
+				Repeater {
+					model: root.actionItems
 
-							width: tiles.tileWidth
-							height: 48 + 8 + 16 + 22
-							radius: 18
+					Rectangle {
+						id: actionRow
 
-							color: tile.selected ? Theme.glassChipActive
-								: tileMouse.containsMouse ? Theme.glassControlHover
-								: "transparent"
-							border.width: tile.selected ? 1 : 0
-							border.color: Theme.glassTrackBorderFocus
+						required property var modelData
 
-							Behavior on color {
-								ColorAnimation { duration: 120 }
+						readonly property bool selected: root.current?.key === modelData.key
+
+						width: parent.width
+						height: Theme.launcherRowHeight
+						radius: Theme.radiusRow
+						color: actionRow.selected ? Theme.glassChipActive
+							: actionMouse.containsMouse ? Theme.glassControlHover : "transparent"
+						border.width: actionRow.selected ? 1 : 0
+						border.color: Theme.glassTrackBorderFocus
+
+						Text {
+							anchors {
+								left: parent.left
+								leftMargin: Theme.spacingL
+								verticalCenter: parent.verticalCenter
 							}
 
-							Column {
-								anchors.centerIn: parent
-								width: parent.width
-								spacing: 8
+							text: actionRow.modelData.label
+							font.pixelSize: Theme.fontLead
+							font.weight: actionRow.selected ? Font.Bold : Font.DemiBold
+							color: Theme.glassTextPrimary
+						}
 
-								Lens {
-									anchors.horizontalCenter: parent.horizontalCenter
-									width: 48
-									height: 48
-									sheen: false
-									tint: root.tint(tile.modelData.name)
+						MouseArea {
+							id: actionMouse
 
-									Image {
-										anchors.centerIn: parent
-										width: parent.width * 0.72
-										height: width
-										visible: tile.iconFile !== ""
-										source: tile.iconFile
-										sourceSize: Qt.size(96, 96)
-										fillMode: Image.PreserveAspectFit
-										smooth: true
-									}
-
-									Text {
-										anchors.centerIn: parent
-										visible: tile.iconFile === ""
-										text: tile.modelData.name.slice(0, 1).toUpperCase()
-										font.pixelSize: 18
-										font.weight: Font.Black
-										color: root.ink(tile.modelData.name)
-									}
-								}
-
-								Text {
-									width: parent.width - 12
-									anchors.horizontalCenter: parent.horizontalCenter
-									horizontalAlignment: Text.AlignHCenter
-									elide: Text.ElideRight
-									text: tile.modelData.name
-									font.pixelSize: Theme.fontBody
-									font.weight: tile.selected ? Font.Bold : Font.DemiBold
-									color: Theme.glassTextPrimary
-								}
-							}
-
-							MouseArea {
-								id: tileMouse
-
-								anchors.fill: parent
-								hoverEnabled: true
-								cursorShape: Qt.PointingHandCursor
-								onClicked: {
-									root.picked = "app:" + tile.modelData.id;
-									root.act(false);
-								}
-							}
+							anchors.fill: parent
+							hoverEnabled: true
+							cursorShape: Qt.PointingHandCursor
+							onClicked: { root.picked = actionRow.modelData.key; root.act(false); }
 						}
 					}
 				}
@@ -834,7 +913,7 @@ Scope {
 			Item {
 				width: parent.width
 				height: Math.min(8 * (Theme.launcherRowHeight + 4) + 60, list.contentHeight)
-				visible: root.items.length > 0
+				visible: root.items.length > 0 && root.actionsFor === null
 
 				Flickable {
 					id: list
@@ -943,8 +1022,13 @@ Scope {
 								: kind === "run" || kind === "history" ? "Run"
 								: root.currentWindows.length > 0 ? "Switch" : "Open";
 							const rows = [["↑↓", "Move"]];
+							if (root.actionsFor !== null) {
+								rows.push(["↵", "Do"], ["Esc", "Back"]);
+								return rows;
+							}
 							if (enter) rows.push(["↵", enter]);
 							if (kind === "run" || kind === "history") rows.push(["⇧↵", "In terminal"]);
+							if (kind === "app") rows.push(["Tab", "Actions"]);
 							rows.push(["Esc", "Close"]);
 							return rows;
 						}
@@ -976,6 +1060,92 @@ Scope {
 
 	// A label with the right font for the lens glyph to borrow.
 	Text { id: label; visible: false }
+
+	// --- the tile, for the pinned and recent grids ---------------------------
+
+	Component {
+		id: tileDelegate
+
+		Rectangle {
+			id: tile
+
+			required property var modelData
+
+			readonly property bool selected: root.current?.key === "app:" + modelData.id
+			readonly property string iconFile: Quickshell.iconPath(modelData.icon, true)
+
+			width: (parent.width - (root.recentLimit - 1) * 6) / root.recentLimit
+			height: 48 + 8 + 16 + 22
+			radius: 18
+
+			color: tile.selected ? Theme.glassChipActive
+				: tileMouse.containsMouse ? Theme.glassControlHover
+				: "transparent"
+			border.width: tile.selected ? 1 : 0
+			border.color: Theme.glassTrackBorderFocus
+
+			Behavior on color {
+				ColorAnimation { duration: 120 }
+			}
+
+			Column {
+				anchors.centerIn: parent
+				width: parent.width
+				spacing: 8
+
+				Lens {
+					anchors.horizontalCenter: parent.horizontalCenter
+					width: 48
+					height: 48
+					sheen: false
+					tint: root.tint(tile.modelData.name)
+
+					Image {
+						anchors.centerIn: parent
+						width: parent.width * 0.72
+						height: width
+						visible: tile.iconFile !== ""
+						source: tile.iconFile
+						sourceSize: Qt.size(96, 96)
+						fillMode: Image.PreserveAspectFit
+						smooth: true
+					}
+
+					Text {
+						anchors.centerIn: parent
+						visible: tile.iconFile === ""
+						text: tile.modelData.name.slice(0, 1).toUpperCase()
+						font.pixelSize: 18
+						font.weight: Font.Black
+						color: root.ink(tile.modelData.name)
+					}
+				}
+
+				Text {
+					width: parent.width - 12
+					anchors.horizontalCenter: parent.horizontalCenter
+					horizontalAlignment: Text.AlignHCenter
+					elide: Text.ElideRight
+					text: tile.modelData.name
+					font.pixelSize: Theme.fontBody
+					font.weight: tile.selected ? Font.Bold : Font.DemiBold
+					color: Theme.glassTextPrimary
+				}
+			}
+
+			MouseArea {
+				id: tileMouse
+
+				anchors.fill: parent
+				hoverEnabled: true
+				cursorShape: Qt.PointingHandCursor
+				onClicked: {
+					root.picked = "app:" + tile.modelData.id;
+					root.act(false);
+				}
+			}
+		}
+	}
 
 	// --- the row kinds -------------------------------------------------------
 
