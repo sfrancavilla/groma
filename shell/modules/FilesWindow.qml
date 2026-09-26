@@ -766,6 +766,7 @@ Scope {
 				const suggested = lines.slice(2).filter(l => l !== "").map(l => l.replace(/\.desktop$/, ""));
 				if (defaultId !== "" && !typeProbe.ask) {
 					Quickshell.execDetached(["xdg-open", typeProbe.entry.path]);
+					root.raiseLater(defaultId);
 					return;
 				}
 				root.opener = { entry: typeProbe.entry, type: type, defaultId: defaultId,
@@ -829,10 +830,12 @@ Scope {
 
 	function runOpener() {
 		const o = root.opener;
+		// Read the pick before the sheet goes: the list is derived from it.
+		const apps = root.openerApps;
 		root.opener = null;
-		if (o === null || root.openerApps.length === 0)
+		if (o === null || apps.length === 0)
 			return;
-		const app = root.openerApps[o.index].entry;
+		const app = apps[o.index].entry;
 		root.launch(app.id, o.entry.path, o.always ? o.type : "");
 		root.say(`Opening ${o.entry.name} with ${app.name}` + (o.always ? ` · always, for ${o.type}` : ""));
 	}
@@ -845,6 +848,62 @@ Scope {
 			+ 'for d in "$HOME/.local/share/applications" /usr/local/share/applications /usr/share/applications; do '
 			+ 'f="$d/$1.desktop"; [ -f "$f" ] && exec gio launch "$f" "$2"; done',
 			"sh", id, path, "", alwaysFor]);
+		root.raiseLater(id);
+	}
+
+	// An application already running takes the file as a new tab in a
+	// window that stays where it was - on a tiled desktop, possibly on
+	// another workspace, so nothing seems to happen. A beat after the
+	// launch, its window is brought to the front, as the launcher does.
+	// A fresh process gets the focus from the compositor on its own.
+	function raiseLater(id) {
+		raiser.entryId = id;
+		raiser.tries = 0;
+		raiseTimer.restart();
+	}
+
+	Timer {
+		id: raiseTimer
+
+		interval: 500
+		onTriggered: { raiser.running = false; raiser.running = true; }
+	}
+
+	Process {
+		id: raiser
+
+		property string entryId: ""
+		property int tries: 0
+
+		command: ["hyprctl", "clients", "-j"]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				const entry = DesktopEntries.byId(raiser.entryId);
+				if (entry === null)
+					return;
+				const exec = String(entry.execString ?? "").trim().split(/\s+/)[0] ?? "";
+				const names = [entry.id, entry.startupClass, exec.split("/").pop()]
+					.map(name => String(name ?? "").toLowerCase())
+					.filter(name => name !== "" && !name.startsWith("@@"));
+				let windows = [];
+				try {
+					windows = JSON.parse(text);
+				} catch (err) {
+					return;
+				}
+				const mine = windows
+					.filter(win => names.includes(String(win.class ?? "").toLowerCase())
+						|| names.includes(String(win.initialClass ?? "").toLowerCase()))
+					.sort((a, b) => (a.focusHistoryID ?? 999) - (b.focusHistoryID ?? 999));
+				if (mine.length > 0) {
+					Quickshell.execDetached(["hyprctl", "dispatch",
+						`hl.dsp.focus({ window = "address:${mine[0].address}" })`]);
+				} else if (raiser.tries++ < 6) {
+					raiseTimer.restart();
+				}
+			}
+		}
 	}
 
 	// --- places ---------------------------------------------------------
@@ -1188,6 +1247,15 @@ Scope {
 		function openwith(): void {
 			if (root.currentEntry !== null)
 				root.probeOpen(root.currentEntry, true);
+		}
+
+		// The path Open takes in the "Open with" sheet, for a given application.
+		function choose(id: string): void {
+			const index = root.openerApps.findIndex(app => app.entry.id === id);
+			if (index >= 0) {
+				root.opener = Object.assign({}, root.opener, { index: index });
+				root.runOpener();
+			}
 		}
 
 		// The path the conflict sheet's chips take: skip, keep or replace.
