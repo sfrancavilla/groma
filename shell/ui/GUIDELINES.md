@@ -158,7 +158,7 @@ The panel is 2880×1920 at scale 2, so one logical pixel is two physical ones.
 | `History.qml` | What the user did - launches, counts, times. Its own file there; clearing it never touches a setting. |
 | `ui/` | Surfaces and controls with no knowledge of what they show. |
 | `icons/` | Glyphs, drawn as `Shape` paths, scaling from a `baseWidth`/`baseHeight`. |
-| `modules/` | One feature each: its data, its IPC and its layout. |
+| `modules/` | One feature each: its data, its IPC and its layout. A helper process a module keeps alive is a script beside it, named after it: `files-worker.py`. |
 | `integrations/<name>/` | Code for one maker's or one device's behaviour, self-contained. `<name>` is a QML module name: letters only, no hyphens. |
 
 An integration fills a **contract the baseline defines** - a property on a

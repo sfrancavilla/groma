@@ -10,9 +10,9 @@ import ".."
 // Files: the design's turn 10, an ordinary window rather than a sheet.
 //
 // The window never touches the disk itself. QML can read a folder but not
-// write one, so browsing lives here and every operation will go through a
-// worker. What is here now is the browsing: places, breadcrumbs, a list and a
-// grid, a search over the folder on screen, and Enter to open.
+// write one, so browsing lives here and every operation goes through the
+// worker beside this file, files-worker.py: one JSON line each way. Rename,
+// new folder, trash, restore and undo are here; copy and move come next.
 //
 // The window is the pane, edge to edge, and it tiles like any other:
 // Hyprland rounds it and casts the shadow, and the layout is anchored so
@@ -41,6 +41,180 @@ Scope {
 	property string picked: ""
 
 	readonly property string filter: searchField.text.trim()
+
+	readonly property bool inTrash: root.path === root.trashPath
+
+	// --- the worker -------------------------------------------------------
+
+	Process {
+		id: worker
+
+		command: ["python3", `${Quickshell.shellDir}/modules/files-worker.py`]
+		stdinEnabled: true
+		onExited: if (root.open) reviveWorker.start()
+
+		stdout: SplitParser {
+			onRead: line => root.reply(line)
+		}
+
+		stderr: SplitParser {
+			onRead: line => console.warn("Files worker:", line)
+		}
+	}
+
+	Timer {
+		id: reviveWorker
+
+		interval: 2000
+		onTriggered: if (root.open && !worker.running) worker.running = true
+	}
+
+	property int nextId: 1
+	property var pending: ({})
+
+	// Sends one request; `then` gets the answer if it was a yes. A no is
+	// said in the footer, whoever asked.
+	function ask(op, args, then) {
+		const id = root.nextId++;
+		if (then)
+			root.pending[id] = then;
+		worker.write(JSON.stringify(Object.assign({ id: id, op: op }, args ?? {})) + "\n");
+	}
+
+	function reply(line) {
+		let msg;
+		try {
+			msg = JSON.parse(line);
+		} catch (err) {
+			return;
+		}
+		const then = root.pending[msg.id];
+		delete root.pending[msg.id];
+		if (!msg.ok) {
+			root.say(msg.error);
+			return;
+		}
+		if (then)
+			then(msg);
+	}
+
+	// A sentence in the footer for a few seconds: what just happened, or
+	// why it did not.
+	property string notice: ""
+
+	function say(text) {
+		root.notice = text;
+		noticeTimer.restart();
+	}
+
+	Timer {
+		id: noticeTimer
+
+		interval: 4000
+		onTriggered: root.notice = ""
+	}
+
+	// --- the operations ----------------------------------------------------
+
+	// The path being renamed, or "". The editor draws itself in that row or
+	// tile and owns the keyboard until it is done.
+	property string renaming: ""
+	property bool renamingFolder: false
+	// A folder just made, to be renamed as soon as the model shows it.
+	property string pendingRename: ""
+
+	function startRename(entry) {
+		root.picked = entry.path;
+		root.renamingFolder = entry.folder;
+		root.renaming = entry.path;
+	}
+
+	function commitRename(name) {
+		const path = root.renaming;
+		root.renaming = "";
+		if (path === "" || name.trim() === "" || name === root.baseName(path))
+			return;
+		root.ask("rename", { path: path, name: name.trim() }, msg => { root.picked = msg.path; });
+	}
+
+	function cancelRename() {
+		root.renaming = "";
+		body.forceActiveFocus();
+	}
+
+	function newFolder() {
+		root.ask("mkdir", { parent: root.path }, msg => { root.pendingRename = msg.path; });
+	}
+
+	function trashEntry(entry) {
+		root.ask("trash", { paths: [entry.path] }, msg => {
+			root.say(`Moved ${entry.name} to Trash · Ctrl+Z undoes`);
+		});
+	}
+
+	function restoreEntry(entry) {
+		root.ask("restore", { names: [entry.name] }, msg => {
+			root.say(`Restored ${entry.name} to ${root.tilde(root.parentOf(msg.paths[0]))}`);
+		});
+	}
+
+	function undo() {
+		root.ask("undo", {}, msg => { root.say(`Undid the ${msg.undid}`); });
+	}
+
+	// A question with a Cancel: what it asks, the word on the chip that
+	// answers yes, and what yes does.
+	property var confirm: null
+
+	function askDelete(entry) {
+		root.confirm = {
+			title: `Delete ${entry.name} forever?`,
+			body: "It will not go to the Trash, and there is no undo.",
+			verb: "Delete",
+			run: () => root.ask("delete", { paths: [entry.path] }, msg => root.say(`Deleted ${entry.name}`))
+		};
+	}
+
+	function askEmpty() {
+		const n = root.entries.length;
+		root.confirm = {
+			title: "Empty the Trash?",
+			body: (n === 1 ? "1 item" : n + " items") + " will be deleted forever. There is no undo.",
+			verb: "Empty Trash",
+			run: () => root.ask("empty", {}, msg => root.say("The Trash is empty"))
+		};
+	}
+
+	function runConfirm() {
+		const what = root.confirm;
+		root.confirm = null;
+		if (what)
+			what.run();
+	}
+
+	// Enter: open a thing, or put it back where it came from.
+	function activate() {
+		if (root.currentEntry === null)
+			return;
+		if (root.inTrash)
+			root.restoreEntry(root.currentEntry);
+		else
+			root.openEntry(root.currentEntry);
+	}
+
+	// Where each thing in the Trash came from, by name, from the worker.
+	property var trashInfo: ({})
+
+	function refreshTrash() {
+		if (!root.inTrash)
+			return;
+		root.ask("trashlist", {}, msg => {
+			const map = {};
+			for (const item of msg.items)
+				map[item.name] = item;
+			root.trashInfo = map;
+		});
+	}
 
 	function show(where) {
 		if (where && where !== "")
@@ -84,6 +258,7 @@ Scope {
 	}
 
 	function land(where) {
+		root.renaming = "";
 		root.path = where;
 		root.picked = "";
 		searchField.clear();
@@ -96,6 +271,12 @@ Scope {
 
 	function baseName(path) {
 		return path === "/" ? "/" : path.slice(path.lastIndexOf("/") + 1);
+	}
+
+	// ~ for the home directory, as the design writes it.
+	function tilde(path) {
+		return path === root.home || path.startsWith(root.home + "/")
+			? "~" + path.slice(root.home.length) : path;
 	}
 
 	function openEntry(entry) {
@@ -136,7 +317,16 @@ Scope {
 		}
 	}
 
-	onOpenChanged: if (root.open) placesProbe.running = true
+	onOpenChanged: {
+		if (root.open) {
+			placesProbe.running = true;
+			worker.running = true;
+		} else {
+			worker.running = false;
+			root.confirm = null;
+			root.renaming = "";
+		}
+	}
 
 	// --- the folder on screen ------------------------------------------
 
@@ -176,6 +366,14 @@ Scope {
 		root.entries = out;
 		if (root.picked !== "" && !out.some(entry => entry.path === root.picked))
 			root.picked = "";
+
+		const made = out.find(entry => entry.path === root.pendingRename);
+		if (made !== undefined) {
+			root.pendingRename = "";
+			root.startRename(made);
+		}
+		if (root.inTrash)
+			root.refreshTrash();
 	}
 
 	// The model announces changes as rows coming and going; one rebuild per
@@ -241,13 +439,13 @@ Scope {
 
 	// --- words for things --------------------------------------------------
 
-	function when(date) {
+	function when(date, withTime) {
 		const now = new Date();
 		const then = new Date(date);
 		const day = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 		const days = Math.round((day(now) - day(then)) / 86400000);
 		if (days === 0)
-			return "Today, " + Qt.formatTime(then, "h:mm");
+			return withTime ? "Today, " + Qt.formatTime(then, "h:mm") : "Today";
 		if (days === 1)
 			return "Yesterday";
 		if (then.getFullYear() === now.getFullYear())
@@ -334,6 +532,17 @@ Scope {
 		function view(mode: string): void {
 			root.grid = mode === "grid";
 		}
+
+		// Highlight a thing in the folder on screen, as a click would.
+		function pick(path: string): void {
+			root.picked = path;
+		}
+
+		// The path F2 takes on the highlighted thing.
+		function rename(): void {
+			if (root.currentEntry !== null && !root.inTrash)
+				root.startRename(root.currentEntry);
+		}
 	}
 
 	// --- the window ---------------------------------------------------------
@@ -372,7 +581,26 @@ Scope {
 				Keys.onPressed: event => {
 					const alt = event.modifiers & Qt.AltModifier;
 					const ctrl = event.modifiers & Qt.ControlModifier;
+					const shift = event.modifiers & Qt.ShiftModifier;
 					const columns = root.grid ? gridView.columnCount : 1;
+
+					// A question on screen takes every key: Escape declines,
+					// Return affirms, the rest wait.
+					if (root.confirm !== null) {
+						if (event.key === Qt.Key_Escape)
+							root.confirm = null;
+						else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+							root.runConfirm();
+						event.accepted = true;
+						return;
+					}
+
+					// The rename editor owns the keyboard; what it lets
+					// through is not for the list.
+					if (root.renaming !== "") {
+						event.accepted = true;
+						return;
+					}
 
 					if (event.key === Qt.Key_Escape) {
 						if (root.filter !== "" || searchField.activeFocus) {
@@ -390,7 +618,22 @@ Scope {
 					} else if (event.key === Qt.Key_Left && !searchField.activeFocus && !alt) {
 						root.move(-1);
 					} else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-						root.openEntry(root.currentEntry);
+						root.activate();
+					} else if (event.key === Qt.Key_Delete) {
+						if (root.currentEntry !== null) {
+							if (root.inTrash || shift)
+								root.askDelete(root.currentEntry);
+							else
+								root.trashEntry(root.currentEntry);
+						}
+					} else if (event.key === Qt.Key_F2) {
+						if (root.currentEntry !== null && !root.inTrash)
+							root.startRename(root.currentEntry);
+					} else if (ctrl && shift && event.key === Qt.Key_N) {
+						if (!root.inTrash)
+							root.newFolder();
+					} else if (ctrl && event.key === Qt.Key_Z) {
+						root.undo();
 					} else if (event.key === Qt.Key_Backspace && !searchField.activeFocus) {
 						root.up();
 					} else if (alt && event.key === Qt.Key_Up) {
@@ -584,7 +827,7 @@ Scope {
 							}
 
 							onAccepted: {
-								root.openEntry(root.currentEntry);
+								root.activate();
 								body.forceActiveFocus();
 							}
 						}
@@ -803,49 +1046,90 @@ Scope {
 						bottomMargin: 10
 					}
 
-					// The list's column headings.
+					// In the Trash: what the Trash is, and the way to empty it.
+					Rectangle {
+						id: banner
+
+						width: parent.width
+						height: visible ? 44 : 0
+						visible: root.inTrash && root.entries.length > 0
+						radius: Theme.radiusRow
+						color: Qt.rgba(1, 1, 1, 0.08)
+						border.width: 1
+						border.color: Qt.rgba(1, 1, 1, 0.16)
+
+						Text {
+							anchors {
+								left: parent.left
+								leftMargin: 14
+								verticalCenter: parent.verticalCenter
+							}
+
+							text: "Things stay in the Trash until it is emptied."
+							font.pixelSize: Theme.fontBody
+							font.weight: Font.DemiBold
+							opacity: 0.85
+							color: Theme.glassTextPrimary
+						}
+
+						DialogButton {
+							anchors {
+								right: parent.right
+								rightMargin: 8
+								verticalCenter: parent.verticalCenter
+							}
+
+							text: "Empty Trash"
+							variant: "destructive"
+							onClicked: root.askEmpty()
+						}
+					}
+
+					// The list's column headings. Two layouts: a folder shows
+					// when and how big, the Trash shows where from and when.
 					Item {
 						id: listHeader
 
+						anchors.top: banner.bottom
+						anchors.topMargin: banner.visible ? 4 : 0
 						width: parent.width
 						height: 30
 						visible: !root.grid
 
-						readonly property int sizeWidth: 90
-						readonly property int dateWidth: 160
 						readonly property int gap: 12
 
-						Text {
-							x: 12
-							anchors.verticalCenter: parent.verticalCenter
-							text: "NAME ↑"
-							font.pixelSize: Theme.fontCaption
-							font.bold: true
-							font.letterSpacing: 0.66
-							opacity: 0.6
-							color: Theme.glassTextPrimary
-						}
+						// The design's widths at 1040, shrinking with the window
+						// so the name always keeps the larger share. Tiled
+						// beside an editor the window is two thirds of that.
+						readonly property real sizeWidth: Math.min(90, Math.max(60, width * 0.14))
+						readonly property real dateWidth: Math.min(160, Math.max(90, width * 0.24))
+						readonly property real originWidth: Math.min(200, Math.max(120, width * 0.30))
+						readonly property real deletedWidth: Math.min(110, Math.max(72, width * 0.16))
+						readonly property int chipWidth: 84
 
-						Text {
-							x: parent.width - 12 - listHeader.sizeWidth - listHeader.gap - listHeader.dateWidth
-							anchors.verticalCenter: parent.verticalCenter
-							text: "MODIFIED"
-							font.pixelSize: Theme.fontCaption
-							font.bold: true
-							font.letterSpacing: 0.66
-							opacity: 0.6
-							color: Theme.glassTextPrimary
-						}
+						// Where each column starts, from the right edge in.
+						readonly property real lastX: width - 12 - (root.inTrash ? chipWidth : sizeWidth)
+						readonly property real midX: root.inTrash
+							? lastX - gap - deletedWidth : lastX - gap - dateWidth
+						readonly property real firstX: root.inTrash ? midX - gap - originWidth : midX
 
-						Text {
-							x: parent.width - 12 - listHeader.sizeWidth
-							anchors.verticalCenter: parent.verticalCenter
-							text: "SIZE"
-							font.pixelSize: Theme.fontCaption
-							font.bold: true
-							font.letterSpacing: 0.66
-							opacity: 0.6
-							color: Theme.glassTextPrimary
+						Repeater {
+							model: root.inTrash
+								? [["NAME", 12], ["ORIGINAL LOCATION", listHeader.firstX], ["DELETED", listHeader.midX]]
+								: [["NAME ↑", 12], ["MODIFIED", listHeader.midX], ["SIZE", listHeader.lastX]]
+
+							Text {
+								required property var modelData
+
+								x: modelData[1]
+								anchors.verticalCenter: parent.verticalCenter
+								text: modelData[0]
+								font.pixelSize: Theme.fontCaption
+								font.bold: true
+								font.letterSpacing: 0.66
+								opacity: 0.6
+								color: Theme.glassTextPrimary
+							}
 						}
 					}
 
@@ -907,15 +1191,19 @@ Scope {
 								}
 							}
 
+							readonly property bool editing: root.renaming === modelData.path
+							readonly property var trashed: root.trashInfo[modelData.name]
+
 							Text {
 								anchors {
 									left: rowDisc.right
 									leftMargin: 12
-									right: modifiedText.left
-									rightMargin: listHeader.gap
+									right: parent.left
+									rightMargin: -(listHeader.firstX - listHeader.gap)
 									verticalCenter: parent.verticalCenter
 								}
 
+								visible: !row.editing
 								elide: Text.ElideRight
 								text: row.modelData.name
 								font.pixelSize: Theme.fontLead
@@ -923,14 +1211,27 @@ Scope {
 								color: Theme.glassTextPrimary
 							}
 
-							Text {
-								id: modifiedText
+							Loader {
+								anchors {
+									left: rowDisc.right
+									leftMargin: 8
+									right: parent.left
+									rightMargin: -(listHeader.firstX - listHeader.gap)
+									verticalCenter: parent.verticalCenter
+								}
 
-								x: parent.width - 12 - listHeader.sizeWidth - listHeader.gap - listHeader.dateWidth
+								active: row.editing
+								sourceComponent: renameBox
+							}
+
+							// A folder's row: when it changed, how big it is.
+							Text {
+								x: listHeader.midX
 								anchors.verticalCenter: parent.verticalCenter
 								width: listHeader.dateWidth
+								visible: !root.inTrash
 								elide: Text.ElideRight
-								text: root.when(row.modelData.modified)
+								text: root.when(row.modelData.modified, true)
 								font.pixelSize: Theme.fontBody
 								font.weight: Font.DemiBold
 								opacity: 0.6
@@ -938,9 +1239,10 @@ Scope {
 							}
 
 							Text {
-								x: parent.width - 12 - listHeader.sizeWidth
+								x: listHeader.lastX
 								anchors.verticalCenter: parent.verticalCenter
 								width: listHeader.sizeWidth
+								visible: !root.inTrash
 								elide: Text.ElideRight
 								text: root.detail(row.modelData)
 								font.pixelSize: Theme.fontBody
@@ -949,13 +1251,75 @@ Scope {
 								color: Theme.glassTextPrimary
 							}
 
+							// The Trash's row: where from, when, and the way back.
+							Text {
+								x: listHeader.firstX
+								anchors.verticalCenter: parent.verticalCenter
+								width: listHeader.originWidth
+								visible: root.inTrash
+								elide: Text.ElideLeft
+								text: row.trashed ? root.tilde(root.parentOf(row.trashed.origin)) : ""
+								font.pixelSize: Theme.fontBody
+								font.weight: Font.DemiBold
+								opacity: 0.6
+								color: Theme.glassTextPrimary
+							}
+
+							Text {
+								x: listHeader.midX
+								anchors.verticalCenter: parent.verticalCenter
+								width: listHeader.deletedWidth
+								visible: root.inTrash
+								elide: Text.ElideRight
+								text: row.trashed && row.trashed.deleted ? root.when(row.trashed.deleted, false) : ""
+								font.pixelSize: Theme.fontBody
+								font.weight: Font.DemiBold
+								opacity: 0.6
+								color: Theme.glassTextPrimary
+							}
+
+							Rectangle {
+								anchors {
+									right: parent.right
+									rightMargin: 12
+									verticalCenter: parent.verticalCenter
+								}
+
+								width: restoreLabel.implicitWidth + 24
+								height: 24
+								radius: Theme.radiusPill
+								visible: root.inTrash && row.selected
+								color: Theme.chipRestore
+								border.width: 1
+								border.color: Theme.chipRestoreBorder
+
+								Text {
+									id: restoreLabel
+
+									anchors.centerIn: parent
+									text: "Restore"
+									font.pixelSize: Theme.fontBody
+									font.bold: true
+									color: Theme.glassTextPrimary
+								}
+
+								MouseArea {
+									anchors.fill: parent
+									cursorShape: Qt.PointingHandCursor
+									onClicked: root.restoreEntry(row.modelData)
+								}
+							}
+
 							MouseArea {
 								id: rowMouse
 
+								// Under the texts, so the Restore chip and the
+								// editor get their clicks first.
 								anchors.fill: parent
+								z: -1
 								hoverEnabled: true
 								onClicked: root.picked = row.modelData.path
-								onDoubleClicked: root.openEntry(row.modelData)
+								onDoubleClicked: root.inTrash ? root.restoreEntry(row.modelData) : root.openEntry(row.modelData)
 							}
 						}
 					}
@@ -963,7 +1327,14 @@ Scope {
 					GridView {
 						id: gridView
 
-						anchors.fill: parent
+						anchors {
+							left: parent.left
+							right: parent.right
+							top: banner.bottom
+							bottom: parent.bottom
+							topMargin: banner.visible ? 4 : 0
+						}
+
 						visible: root.grid
 						clip: true
 						model: root.grid ? root.entries : []
@@ -986,6 +1357,7 @@ Scope {
 							required property var modelData
 
 							readonly property bool selected: root.picked === modelData.path
+							readonly property bool editing: root.renaming === modelData.path
 							readonly property bool image: !modelData.folder && root.imageTypes.includes(modelData.suffix)
 
 							width: gridView.cellWidth
@@ -997,10 +1369,11 @@ Scope {
 								anchors.fill: parent
 								anchors.margins: 4
 								radius: 18
-								color: cell.selected ? Theme.glassChipActive
+								color: cell.editing ? Theme.glassControl
+									: cell.selected ? Theme.glassChipActive
 									: tileMouse.containsMouse ? Theme.glassControlHover : "transparent"
-								border.width: cell.selected ? 1 : 0
-								border.color: Theme.glassTrackBorderFocus
+								border.width: cell.selected || cell.editing ? 1 : 0
+								border.color: cell.editing ? Theme.glassEdge : Theme.glassTrackBorderFocus
 
 								Behavior on color {
 									ColorAnimation { duration: 120 }
@@ -1084,12 +1457,22 @@ Scope {
 
 									Text {
 										width: parent.width
+										visible: !cell.editing
 										horizontalAlignment: Text.AlignHCenter
 										elide: Text.ElideRight
 										text: cell.modelData.name
 										font.pixelSize: Theme.fontBody
 										font.weight: cell.selected ? Font.Bold : Font.DemiBold
 										color: Theme.glassTextPrimary
+									}
+
+									// Snug to the name, as 10b draws it, up to the tile's width.
+									Loader {
+										anchors.horizontalCenter: parent.horizontalCenter
+										width: Math.min(parent.width, item ? item.implicitWidth : parent.width)
+										active: cell.editing
+										sourceComponent: renameBox
+										onLoaded: item.fontSize = Theme.fontBody
 									}
 
 									Text {
@@ -1108,9 +1491,10 @@ Scope {
 									id: tileMouse
 
 									anchors.fill: parent
+									z: -1
 									hoverEnabled: true
 									onClicked: root.picked = cell.modelData.path
-									onDoubleClicked: root.openEntry(cell.modelData)
+									onDoubleClicked: root.inTrash ? root.restoreEntry(cell.modelData) : root.openEntry(cell.modelData)
 								}
 							}
 						}
@@ -1155,7 +1539,7 @@ Scope {
 							verticalCenter: parent.verticalCenter
 						}
 
-						text: root.status
+						text: root.notice !== "" ? root.notice : root.status
 						font.pixelSize: Theme.fontBody
 						font.weight: Font.DemiBold
 						opacity: 0.75
@@ -1174,9 +1558,17 @@ Scope {
 
 						Repeater {
 							model: {
+								if (root.confirm !== null)
+									return [["↵", root.confirm.verb], ["Esc", "Cancel"]];
+								if (root.renaming !== "")
+									return [["↵", "Rename"], ["Esc", "Cancel"]];
 								const rows = [[root.grid ? "←↑↓→" : "↑↓", "Move"]];
-								if (root.currentEntry !== null)
-									rows.push(["↵", root.currentEntry.folder ? "Open" : "Open"]);
+								if (root.currentEntry !== null) {
+									rows.push(["↵", root.inTrash ? "Restore" : "Open"]);
+									if (!root.inTrash)
+										rows.push(["F2", "Rename"]);
+									rows.push(["Del", root.inTrash ? "Delete" : "Trash"]);
+								}
 								rows.push(["Esc", root.filter !== "" ? "Clear" : "Close"]);
 								return rows;
 							}
@@ -1202,6 +1594,83 @@ Scope {
 						}
 					}
 				}
+			}
+
+			// A question over the window: the 3a sheet, scoped to the pane.
+			GlassDialog {
+				anchors.fill: parent
+				open: root.confirm !== null
+				title: root.confirm?.title ?? ""
+				body: root.confirm?.body ?? ""
+
+				Row {
+					anchors.right: parent.right
+					spacing: Theme.spacingS
+
+					DialogButton {
+						text: "Cancel"
+						onClicked: root.confirm = null
+					}
+
+					DialogButton {
+						text: root.confirm?.verb ?? ""
+						variant: "destructive"
+						onClicked: root.runConfirm()
+					}
+				}
+			}
+		}
+	}
+
+	// The name, editable, as the design draws it in 10b: a small field in
+	// the row or under the tile with the stem selected, so typing replaces
+	// the name and keeps the extension. Reads what it edits from the window,
+	// since only one thing is ever renamed at a time.
+	Component {
+		id: renameBox
+
+		Rectangle {
+			id: editor
+
+			property int fontSize: Theme.fontLead
+
+			implicitWidth: input.contentWidth + 16
+			height: input.implicitHeight + 6
+			radius: 8
+			color: Qt.rgba(1, 1, 1, 0.14)
+			border.width: 1
+			border.color: Qt.rgba(1, 1, 1, 0.60)
+
+			TextInput {
+				id: input
+
+				anchors {
+					fill: parent
+					leftMargin: 6
+					rightMargin: 6
+				}
+
+				verticalAlignment: TextInput.AlignVCenter
+				clip: true
+				text: root.baseName(root.renaming)
+				font.pixelSize: editor.fontSize
+				font.weight: Font.DemiBold
+				color: Theme.glassTextPrimary
+				selectionColor: Theme.renameSelection
+				selectedTextColor: Theme.glassTextPrimary
+
+				Component.onCompleted: {
+					forceActiveFocus();
+					const dot = text.lastIndexOf(".");
+					select(0, dot > 0 && !root.renamingFolder ? dot : text.length);
+				}
+
+				onAccepted: root.commitRename(text)
+				Keys.onEscapePressed: root.cancelRename()
+
+				// Clicking away keeps what was typed, as the desktop's other
+				// file managers do.
+				onActiveFocusChanged: if (!activeFocus && root.renaming !== "") root.commitRename(text)
 			}
 		}
 	}

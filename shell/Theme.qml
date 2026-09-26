@@ -182,6 +182,14 @@ Singleton {
 	readonly property color chipDestructiveBorder:
 		Qt.rgba(warning.r, warning.g, warning.b, 0.60)
 
+	// The Trash view's Restore chip: the design's oklch(0.85 0.2 145) at .38
+	// with an oklch(0.9 0.18 145) edge at .6. Empty Trash is the destructive
+	// chip, whose amber is the design's to the last digit.
+	readonly property color chipRestore: Qt.rgba(0x6b / 255, 0xef / 255, 0x75 / 255, 0.38)
+	readonly property color chipRestoreBorder: Qt.rgba(0x8a / 255, 0xfd / 255, 0x90 / 255, 0.60)
+	// The selected stem of a name being renamed, oklch(0.7 0.12 250) at .7.
+	readonly property color renameSelection: Qt.rgba(0x61 / 255, 0xa3 / 255, 0xe6 / 255, 0.70)
+
 	// A ring rather than a thicker border, so focus does not move anything.
 	readonly property color focusRing: Qt.rgba(1, 1, 1, 0.18)
 
