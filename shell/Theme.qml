@@ -157,6 +157,14 @@ Singleton {
 	readonly property color glassLensShade: Qt.rgba(0, 0, 0, 0.16)
 	readonly property color glassLensGlow: Qt.rgba(1, 1, 1, 0.80)
 
+	// A menu drawn inside a window sits on that window's own content, and
+	// the compositor blurs nothing there: the same glass as a sheet would show
+	// the rows through it. So a menu is denser and darker - enough backdrop
+	// of its own to be read on - with the same edge as everything else.
+	readonly property color menuSurface: Qt.rgba(0.07, 0.08, 0.11, 0.90)
+	// And what is under it steps back, as the desktop does behind a sheet.
+	readonly property real menuBackdropOpacity: 0.55
+
 	readonly property color glassChip: Qt.rgba(1, 1, 1, 0.10)
 	readonly property color glassChipActive: Qt.rgba(1, 1, 1, 0.28)
 

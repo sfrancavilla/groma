@@ -221,14 +221,51 @@ Scope {
 		return out;
 	}
 
-	// x and y in the body's coordinates.
-	function openMenu(entry, x, y) {
+	readonly property int menuWidth: 200
+	readonly property int menuRowHeight: 32
+	readonly property int menuGap: 6
+
+	// x and y in the body's coordinates: where the pointer was, or where the
+	// menu should start. `anchor` is the row or tile it belongs to, as
+	// { top, bottom } in the same coordinates: the menu hangs below it with
+	// a gap, or sits above it when the bottom of the window is too close.
+	// Without an anchor it opens at the point and flips up or left to fit.
+	function openMenu(entry, x, y, anchor) {
 		if (entry !== null)
 			root.picked = entry.path;
 		const items = root.actionsFor(entry);
 		if (items.length === 0)
 			return;
-		root.menu = { entry: entry, items: items, x: x, y: y, index: 0 };
+
+		const pad = 8;
+		const height = items.length * root.menuRowHeight + 12;
+		let mx = x;
+		let my = y;
+		if (anchor) {
+			my = anchor.bottom + root.menuGap;
+			if (my + height > body.height - pad)
+				my = anchor.top - root.menuGap - height;
+		} else if (my + height > body.height - pad) {
+			my = y - height;
+		}
+		if (mx + root.menuWidth > body.width - pad)
+			mx = anchor ? body.width - pad - root.menuWidth : x - root.menuWidth;
+		mx = Math.max(pad, mx);
+		my = Math.max(pad, my);
+
+		root.menu = { entry: entry, items: items, x: mx, y: my, index: 0 };
+	}
+
+	// The highlighted row or tile, as the menu's anchor.
+	function currentAnchor() {
+		if (root.current < 0)
+			return null;
+		const view = root.grid ? gridView : listView;
+		const item = view.itemAtIndex(root.current);
+		if (!item)
+			return null;
+		const at = item.mapToItem(body, 0, 0);
+		return { left: at.x + (root.grid ? 8 : 54), top: at.y, bottom: at.y + item.height };
 	}
 
 	function moveMenu(delta) {
@@ -249,15 +286,11 @@ Scope {
 			root.menu = null;
 			return;
 		}
-		const entry = root.currentEntry;
-		let at = { x: content.x + 40, y: content.y + 40 };
-		if (entry !== null) {
-			const view = root.grid ? gridView : listView;
-			const item = view.itemAtIndex(root.current);
-			if (item)
-				at = item.mapToItem(body, root.grid ? item.width / 2 : 60, root.grid ? item.height / 2 : item.height - 8);
-		}
-		root.openMenu(entry, at.x, at.y);
+		const anchor = root.currentAnchor();
+		if (anchor)
+			root.openMenu(root.currentEntry, anchor.left, 0, anchor);
+		else
+			root.openMenu(null, content.x + 40, content.y + 40, null);
 	}
 
 	// Enter: open a thing, or put it back where it came from.
@@ -1147,6 +1180,13 @@ Scope {
 						bottomMargin: 10
 					}
 
+					// Steps back while a menu is up, so the menu is what is read.
+					opacity: root.menu !== null ? Theme.menuBackdropOpacity : 1
+
+					Behavior on opacity {
+						NumberAnimation { duration: 120 }
+					}
+
 					// In the Trash: what the Trash is, and the way to empty it.
 					Rectangle {
 						id: banner
@@ -1617,7 +1657,12 @@ Scope {
 									entry = root.entries[index];
 							}
 							const at = content.mapToItem(body, mouse.x, mouse.y);
-							root.openMenu(entry, at.x, at.y);
+							if (entry !== null) {
+								root.picked = entry.path;
+								root.openMenu(entry, at.x, 0, root.currentAnchor());
+							} else {
+								root.openMenu(null, at.x, at.y, null);
+							}
 						}
 					}
 
@@ -1736,12 +1781,13 @@ Scope {
 
 				readonly property var model: root.menu?.items ?? []
 
-				x: Math.max(8, Math.min(body.width - width - 8, root.menu?.x ?? 0))
-				y: Math.max(8, Math.min(body.height - height - 8, root.menu?.y ?? 0))
-				width: 200
+				x: root.menu?.x ?? 0
+				y: root.menu?.y ?? 0
+				width: root.menuWidth
 				height: menuColumn.implicitHeight + 12
 				radius: 14
 				shadowLayers: 8
+				color: Theme.menuSurface
 				visible: opacity > 0.01
 				opacity: root.menu !== null ? 1 : 0
 				scale: root.menu !== null ? 1 : 0.96
@@ -1776,7 +1822,7 @@ Scope {
 							readonly property bool current: root.menu !== null && root.menu.index === index
 
 							width: parent.width
-							height: 32
+							height: root.menuRowHeight
 							radius: 10
 							color: current ? Theme.glassChipActive
 								: menuMouse.containsMouse ? Theme.glassControlHover : "transparent"
