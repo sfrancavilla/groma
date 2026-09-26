@@ -101,8 +101,11 @@ Scope {
 		if (root.term === "")
 			return [];
 
+		// The rank decides the order; within a rank, what you launch most
+		// rises. The weight is bounded below one so it never crosses a rank.
 		return root.apps
-			.map(entry => ({ entry: entry, score: root.score(entry, root.term) }))
+			.map(entry => ({ entry: entry,
+				score: root.score(entry, root.term) + History.weight(entry.id) }))
 			.filter(item => item.score > 0)
 			.sort((a, b) => b.score - a.score
 				|| a.entry.name.localeCompare(b.entry.name))
@@ -110,7 +113,7 @@ Scope {
 	}
 
 	// With nothing typed: what was launched lately, then everything.
-	readonly property var recent: (Settings.recentApps ?? [])
+	readonly property var recent: History.recent(8)
 		.map(id => DesktopEntries.byId(id))
 		.filter(entry => entry !== null && !entry.noDisplay)
 
@@ -149,7 +152,7 @@ Scope {
 		}
 
 		entry.execute();
-		Settings.noteLaunch(entry.id);
+		History.noteLaunch(entry.id);
 		root.close();
 	}
 

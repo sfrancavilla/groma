@@ -148,6 +148,8 @@ The panel is 2880×1920 at scale 2, so one logical pixel is two physical ones.
 | Folder | Holds |
 | --- | --- |
 | `Theme.qml` | Every colour, metric and type size, named by role. No literals elsewhere. |
+| `Settings.qml` | What the user decided. One file in the shell's state directory. |
+| `History.qml` | What the user did - launches, counts, times. Its own file there; clearing it never touches a setting. |
 | `ui/` | Surfaces and controls with no knowledge of what they show. |
 | `icons/` | Glyphs, drawn as `Shape` paths, scaling from a `baseWidth`/`baseHeight`. |
 | `modules/` | One feature each: its data, its IPC and its layout. |
