@@ -14,10 +14,12 @@ import ".."
 // worker. What is here now is the browsing: places, breadcrumbs, a list and a
 // grid, a search over the folder on screen, and Enter to open.
 //
-// The window is the pane, edge to edge. Hyprland rounds it to the design's
-// 24px and casts the shadow: padding for a shadow of our own would be part
-// of the window, and the compositor blurs a window's whole rectangle, so it
-// showed as a frosted band around the glass.
+// The window is the pane, edge to edge, and it tiles like any other:
+// Hyprland rounds it and casts the shadow, and the layout is anchored so
+// whatever size the tiler hands it works. Padding for a shadow of our own
+// would be part of the window, and the compositor blurs a window's whole
+// rectangle, so it showed as a frosted band around the glass. The design's
+// 1040×660 is what it asks for when floated.
 Scope {
 	id: root
 

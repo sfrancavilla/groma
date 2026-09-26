@@ -391,15 +391,12 @@ hl.window_rule({
 -- compositor, which also casts its shadow. 20 is Hyprland's ceiling, so
 -- the design's 24 is 20 here and Theme.radiusWindow matches it - a pane
 -- rounder than its window shows blurred corners. No border, since the
--- glass draws its own edge. Floats at the design's size; SUPER+V tiles
--- it like anything else.
+-- glass draws its own edge. Tiles like everything else; the layout is
+-- anchored rather than fixed, so any size works. SUPER+V floats it.
 hl.window_rule({
     name  = "groma-files",
     match = { class = "^org\\.quickshell$", title = "^Files$" },
 
-    float       = true,
-    size        = "1040 660",
-    center      = true,
     rounding    = 20,
     border_size = 0,
 })
