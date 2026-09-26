@@ -217,6 +217,16 @@ Singleton {
 	// question gets 320 - it has to hold a name, a security label and a
 	// strength readout on one line without any of them eliding.
 	readonly property int dialogWidthWide: 520
+	// The launcher, from the design's turn 9: wider than a picker, drawn with
+	// its top edge a fifth of the way down rather than centred, so the
+	// results grow downward and the sheet never jumps as they change.
+	readonly property int launcherWidth: 680
+	readonly property real launcherTop: 0.20
+	readonly property int launcherPadding: 12
+	readonly property int launcherRadius: 30
+	readonly property int launcherTrackHeight: 60
+	readonly property int launcherRowHeight: 48
+	readonly property int launcherTopHitHeight: 56
 	// Between a prompt and a picker: 8d has to hold six passkey tiles.
 	readonly property int dialogWidthPrompt: 440
 	readonly property int dialogListHeight: 344
@@ -233,6 +243,7 @@ Singleton {
 	readonly property int fontLead: 14
 	readonly property int fontHeading: 16
 	readonly property int fontDisplay: 20
+	readonly property int fontSearch: 22
 
 	// Corner radii, by element size.
 	readonly property int radiusSmall: 6

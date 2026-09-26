@@ -20,6 +20,12 @@ Item {
 	// the same disc.
 	property bool plain: false
 
+	// A coloured sphere instead of a white one. The launcher tints each
+	// application's disc from its name, so any icon theme - or none - reads
+	// as one set.
+	property color tint: "transparent"
+	readonly property bool tinted: tint.a > 0
+
 	default property alias content: overlay.data
 
 	implicitWidth: Theme.sliderKnobSize
@@ -36,9 +42,9 @@ Item {
 		focalX: lens.width * 0.35
 		focalY: lens.height * 0.30
 
-		GradientStop { position: 0.0; color: Theme.glassKnobCore }
-		GradientStop { position: 0.45; color: Theme.glassKnobMid }
-		GradientStop { position: 1.0; color: Theme.glassKnobRim }
+		GradientStop { position: 0.0; color: lens.tinted ? "#ffffff" : Theme.glassKnobCore }
+		GradientStop { position: lens.tinted ? 0.5 : 0.45; color: lens.tinted ? Qt.lighter(lens.tint, 1.3) : Theme.glassKnobMid }
+		GradientStop { position: 1.0; color: lens.tinted ? lens.tint : Theme.glassKnobRim }
 	}
 
 	Shape {

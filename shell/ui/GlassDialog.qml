@@ -20,6 +20,12 @@ Item {
 	property real sheetWidth: Theme.dialogWidth
 	property real padding: Theme.dialogPadding
 	property real spacing: Theme.spacingM
+	property real radius: Theme.radiusPanel
+
+	// Where the sheet sits. Prompts are centred. A launcher hangs from a
+	// fraction of the screen height, so a result list that changes length
+	// grows downward instead of shifting the whole sheet.
+	property real topFraction: -1
 
 	default property alias content: column.data
 
@@ -46,14 +52,22 @@ Item {
 	GlassPanel {
 		id: sheet
 
-		anchors.centerIn: parent
+		anchors.centerIn: dialog.topFraction < 0 ? parent : undefined
+		anchors.horizontalCenter: dialog.topFraction >= 0 ? parent.horizontalCenter : undefined
+		anchors.top: dialog.topFraction >= 0 ? parent.top : undefined
+		anchors.topMargin: dialog.topFraction >= 0
+			? parent.height * dialog.topFraction + (dialog.open ? 0 : -6) : 0
 		width: dialog.sheetWidth
 		height: column.implicitHeight + dialog.padding * 2
-		radius: Theme.radiusPanel
+		radius: dialog.radius
 
 		opacity: dialog.open ? 1 : 0
 		scale: dialog.open ? 1 : 0.96
-		y: dialog.open ? 0 : -6
+		y: dialog.topFraction < 0 ? (dialog.open ? 0 : -6) : 0
+
+		Behavior on anchors.topMargin {
+			NumberAnimation { duration: 220; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
+		}
 
 		Behavior on opacity {
 			NumberAnimation { duration: 220; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }

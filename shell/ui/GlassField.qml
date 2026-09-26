@@ -19,6 +19,8 @@ Item {
 	// magnifier on the network picker's search box.
 	property Component leading: null
 
+	property int fontSize: Theme.fontTitle
+
 	signal accepted
 
 	function clear() {
@@ -35,7 +37,7 @@ Item {
 	// Where the text starts. The placeholder and the input both read it, so
 	// adding a glyph cannot move one without the other.
 	readonly property real textInset: field.leading
-		? Theme.spacingL + 13 + Theme.spacingS + 2
+		? Theme.spacingL + leadingLoader.width + Theme.spacingS + 2
 		: Theme.spacingL + 2
 
 	Rectangle {
@@ -55,6 +57,8 @@ Item {
 			? Theme.glassTrackBorderFocus : Theme.glassTrackBorder
 
 		Loader {
+			id: leadingLoader
+
 			anchors {
 				left: parent.left
 				leftMargin: Theme.spacingL
@@ -74,7 +78,7 @@ Item {
 
 			text: field.placeholder
 			visible: input.text === ""
-			font.pixelSize: Theme.fontTitle
+			font.pixelSize: field.fontSize
 			font.weight: Font.DemiBold
 			opacity: 0.55
 			color: Theme.glassTextPrimary
@@ -117,7 +121,7 @@ Item {
 			clip: true
 			echoMode: field.revealable && field.revealed
 				? TextInput.Normal : field.echoMode
-			font.pixelSize: Theme.fontTitle
+			font.pixelSize: field.fontSize
 			font.weight: Font.DemiBold
 			color: Theme.glassTextPrimary
 			selectionColor: Theme.glassControlHover

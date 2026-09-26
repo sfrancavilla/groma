@@ -21,6 +21,14 @@ Singleton {
 		adapter.publicAddressLookup = value;
 	}
 
+	// The launcher's history, most recent first, by desktop-entry id.
+	readonly property alias recentApps: adapter.recentApps
+
+	function noteLaunch(id) {
+		const rest = (adapter.recentApps ?? []).filter(entry => entry !== id);
+		adapter.recentApps = [id, ...rest].slice(0, 8);
+	}
+
 	// --- Integration: Nothing earbuds (integrations/nothingear) ----------
 	// One settings file for everything, so these keep the baseline's store;
 	// the prefix in the comment is the only namespacing there is.
@@ -60,6 +68,7 @@ Singleton {
 			id: adapter
 
 			property bool publicAddressLookup: false
+			property var recentApps: []
 			property bool pauseOnBudRemoved: true
 			property bool resumeOnBudReplaced: true
 		}
