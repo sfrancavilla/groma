@@ -113,6 +113,7 @@ Which puts every surface built so far in exactly one place:
 | Files: a name already taken | none | `Skip` · `Keep both` · `Replace` - three answers, `Escape` is `Skip` |
 | Files: a copy in flight | none - a card, not a sheet | `Cancel` alone |
 | Files: open with | none | `Cancel` `Open` |
+| Files: properties | X | none - it asks nothing |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
 there as well as the X - two chips side by side doing one thing. Note that the

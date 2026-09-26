@@ -39,7 +39,7 @@ Scope {
 	property var ahead: []
 
 	// A sheet over the window: the folder and the places step back under it.
-	readonly property bool sheetUp: root.confirm !== null || root.conflict !== null || root.opener !== null
+	readonly property bool sheetUp: root.confirm !== null || root.conflict !== null || root.opener !== null || root.props !== null
 
 	// The path of the highlighted entry, or "" for none: where the keyboard
 	// is. The selection is what an action applies to; usually the same one
@@ -299,6 +299,7 @@ Scope {
 			if (entry.folder)
 				out.push({ label: "Open in Terminal", run: () => root.openTerminal(entry.path) });
 			out.push({ label: "Rename", run: () => root.startRename(entry) });
+			out.push({ label: "Properties…", run: () => root.showProperties(entry) });
 		}
 		out.push({ label: "Copy", run: () => root.hold(them, false) });
 		out.push({ label: "Cut", run: () => root.hold(them, true) });
@@ -317,6 +318,33 @@ Scope {
 	readonly property int menuWidth: 200
 	readonly property int menuRowHeight: 32
 	readonly property int menuGap: 6
+
+	// A menu of given items, for the drives, which are not entries.
+	function showMenu(items, x, y, anchor) {
+		if (items.length === 0)
+			return;
+		const pad = 8;
+		const height = items.length * root.menuRowHeight + 12;
+		let my = anchor ? anchor.bottom + root.menuGap : y;
+		if (my + height > body.height - pad)
+			my = anchor ? anchor.top - root.menuGap - height : y - height;
+		let mx = Math.min(x, body.width - pad - root.menuWidth);
+		root.menu = { entry: null, items: items, x: Math.max(pad, mx), y: Math.max(pad, my), index: 0 };
+	}
+
+	function driveActions(drive) {
+		const out = [];
+		if (drive.mountpoint === "") {
+			out.push({ label: "Mount", run: () => root.openDrive(drive) });
+		} else {
+			out.push({ label: "Open", run: () => root.go(drive.mountpoint) });
+			out.push({ label: "Open in Terminal", run: () => root.openTerminal(drive.mountpoint) });
+			out.push({ label: "Unmount", run: () => root.unmountDrive(drive, false) });
+			if (drive.removable)
+				out.push({ label: "Eject", run: () => root.unmountDrive(drive, true) });
+		}
+		return out;
+	}
 
 	// x and y in the body's coordinates: where the pointer was, or where the
 	// menu should start. `anchor` is the row or tile it belongs to, as
@@ -606,7 +634,7 @@ Scope {
 	// the things being dragged.
 	function targetAt(at) {
 		for (const child of placesColumn.children) {
-			if (child.modelData === undefined)
+			if (child.modelData === undefined || !child.modelData.path)
 				continue;
 			const local = child.mapFromItem(body, at.x, at.y);
 			if (local.x >= 0 && local.y >= 0 && local.x < child.width && local.y < child.height)
@@ -734,6 +762,54 @@ Scope {
 	// in "Open with", and gets a line of its own.
 	function openTerminal(folder) {
 		Quickshell.execDetached(["foot", "--working-directory=" + folder]);
+	}
+
+	// --- properties ------------------------------------------------------------
+	//
+	// What the file system knows about one thing, gathered by a short
+	// script: size and dates from stat, the type from the desktop's MIME
+	// database, and for a folder the total size and count, which take a
+	// moment on a big one and arrive when they do.
+	//
+	// { entry, type, size, count, modified, accessed, perms, owner, group,
+	//   ready } or null.
+	property var props: null
+
+	function showProperties(entry) {
+		root.props = { entry: entry, type: "", size: entry.size, count: -1, modified: entry.modified,
+			accessed: null, perms: "", owner: "", group: "", ready: false };
+		propsProbe.running = false;
+		propsProbe.running = true;
+	}
+
+	Process {
+		id: propsProbe
+
+		command: ["bash", "-c",
+			'stat -c "%s|%Y|%X|%A|%U|%G" "$1"; xdg-mime query filetype "$1"; '
+			+ 'if [ -d "$1" ]; then du -sb "$1" 2>/dev/null | cut -f1; find "$1" -mindepth 1 2>/dev/null | wc -l; fi',
+			"sh", root.props?.entry?.path ?? ""]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				if (root.props === null)
+					return;
+				const lines = text.split("\n");
+				const st = (lines[0] ?? "").split("|");
+				const folder = root.props.entry.folder;
+				root.props = Object.assign({}, root.props, {
+					size: folder ? parseInt(lines[2] ?? "0") || 0 : parseInt(st[0]) || 0,
+					count: folder ? parseInt(lines[3] ?? "0") || 0 : -1,
+					modified: new Date(parseInt(st[1]) * 1000),
+					accessed: new Date(parseInt(st[2]) * 1000),
+					perms: st[3] ?? "",
+					owner: st[4] ?? "",
+					group: st[5] ?? "",
+					type: (lines[1] ?? "").trim(),
+					ready: true
+				});
+			}
+		}
 	}
 
 	// --- opening with an application ------------------------------------------
@@ -949,16 +1025,156 @@ Scope {
 		}
 	}
 
+	// --- drives -----------------------------------------------------------------
+	//
+	// What lsblk knows, kept to the drives a person plugs in or mounts by
+	// hand: removable and hot-plugged filesystems, and anything mounted
+	// under /run/media, /media or /mnt. The system's own partitions stay
+	// out. udev says when something is plugged or pulled; a slow poll
+	// catches a mount made elsewhere. Mounting and ejecting go through
+	// udisks, which asks polkit on the user's behalf.
+	//
+	// [{ dev, disk, name, size, mountpoint, removable }]
+	property var drives: []
+	property bool hasUdisks: false
+
+	Process {
+		id: udisksProbe
+
+		command: ["bash", "-c", "command -v udisksctl"]
+		onExited: code => root.hasUdisks = code === 0
+	}
+
+	Process {
+		id: lsblkProbe
+
+		command: ["lsblk", "-J", "-o", "NAME,PATH,PKNAME,LABEL,SIZE,TYPE,MOUNTPOINT,FSTYPE,RM,HOTPLUG,MODEL,TRAN"]
+
+		stdout: StdioCollector {
+			onStreamFinished: root.drives = root.drivesFrom(text)
+		}
+	}
+
+	function drivesFrom(json) {
+		let tree;
+		try {
+			tree = JSON.parse(json).blockdevices ?? [];
+		} catch (err) {
+			return [];
+		}
+		const out = [];
+		const walk = (node, disk) => {
+			const top = disk ?? node;
+			const fs = node.fstype ?? "";
+			const mount = node.mountpoint ?? "";
+			const plugged = node.rm === true || node.hotplug === true
+				|| ["usb", "mmc", "sd"].includes(node.tran ?? "") || top.rm === true || top.hotplug === true;
+			const byHand = /^\/(run\/media|media|mnt)(\/|$)/.test(mount);
+			const usable = fs !== "" && !["crypto_LUKS", "swap", "LVM2_member", "linux_raid_member"].includes(fs);
+			if (usable && (plugged || byHand))
+				out.push({
+					dev: node.path,
+					disk: top.path,
+					name: node.label || top.model || node.name,
+					size: node.size ?? "",
+					mountpoint: mount,
+					removable: plugged
+				});
+			for (const child of (node.children ?? []))
+				walk(child, top);
+		};
+		for (const node of tree)
+			walk(node, null);
+		return out;
+	}
+
+	Process {
+		id: udevWatch
+
+		command: ["udevadm", "monitor", "--udev", "--subsystem-match=block"]
+
+		stdout: SplitParser {
+			onRead: line => { if (line.includes("add") || line.includes("remove") || line.includes("change")) relist.restart(); }
+		}
+	}
+
+	Timer {
+		id: relist
+
+		interval: 800
+		onTriggered: { lsblkProbe.running = false; lsblkProbe.running = true; }
+	}
+
+	Timer {
+		id: drivePoll
+
+		interval: 10000
+		repeat: true
+		running: root.open
+		onTriggered: relist.restart()
+	}
+
+	function openDrive(drive) {
+		if (drive.mountpoint !== "") {
+			root.go(drive.mountpoint);
+			return;
+		}
+		if (!root.hasUdisks) {
+			root.say("Mounting needs udisks2 installed");
+			return;
+		}
+		mounter.command = ["udisksctl", "mount", "-b", drive.dev];
+		mounter.running = true;
+	}
+
+	function unmountDrive(drive, eject) {
+		if (!root.hasUdisks) {
+			root.say("Unmounting needs udisks2 installed");
+			return;
+		}
+		if (drive.mountpoint !== "" && (root.path === drive.mountpoint || root.path.startsWith(drive.mountpoint + "/")))
+			root.go(root.home);
+		mounter.command = eject
+			? ["bash", "-c", 'udisksctl unmount -b "$1" && udisksctl power-off -b "$2"', "sh", drive.dev, drive.disk]
+			: ["udisksctl", "unmount", "-b", drive.dev];
+		mounter.running = true;
+	}
+
+	// udisksctl answers in a sentence: "Mounted /dev/sdb1 at /run/media/…".
+	Process {
+		id: mounter
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				const at = text.indexOf(" at ");
+				if (at > 0)
+					root.go(text.slice(at + 4).trim().replace(/\.$/, ""));
+				else if (text.trim() !== "")
+					root.say(text.trim());
+				relist.restart();
+			}
+		}
+
+		stderr: StdioCollector {
+			onStreamFinished: if (text.trim() !== "") root.say(text.trim().split("\n")[0])
+		}
+	}
+
 	onOpenChanged: {
 		if (root.open) {
 			placesProbe.running = true;
 			copyProbe.running = true;
+			udisksProbe.running = true;
 			worker.running = true;
+			relist.restart();
+			udevWatch.running = true;
 		} else {
+			udevWatch.running = false;
 			worker.running = false;
 			root.confirm = null;
 			root.menu = null;
 			root.opener = null;
+			root.props = null;
 			root.renaming = "";
 		}
 	}
@@ -1257,6 +1473,12 @@ Scope {
 			root.paste(undefined);
 		}
 
+		// The path Ctrl+I takes on the highlighted thing.
+		function properties(): void {
+			if (root.currentEntry !== null)
+				root.showProperties(root.currentEntry);
+		}
+
 		// The path "Open with…" takes on the highlighted thing.
 		function openwith(): void {
 			if (root.currentEntry !== null)
@@ -1331,6 +1553,14 @@ Scope {
 					if (root.drag !== null) {
 						if (event.key === Qt.Key_Escape)
 							root.cancelDrag();
+						event.accepted = true;
+						return;
+					}
+
+					// Properties: nothing to answer, Escape closes it.
+					if (root.props !== null) {
+						if (event.key === Qt.Key_Escape)
+							root.props = null;
 						event.accepted = true;
 						return;
 					}
@@ -1436,6 +1666,9 @@ Scope {
 							root.newFolder();
 					} else if (ctrl && event.key === Qt.Key_Z) {
 						root.undo();
+					} else if (ctrl && event.key === Qt.Key_I) {
+						if (root.currentEntry !== null)
+							root.showProperties(root.currentEntry);
 					} else if (ctrl && event.key === Qt.Key_C) {
 						if (!root.inTrash)
 							root.hold(root.chosen(), false);
@@ -1917,6 +2150,127 @@ Scope {
 									hoverEnabled: true
 									cursorShape: Qt.PointingHandCursor
 									onClicked: { body.forceActiveFocus(); root.go(place.modelData.path); }
+								}
+							}
+						}
+
+						Text {
+							leftPadding: 10
+							topPadding: 10
+							bottomPadding: 4
+							visible: root.drives.length > 0
+							text: "DRIVES"
+							font.pixelSize: Theme.fontCaption
+							font.bold: true
+							font.letterSpacing: 0.66
+							opacity: 0.6
+							color: Theme.glassTextPrimary
+						}
+
+						// A drive is a place with a mount behind it: the row
+						// opens it when mounted and mounts it when not. Its
+						// modelData carries the mountpoint as `path`, which
+						// is what makes it a drop target like the places.
+						Repeater {
+							model: root.drives.map(d => Object.assign({}, d, { path: d.mountpoint }))
+
+							Rectangle {
+								id: driveRow
+
+								required property var modelData
+
+								readonly property bool here: modelData.path !== "" && root.path === modelData.path
+								readonly property bool dropTarget: modelData.path !== "" && root.drag !== null
+									&& root.drag.target !== null && root.drag.target.path === modelData.path
+
+								width: parent.width
+								height: 38
+								radius: Theme.radiusPill
+								color: dropTarget ? Theme.dropTarget
+									: here ? Theme.glassChipActive
+									: driveMouse.containsMouse ? Theme.glassControlHover : "transparent"
+								border.width: dropTarget ? 1.5 : here ? 1 : 0
+								border.color: dropTarget ? Theme.dropTargetEdge : Theme.glassTrackBorderFocus
+								opacity: modelData.path === "" ? 0.7 : 1
+
+								Rectangle {
+									anchors.fill: parent
+									anchors.margins: -4
+									radius: parent.radius + 4
+									visible: driveRow.dropTarget
+									color: "transparent"
+									border.width: 4
+									border.color: Theme.dropTargetRing
+								}
+
+								Row {
+									anchors {
+										left: parent.left
+										right: parent.right
+										leftMargin: 8
+										rightMargin: 8
+										verticalCenter: parent.verticalCenter
+									}
+
+									spacing: 10
+
+									Lens {
+										id: driveDisc
+
+										anchors.verticalCenter: parent.verticalCenter
+										width: 26
+										height: 26
+										sheen: false
+
+										FileGlyph {
+											anchors.centerIn: parent
+											kind: "drive"
+										}
+									}
+
+									Column {
+										anchors.verticalCenter: parent.verticalCenter
+										width: parent.width - driveDisc.width - 10
+										spacing: 0
+
+										Text {
+											width: parent.width
+											elide: Text.ElideRight
+											text: driveRow.modelData.name
+											font.pixelSize: Theme.fontTitle
+											font.weight: driveRow.here ? Font.Bold : Font.DemiBold
+											color: Theme.glassTextPrimary
+										}
+
+										Text {
+											width: parent.width
+											elide: Text.ElideRight
+											text: driveRow.modelData.size + (driveRow.modelData.path === "" ? " · not mounted" : "")
+											font.pixelSize: Theme.fontCaption
+											font.weight: Font.DemiBold
+											opacity: 0.6
+											color: Theme.glassTextPrimary
+										}
+									}
+								}
+
+								MouseArea {
+									id: driveMouse
+
+									anchors.fill: parent
+									hoverEnabled: true
+									acceptedButtons: Qt.LeftButton | Qt.RightButton
+									cursorShape: Qt.PointingHandCursor
+									onClicked: mouse => {
+										body.forceActiveFocus();
+										if (mouse.button === Qt.RightButton) {
+											const at = driveRow.mapToItem(body, 0, 0);
+											root.showMenu(root.driveActions(driveRow.modelData), at.x + 8, 0,
+												{ top: at.y, bottom: at.y + driveRow.height });
+										} else {
+											root.openDrive(driveRow.modelData);
+										}
+									}
 								}
 							}
 						}
@@ -2646,6 +3000,8 @@ Scope {
 
 						Repeater {
 							model: {
+								if (root.props !== null)
+									return [["Esc", "Close"]];
 								if (root.opener !== null)
 									return [["↑↓", "Move"], ["↵", "Open"], ["Esc", "Cancel"]];
 								if (root.conflict !== null)
@@ -3083,6 +3439,141 @@ Scope {
 							anchors.right: parent.right
 							text: "Cancel"
 							onClicked: root.cancelTransfer()
+						}
+					}
+				}
+			}
+
+			// Properties: what the file system knows, as label and value rows.
+			// It asks nothing, so no footer; the X in its header is the way out.
+			GlassDialog {
+				id: propsSheet
+
+				anchors.fill: parent
+				dense: true
+				open: root.props !== null
+				visible: open || sheet.opacity > 0.01
+				sheetWidth: Math.min(Theme.dialogWidthPrompt, body.width - 40)
+
+				Item {
+					width: parent.width
+					height: 44
+
+					Lens {
+						id: propsDisc
+
+						anchors.verticalCenter: parent.verticalCenter
+						width: 44
+						height: 44
+						sheen: false
+
+						FileGlyph {
+							anchors.centerIn: parent
+							kind: root.props?.entry?.folder ? "folder" : "file"
+							zoom: 1.3
+						}
+					}
+
+					Column {
+						anchors {
+							left: propsDisc.right
+							right: propsClose.left
+							leftMargin: Theme.spacingM
+							rightMargin: Theme.spacingM
+							verticalCenter: parent.verticalCenter
+						}
+
+						spacing: 2
+
+						Text {
+							width: parent.width
+							elide: Text.ElideRight
+							text: root.props?.entry?.name ?? ""
+							font.pixelSize: Theme.fontLead
+							font.bold: true
+							color: Theme.glassTextPrimary
+						}
+
+						Text {
+							width: parent.width
+							elide: Text.ElideRight
+							text: root.props === null ? "" : root.props.entry.folder ? "Folder" : (root.props.type || "File")
+							font.pixelSize: Theme.fontBody
+							opacity: 0.75
+							color: Theme.glassTextPrimary
+						}
+					}
+
+					DiscButton {
+						id: propsClose
+
+						anchors {
+							right: parent.right
+							verticalCenter: parent.verticalCenter
+						}
+
+						onClicked: root.props = null
+					}
+				}
+
+				Column {
+					width: parent.width
+					spacing: Theme.spacingS
+
+					Repeater {
+						model: {
+							const p = root.props;
+							if (p === null)
+								return [];
+							const rows = [];
+							rows.push(["Size", !p.ready && p.entry.folder ? "…"
+								: root.size(p.size) + (p.entry.folder && p.count >= 0 ? " · " + root.things(p.count) : "")]);
+							rows.push(["Where", root.tilde(root.parentOf(p.entry.path))]);
+							rows.push(["Modified", root.when(p.modified, "exact")]);
+							if (p.accessed)
+								rows.push(["Accessed", root.when(p.accessed, "exact")]);
+							if (p.perms !== "")
+								rows.push(["Permissions", p.perms]);
+							if (p.owner !== "")
+								rows.push(["Owner", p.owner + (p.group && p.group !== p.owner ? " · " + p.group : "")]);
+							return rows;
+						}
+
+						Item {
+							required property var modelData
+
+							width: parent.width
+							height: 24
+
+							Text {
+								anchors {
+									left: parent.left
+									leftMargin: 6
+									verticalCenter: parent.verticalCenter
+								}
+
+								text: modelData[0]
+								font.pixelSize: Theme.fontBody
+								font.bold: true
+								opacity: 0.6
+								color: Theme.glassTextPrimary
+							}
+
+							Text {
+								anchors {
+									left: parent.left
+									right: parent.right
+									leftMargin: 120
+									rightMargin: 6
+									verticalCenter: parent.verticalCenter
+								}
+
+								elide: Text.ElideMiddle
+								text: modelData[1]
+								font.pixelSize: Theme.fontBody
+								font.weight: Font.DemiBold
+								color: Theme.glassTextPrimary
+							}
 						}
 					}
 				}

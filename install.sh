@@ -41,6 +41,7 @@ PACKAGES=(
 	cliphist            # clipboard history, kept by the shell for the launcher's ":" mode
 	libqalculate        # qalc: units and conversions in the launcher; arithmetic works without it
 	fd                  # file search in the launcher, under the applications and behind "/"
+	udisks2             # mounting and ejecting drives from the Files sidebar, through polkit
 	libnotify           # notify-send, for testing the notification daemon
 	desktop-file-utils  # update-desktop-database, after the Files entry is linked in
 
