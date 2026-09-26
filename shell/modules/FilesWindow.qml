@@ -592,10 +592,12 @@ Scope {
 			sofar = sofar === "/" ? "/" + part : sofar + "/" + part;
 			out.push({ name: part, path: sofar });
 		}
-		if (out.length > 5)
-			return [{ name: "…", path: out[out.length - 5].path }].concat(out.slice(-4));
 		return out;
 	}
+
+	// A small dark pane with a sentence in it, for the breadcrumb's "…".
+	// { text, x, y } in the body's coordinates, or null.
+	property var tip: null
 
 	readonly property string placeName: {
 		const place = root.places.find(p => p.path === root.path);
@@ -852,10 +854,13 @@ Scope {
 						}
 					}
 
-					// The path as chips. Clipped on its right, where the
-					// search begins, and never on the left: a path that
-					// does not fit loses its middle instead.
+					// The path as chips, as many of the last ones as fit. What
+					// does not fit folds into a "…" chip on the left, which
+					// says the whole path when pointed at and goes up to the
+					// first folder it hides when clicked.
 					Item {
+						id: crumbs
+
 						anchors {
 							left: navigation.right
 							leftMargin: 16
@@ -865,7 +870,41 @@ Scope {
 						}
 
 						height: crumbRow.height
-						clip: true
+
+						FontMetrics {
+							id: crumbMetrics
+
+							font.pixelSize: Theme.fontTitle
+							font.weight: Font.Bold
+						}
+
+						// Widths as the chips will draw them: label plus 24
+						// of padding, and 6 + separator + 6 between chips.
+						function chipWidth(name) { return crumbMetrics.advanceWidth(name) + 24; }
+						readonly property real separator: crumbMetrics.advanceWidth("›") + 12
+
+						// From the end backwards, until the next chip would
+						// not fit beside the "…". The last chip always shows,
+						// elided if it must.
+						readonly property var shown: {
+							const all = root.crumbs;
+							const room = width;
+							const ellipsis = crumbs.chipWidth("…") + crumbs.separator;
+							let used = 0;
+							let first = all.length;
+							for (let i = all.length - 1; i >= 0; i--) {
+								const w = crumbs.chipWidth(all[i].name) + (i < all.length - 1 ? crumbs.separator : 0);
+								const reserve = i > 0 ? ellipsis : 0;
+								if (i < all.length - 1 && used + w + reserve > room)
+									break;
+								used += w;
+								first = i;
+							}
+							const out = all.slice(first);
+							if (first > 0)
+								out.unshift({ name: "…", path: all[first - 1].path, folded: true });
+							return out;
+						}
 
 						Row {
 							id: crumbRow
@@ -873,7 +912,7 @@ Scope {
 							spacing: 6
 
 							Repeater {
-								model: root.crumbs
+								model: crumbs.shown
 
 								Row {
 									id: crumb
@@ -881,7 +920,8 @@ Scope {
 									required property var modelData
 									required property int index
 
-									readonly property bool last: index === root.crumbs.length - 1
+									readonly property bool last: index === crumbs.shown.length - 1
+									readonly property bool folded: modelData.folded === true
 
 									spacing: 6
 
@@ -896,7 +936,13 @@ Scope {
 									}
 
 									Rectangle {
-										width: crumbLabel.implicitWidth + 24
+										id: crumbChip
+
+										// The last chip takes what is left rather than
+										// spilling under the search.
+										width: crumb.last
+											? Math.max(40, Math.min(crumbLabel.implicitWidth + 24, crumbs.width - (crumb.x)))
+											: crumbLabel.implicitWidth + 24
 										height: crumbLabel.implicitHeight + 12
 										radius: Theme.radiusPill
 										color: crumb.last ? Theme.glassChipActive
@@ -908,6 +954,8 @@ Scope {
 											id: crumbLabel
 
 											anchors.centerIn: parent
+											width: Math.min(implicitWidth, parent.width - 16)
+											elide: Text.ElideRight
 											text: crumb.modelData.name
 											font.pixelSize: Theme.fontTitle
 											font.weight: crumb.last ? Font.Bold : Font.DemiBold
@@ -921,6 +969,16 @@ Scope {
 											hoverEnabled: true
 											cursorShape: Qt.PointingHandCursor
 											onClicked: root.go(crumb.modelData.path)
+
+											// The folded chip, and a last chip cut short,
+											// say the whole path when pointed at.
+											onEntered: {
+												if (crumb.folded || (crumb.last && crumbLabel.truncated)) {
+													const at = crumbChip.mapToItem(body, 0, crumbChip.height + 6);
+													root.tip = { text: root.tilde(root.path), x: at.x, y: at.y };
+												}
+											}
+											onExited: root.tip = null
 										}
 									}
 								}
@@ -1702,9 +1760,12 @@ Scope {
 						anchors {
 							left: parent.left
 							leftMargin: 18
+							right: keys.left
+							rightMargin: 18
 							verticalCenter: parent.verticalCenter
 						}
 
+						elide: Text.ElideRight
 						text: root.notice !== "" ? root.notice : root.status
 						font.pixelSize: Theme.fontBody
 						font.weight: Font.DemiBold
@@ -1713,6 +1774,8 @@ Scope {
 					}
 
 					Row {
+						id: keys
+
 						anchors {
 							right: parent.right
 							rightMargin: 18
@@ -1762,6 +1825,34 @@ Scope {
 							}
 						}
 					}
+				}
+			}
+
+			// The breadcrumb's whole path, when the chips could not say it.
+			Rectangle {
+				x: Math.max(8, Math.min(body.width - width - 8, root.tip?.x ?? 0))
+				y: root.tip?.y ?? 0
+				width: tipLabel.implicitWidth + 20
+				height: tipLabel.implicitHeight + 12
+				radius: 8
+				visible: opacity > 0.01
+				opacity: root.tip !== null ? 1 : 0
+				color: Theme.menuSurface
+				border.width: 1
+				border.color: Theme.glassEdge
+
+				Behavior on opacity {
+					NumberAnimation { duration: 120 }
+				}
+
+				Text {
+					id: tipLabel
+
+					anchors.centerIn: parent
+					text: root.tip?.text ?? ""
+					font.pixelSize: Theme.fontBody
+					font.weight: Font.DemiBold
+					color: Theme.glassTextPrimary
 				}
 			}
 
