@@ -3077,7 +3077,8 @@ Scope {
 				rotation: -2
 
 				Repeater {
-					model: ghost.d === null ? 0 : Math.min(3, ghost.d.count) - 1
+					// A drag from another application has no rows of ours: count 0.
+					model: ghost.d === null ? 0 : Math.max(0, Math.min(3, ghost.d.count) - 1)
 
 					Rectangle {
 						required property int index
