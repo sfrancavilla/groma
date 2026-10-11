@@ -64,18 +64,18 @@ Item {
 				PathLine { x: 6; y: 6 }
 			}
 
-			// restart: most of a ring, and an arrowhead where it ends.
+			// restart: a ring open at the top right, travelling clockwise, with
+			// the arrowhead on its end at the top, pointing into the gap.
 			ShapePath {
 				strokeColor: icon.kind === "restart" ? icon.color : "transparent"
 				strokeWidth: icon.stroke
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
-				joinStyle: ShapePath.RoundJoin
 
 				PathAngleArc {
 					centerX: 6; centerY: 6.4
-					radiusX: 4.6; radiusY: 4.6
-					startAngle: -80; sweepAngle: 300
+					radiusX: 4.4; radiusY: 4.4
+					startAngle: -30; sweepAngle: 300
 				}
 			}
 
@@ -86,9 +86,9 @@ Item {
 				capStyle: ShapePath.RoundCap
 				joinStyle: ShapePath.RoundJoin
 
-				startX: 4.6; startY: 0.2
-				PathLine { x: 6.8; y: 1.8 }
-				PathLine { x: 4.9; y: 3.8 }
+				startX: 5.4; startY: 0.2
+				PathLine { x: 7.4; y: 2.0 }
+				PathLine { x: 5.4; y: 3.8 }
 			}
 
 			// moon: a crescent, for suspend.
