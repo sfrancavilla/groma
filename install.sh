@@ -81,6 +81,11 @@ if [ -f /usr/share/applications/code.desktop ]; then
 	xdg-mime default code.desktop text/plain text/markdown
 fi
 
+say "Setting up snapshots"
+# snapper for /, and snap-pac around every pacman transaction. Its own script,
+# because it rearranges a mounted subvolume and is worth reading on its own.
+"$GROMA/system/setup-snapshots.sh"
+
 say "Installing the lock-before-sleep unit"
 # Symlinked rather than copied, so editing it in the repo is enough. The unit
 # hardcodes a user, uid and display - see the comments in it for another
