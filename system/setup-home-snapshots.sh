@@ -40,6 +40,22 @@ step "Enabling the timeline and cleanup timers"
 # TIMELINE_CREATE=yes; root keeps it off.
 sudo systemctl enable --now snapper-timeline.timer snapper-cleanup.timer
 
+# A nested subvolume is not part of its parent's snapshots, so ~/.cache as
+# its own subvolume keeps browser caches and AUR build trees - most of what
+# changes in /home every hour - out of every snapshot. Done as this user, by
+# reflink copy and swap: instant, and no extra space.
+if [ "$(stat -c %i "$HOME/.cache" 2>/dev/null)" != 256 ]; then
+	step "Making ~/.cache its own subvolume, so snapshots leave it out"
+	mkdir -p "$HOME/.cache"
+	btrfs subvolume create "$HOME/.cache.new" >/dev/null
+	cp -a --reflink=always "$HOME/.cache/." "$HOME/.cache.new/"
+	mv "$HOME/.cache" "$HOME/.cache.old"
+	mv "$HOME/.cache.new" "$HOME/.cache"
+	rm -rf "$HOME/.cache.old"
+else
+	step "~/.cache is already its own subvolume"
+fi
+
 step "Taking the first /home snapshot, as $USER"
 snapper -c home create --description "Groma: first home snapshot" --cleanup-algorithm number
 
