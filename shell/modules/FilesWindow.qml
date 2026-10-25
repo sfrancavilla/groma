@@ -2341,7 +2341,7 @@ Scope {
 							anchors.rightMargin: 12
 							elide: Text.ElideRight
 							text: root.snapshotAt !== null
-								? `Snapshot #${root.snapshotAt.number} · read-only. Copy files out to get them back.`
+								? `Snapshot #${root.snapshotAt.number} · read-only · copy files out to restore`
 								: "Things stay in the Trash until it is emptied."
 							font.pixelSize: Theme.fontBody
 							font.weight: Font.DemiBold
