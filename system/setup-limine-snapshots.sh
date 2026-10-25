@@ -114,4 +114,12 @@ cat <<EOF
 
 Stopped before rebooting, as planned. Backup: $backup
 Paste the output above back for checking. Do not reboot yet.
+
+After it has been read: reboot once normally (BootCurrent should be the new
+"Limine" entry), then once into a snapshot from the menu (findmnt / says
+overlay). Only then retire a previous loader, if there was one - on the
+machine this was written on:
+  sudo efibootmgr -b 0005 -B
+  sudo rm -r /boot/EFI/arch-limine
+  sudo rm /boot/vmlinuz-linux /boot/initramfs-linux.img
 EOF

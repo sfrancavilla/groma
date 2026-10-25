@@ -1,21 +1,53 @@
-# If the laptop will not boot
+# If the laptop will not boot, or an update broke it
 
-Written before the Limine migration (`setup-limine-snapshots.sh`), so it exists
-before it is needed. Read it once now; keep the Arch USB stick nearby until the
-new boot entry has been proven.
+Limine lists snapper snapshots in its boot menu, so the first way out is
+always the same: boot the system as it was before. Keep this note somewhere
+off the laptop - it is in the private GitHub repo for that reason:
+https://github.com/sfrancavilla/groma/blob/main/system/BOOT-RECOVERY.md
 
-## First, the easy way: the old entry
+## 1. Boot a snapshot from the menu
 
-Until the migration's last step retires it, the old loader is still on the disk.
+Every pacman transaction makes a pre and a post snapshot, and each one with a
+matching kernel gets a boot entry.
 
-1. Power on and press **F12** repeatedly (Framework's boot menu).
-2. Pick **Arch Linux (Limine)** - the old entry.
+1. Power on. When Limine's menu appears, press an arrow key to stop the
+   3-second countdown.
+2. Under **Arch Linux**, open **Snapshots** with Enter.
+3. Pick the newest snapshot from **before** the change that broke things -
+   a `pre` snapshot is labelled with the pacman command that followed it -
+   then **linux**, and Enter.
+4. Unlock the disk as usual.
 
-It boots the kernel and initramfs that were current when the backup was taken.
-If that works, nothing is lost: log in and put `/boot` back as below, from the
-running system.
+The snapshot boots read-only with a throwaway writable layer on top
+(`findmnt /` says `overlay`). Nothing you do in it is kept. It is for
+checking that this is the version you want, and for step 2.
 
-## If nothing on the disk boots: from the Arch USB
+## 2. Make that snapshot the system again
+
+Still booted into the snapshot, in a terminal:
+
+```bash
+sudo limine-snapper-restore
+```
+
+It asks which snapshot to restore, replaces the `@` subvolume with it
+(`RESTORE_METHOD=replace` in `/etc/limine-snapper-sync.conf`), and adds a
+**backup** entry to the boot menu holding the system you just replaced - so a
+restore can itself be undone. Reboot normally afterwards.
+
+Only `/` is restored. `/home`, `/var/log` and the package cache are separate
+subvolumes and are not touched.
+
+## 3. If the menu itself does not appear
+
+The firmware boots `\EFI\limine\limine_x64.efi` (entry **Limine**). If that
+entry is ever lost, the same loader is also installed as the firmware's
+fallback, `\EFI\BOOT\BOOTX64.EFI`: press **F12** at power-on and pick the
+disk itself rather than a named entry.
+
+## 4. If nothing on the disk boots: from the Arch USB
+
+The boot partition can always be regenerated from the installed system.
 
 1. Plug in the Arch ISO stick, power on, **F12**, pick the USB.
 2. At the root prompt:
@@ -23,33 +55,22 @@ running system.
 ```bash
 cryptsetup open /dev/nvme0n1p2 cryptroot          # your disk password
 mount -o subvol=@ /dev/mapper/cryptroot /mnt
-mount -o subvol=@home /dev/mapper/cryptroot /mnt/home
 mount /dev/nvme0n1p1 /mnt/boot
-ls /mnt/home/stefano/boot-backup-*                  # pick the newest
-```
-
-3. Put the boot partition back exactly as it was:
-
-```bash
-B=/mnt/home/stefano/boot-backup-YYYYMMDD-HHMM       # the one listed above
-rm -rf /mnt/boot/*
-tar -C /mnt/boot -xpf "$B/boot.tar"
-cp "$B/mkinitcpio.conf" /mnt/etc/mkinitcpio.conf
-```
-
-4. Make the old entry first in the firmware again. `efibootmgr.txt` in the
-   backup shows the order as it was; the old entry was `0005`:
-
-```bash
-efibootmgr -o 0005,2001,2002,2003
+arch-chroot /mnt
+limine-update                                       # kernels, initramfs, limine.conf
+limine-snapper-sync                                 # the snapshot entries
+exit
 umount -R /mnt; reboot
 ```
 
-## What is in a backup folder
+If `@` itself is the problem, mount a snapshot instead of `@` in the second
+line - `-o subvol=@snapshots/<N>/snapshot` - to look around, and use
+`limine-snapper-restore` from a snapshot boot (step 2) to make it permanent.
 
-| File | What |
-|---|---|
-| `boot.tar` | the whole boot partition: loader, menu, kernel, initramfs |
-| `efibootmgr.txt` | the firmware's boot entries and order (`efibootmgr -v`) |
-| `mkinitcpio.conf` | the initramfs settings before the overlay hook was added |
-| `cmdline` | the kernel command line the machine booted with |
+## What changed on 2026-10-25
+
+Before that date the machine booted `\EFI\arch-limine\BOOTX64.EFI` with a
+hand-written menu (firmware entry `0005`). It was retired once the new layout
+had booted both normally and into a snapshot. A copy of the old boot
+partition is in `~/boot-backup-20261025-1921/`; it is for reference, not for
+restoring - its kernel goes out of date with the first kernel update.
