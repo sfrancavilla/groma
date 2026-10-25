@@ -69,6 +69,9 @@ ShellRoot {
 		id: snapshotBoot
 	}
 
+	// What snapper has kept: system changes to undo, home snapshots to browse.
+	SnapshotsDialog {}
+
 	// The file manager: an ordinary window, opened from SUPER+E.
 	FilesWindow {}
 

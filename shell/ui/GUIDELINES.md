@@ -120,6 +120,7 @@ Which puts every surface built so far in exactly one place:
 | Power popup | none - a bar popup | none - a row acts |
 | Power: log out, restart, power off | none | `Cancel` `Log out` / `Restart` / `Power off` (destructive) |
 | Booted into a snapshot | none | `Restart to current` · `Cancel` `Restore…` |
+| Snapshots | X | `Snapshot now` · `Undo…` (destructive, system) / `Browse` (home) |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
 there as well as the X - two chips side by side doing one thing. Note that the

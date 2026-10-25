@@ -71,6 +71,7 @@ say "Registering Files as the folder handler"
 mkdir -p "$HOME/.local/share/applications"
 ln -sfn "$GROMA/system/groma-files.desktop" "$HOME/.local/share/applications/groma-files.desktop"
 ln -sfn "$GROMA/system/groma-software.desktop" "$HOME/.local/share/applications/groma-software.desktop"
+ln -sfn "$GROMA/system/groma-snapshots.desktop" "$HOME/.local/share/applications/groma-snapshots.desktop"
 update-desktop-database "$HOME/.local/share/applications"
 xdg-mime default groma-files.desktop inode/directory
 
@@ -85,6 +86,7 @@ say "Setting up snapshots"
 # snapper for /, and snap-pac around every pacman transaction. Its own script,
 # because it rearranges a mounted subvolume and is worth reading on its own.
 "$GROMA/system/setup-snapshots.sh"
+"$GROMA/system/setup-home-snapshots.sh"
 
 say "Installing the lock-before-sleep unit"
 # Symlinked rather than copied, so editing it in the repo is enough. The unit
@@ -98,6 +100,11 @@ sudo systemctl enable groma-lock-on-sleep.service
 say "Done"
 cat <<'NOTE'
 Log out and back in, or run `qs -c groma` to start the shell now.
+
+Snapshots in the boot menu need two AUR packages, so they are a separate step
+once yay exists: system/setup-limine-snapshots.sh (it stops before any reboot
+and says how to test), then system/theme-limine.sh for Groma's colours.
+Recovery: system/BOOT-RECOVERY.md.
 
 Two things this does not do, deliberately:
 

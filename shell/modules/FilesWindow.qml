@@ -96,6 +96,13 @@ Scope {
 
 	readonly property bool inTrash: root.path === root.trashPath
 
+	// Inside a snapper snapshot: read-only, and the way back is a copy.
+	// The number, and the place the same folder lives today.
+	readonly property var snapshotAt: {
+		const m = /^(.*)\/\.snapshots\/(\d+)\/snapshot(\/.*)?$/.exec(root.path);
+		return m ? { number: parseInt(m[2]), live: (m[1] + (m[3] ?? "")) || "/" } : null;
+	}
+
 	// --- the worker -------------------------------------------------------
 
 	Process {
@@ -2317,7 +2324,7 @@ Scope {
 
 						width: parent.width
 						height: visible ? 44 : 0
-						visible: root.inTrash && root.entries.length > 0
+						visible: (root.inTrash && root.entries.length > 0) || root.snapshotAt !== null
 						radius: Theme.radiusRow
 						color: Qt.rgba(1, 1, 1, 0.08)
 						border.width: 1
@@ -2330,7 +2337,12 @@ Scope {
 								verticalCenter: parent.verticalCenter
 							}
 
-							text: "Things stay in the Trash until it is emptied."
+							anchors.right: bannerAction.left
+							anchors.rightMargin: 12
+							elide: Text.ElideRight
+							text: root.snapshotAt !== null
+								? `Snapshot #${root.snapshotAt.number} · read-only. Copy files out to get them back.`
+								: "Things stay in the Trash until it is emptied."
 							font.pixelSize: Theme.fontBody
 							font.weight: Font.DemiBold
 							opacity: 0.85
@@ -2338,15 +2350,18 @@ Scope {
 						}
 
 						DialogButton {
+							id: bannerAction
+
 							anchors {
 								right: parent.right
 								rightMargin: 8
 								verticalCenter: parent.verticalCenter
 							}
 
-							text: "Empty Trash"
-							variant: "destructive"
-							onClicked: root.askEmpty()
+							// In a snapshot: the same folder as it is today.
+							text: root.snapshotAt !== null ? "Open live folder" : "Empty Trash"
+							variant: root.snapshotAt !== null ? "secondary" : "destructive"
+							onClicked: root.snapshotAt !== null ? root.go(root.snapshotAt.live) : root.askEmpty()
 						}
 					}
 

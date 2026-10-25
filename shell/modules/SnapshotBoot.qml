@@ -5,6 +5,7 @@ import QtQuick
 import ".."
 import "../icons"
 import "../ui"
+import "snapshots.js" as Snapshots
 
 // Booted into a snapshot from the Limine menu? Then say so.
 //
@@ -76,38 +77,10 @@ Scope {
 		return Qt.formatDateTime(d, "d MMM 'at' hh:mm");
 	}
 
-	// snap-pac names a pre snapshot after the pacman command that followed
-	// it, and a post after the packages it touched. Said in words: "a system
-	// update", "installing gradle", "removing gradle".
-	function phrase(kind, text) {
-		if (text === "")
-			return "";
-		if (kind !== "pre") {
-			const names = text.split(/\s+/).filter(n => n !== "");
-			return names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`;
-		}
-		const words = text.split(/\s+/);
-		if (words[0] !== "pacman")
-			return text;
-		const ops = words.filter(w => /^-[A-Za-z]+$/.test(w)).join("");
-		const targets = words.slice(words.indexOf("--") + 1).filter(w => words.includes("--") && !w.startsWith("-"));
-		const what = targets.length === 0 ? "" : targets.length <= 2 ? " " + targets.map(t => t.split("/").pop()).join(" and ")
-			: ` ${targets.length} packages`;
-		if (/S/.test(ops) && /y/.test(ops) && /u/.test(ops))
-			return "a system update";
-		if (/U/.test(ops))
-			return "installing a built package" + (text.includes("yay") ? " from the AUR" : "");
-		if (/R/.test(ops))
-			return "removing" + (what || " packages");
-		if (/S/.test(ops))
-			return "installing" + (what || " packages");
-		return text;
-	}
-
 	// A pre snapshot is the system just before the command it names; a post
 	// is the system just after it.
 	readonly property string body: {
-		const what = root.phrase(root.kind, root.description);
+		const what = Snapshots.phrase(root.kind, root.description);
 		const lead = root.when !== "" ? `This is the system as it was on ${root.when}` : "This is an earlier version of the system";
 		const which = what === "" ? "." : root.kind === "pre" ? `, just before ${what}.` : `, just after changing ${what}.`;
 		return lead + which + " It is read-only underneath: anything you change now is gone at the next restart.";
