@@ -4,29 +4,20 @@
 # chain cannot help, because suspending stops the clock - without this, closing
 # the lid and reopening it lands straight on an unlocked desktop.
 #
-# A system unit rather than a user one: systemd 261 still has no sleep.target
-# in the user manager, so there is nothing there to hook.
+# A system unit rather than a user one: systemd still has no sleep.target in
+# the user manager, so there is nothing there to hook.
 #
-# Install:
-#   sudo ln -s ~/groma/system/groma-lock-on-sleep.service /etc/systemd/system/
-#   sudo systemctl enable groma-lock-on-sleep.service
-#
-# The three variables below are what `qs ipc` needs to find a running instance:
-# HOME to resolve the config, XDG_RUNTIME_DIR for the socket, and
-# WAYLAND_DISPLAY because it filters instances by display. Adjust the user,
-# uid and display for another machine.
+# It names no user, uid or display: groma-lock-sessions finds every running
+# Groma by its process. install.sh copies both files into place, owned by root
+# - a unit that runs as root must not be a file the user can edit.
 
 [Unit]
-Description=Lock the Groma session before sleep
+Description=Lock every Groma session before sleep
 Before=sleep.target
 
 [Service]
 Type=oneshot
-User=stefano
-Environment=HOME=/home/stefano
-Environment=XDG_RUNTIME_DIR=/run/user/1000
-Environment=WAYLAND_DISPLAY=wayland-1
-ExecStart=/usr/bin/qs -c groma ipc call lock lock
+ExecStart=/usr/local/lib/groma/groma-lock-sessions lock
 
 [Install]
 WantedBy=sleep.target

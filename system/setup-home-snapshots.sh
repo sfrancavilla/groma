@@ -19,7 +19,14 @@ set -euo pipefail
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 
+if [ "$(findmnt -n -o FSTYPE --target /home)" != btrfs ] || ! findmnt -n /home >/dev/null; then
+	echo "Skipping home snapshots: /home is not its own Btrfs subvolume."
+	exit 0
+fi
+
+fresh=no
 if ! sudo snapper -c home get-config >/dev/null 2>&1; then
+	fresh=yes
 	step "Creating the snapper config for /home"
 	sudo snapper -c home create-config /home
 else
@@ -56,8 +63,10 @@ else
 	step "~/.cache is already its own subvolume"
 fi
 
-step "Taking the first /home snapshot, as $USER"
-snapper -c home create --description "Groma: first home snapshot" --cleanup-algorithm number
+if [ "$fresh" = yes ]; then
+	step "Taking the first /home snapshot, as $USER"
+	snapper -c home create --description "Groma: first home snapshot" --cleanup-algorithm number
+fi
 
 step "What is there now"
 snapper -c home list

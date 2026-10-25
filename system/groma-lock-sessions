@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+# Ask every running Groma shell to do something over IPC - "lock", by default,
+# which is what groma-lock-on-sleep.service runs just before the machine
+# sleeps.
+#
+# Finds each shell by its process rather than by a user, uid or Wayland display
+# written into a unit file: `qs ipc --pid` reaches an instance directly, and
+# needs only that user's HOME and XDG_RUNTIME_DIR to find its socket. So the
+# same file works for any user on any machine, and for several at once.
+#
+#   groma-lock-sessions             lock every session
+#   groma-lock-sessions status      what each says about its lock (harmless)
+
+action="${1:-lock}"
+
+for pid in $(pgrep -x qs); do
+	# Only the shells themselves - "qs -c groma" - not a passing "qs ipc ...".
+	[ "$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null)" = "qs -c groma " ] || continue
+
+	uid="$(stat -c %u "/proc/$pid")"
+	user="$(id -nu "$uid")"
+	home="$(getent passwd "$user" | cut -d: -f6)"
+	set -- env HOME="$home" XDG_RUNTIME_DIR="/run/user/$uid" LANG=C.UTF-8 \
+		qs ipc --pid "$pid" call lock "$action"
+
+	if [ "$(id -u)" = "$uid" ]; then
+		"$@"
+	else
+		runuser -u "$user" -- "$@"
+	fi
+done

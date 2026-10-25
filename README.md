@@ -41,7 +41,6 @@ The volume and brightness keys call the shell (`ipc call keys …`) rather than
 running `wpctl` and `brightnessctl` themselves, so the change and its on-screen
 readout are one action. The shell does not have to discover what a keybind just
 did. The cost is that those keys need the shell running.
-| `system/groma-lock-on-sleep.service` | Locks before suspend, which the idle chain cannot cover |
 
 Being one process rather than a collection of daemons means components share
 live state directly — the bar and a future volume popup read the same PipeWire
@@ -118,28 +117,33 @@ Every colour, spacing, radius and type size in the shell now comes from
 
 ## Requirements
 
-- Hyprland
-- Quickshell 0.3.1 or later
-- polkit (for the authentication agent)
+An Arch Linux base install with a user in the `wheel` group — the
+[book](https://github.com/sfrancavilla/learning-linux-guide)'s chapter 1, or
+`archinstall`. Everything else, including Hyprland and Quickshell, comes from
+the installer.
 
 ## Install
 
 ```bash
-git clone <this repo> ~/groma
-
-mkdir -p ~/.config/quickshell ~/.config/hypr
-ln -s ~/groma/shell ~/.config/quickshell/groma
-ln -s ~/groma/hypr/hyprland.lua ~/.config/hypr/hyprland.lua
+git clone https://github.com/sfrancavilla/groma.git ~/groma
+~/groma/install.sh
 ```
 
-The compositor config starts the shell itself, so there is nothing further to
-wire up:
+Then log out and log in again on the first console: the desktop starts.
 
-```lua
-hl.on("hyprland.start", function ()
-  hl.exec_cmd("qs -c groma")
-end)
-```
+The installer is not tied to one machine. It detects the CPU and graphics and
+installs the matching microcode and Vulkan driver; it sets up snapshots only
+where the disk has the Btrfs `@` / `@snapshots` layout, and says why when it
+skips; NVIDIA is detected but untested, and the installer says so. It links
+the shell and the compositor config into `~/.config`, registers Groma's own
+applications, starts Hyprland after login on tty1, installs the
+lock-before-sleep unit, builds an AUR helper, and shortens the faillock lockout
+to two minutes. Safe to re-run.
+
+On a machine that boots with Limine, the boot menu can also list snapshots.
+That is a separate step because it changes the boot loader:
+`system/setup-limine-snapshots.sh` stops before rebooting so the result can be
+read first. Read `system/BOOT-RECOVERY.md` before running it.
 
 ### Machine-local overrides
 
@@ -188,9 +192,8 @@ Otherwise Ctrl+Alt+F2 to a TTY and `hyprctl dispatch exit`, which ends the
 session. Do not save a QML file while locked.
 
 Three wrong passwords locks the account for a while, and during it a *correct*
-password is rejected too. This machine sets `unlock_time = 120` in
-`/etc/security/faillock.conf` rather than the 600s default — that file is
-outside this repo and will not come back with a reinstall.
+password is rejected too. The installer sets `unlock_time = 120` in
+`/etc/security/faillock.conf`, rather than the 600s default.
 
 Authentication goes through PAM's `system-auth`. A service name with no file in
 `/etc/pam.d` falls through to `other`, which is `pam_deny` — every password

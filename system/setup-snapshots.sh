@@ -17,10 +17,29 @@ set -euo pipefail
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 
+# This layout - / on a Btrfs subvolume @, with @snapshots mounted beside it at
+# /.snapshots - is the one the book's chapter 1 creates, and the one
+# archinstall's Btrfs default creates. Anything else is skipped, not guessed at.
+if [ "$(findmnt -n -o FSTYPE /)" != btrfs ]; then
+	echo "Skipping system snapshots: / is not Btrfs."
+	exit 0
+fi
+if ! findmnt -n -o OPTIONS / | grep -qE 'subvol=/?@(,|$)'; then
+	echo "Skipping system snapshots: / is not the @ subvolume."
+	exit 0
+fi
+if ! grep -qE '[[:space:]]/\.snapshots[[:space:]]' /etc/fstab; then
+	echo "Skipping system snapshots: there is no /.snapshots line in /etc/fstab."
+	echo "Create an @snapshots subvolume and mount it there first (book, chapter 1)."
+	exit 0
+fi
+
 step "Installing snapper and snap-pac (official repositories)"
 sudo pacman -S --needed snapper snap-pac
 
+fresh=no
 if ! sudo snapper -c root get-config >/dev/null 2>&1; then
+	fresh=yes
 	step "Creating the snapper config for /, keeping @snapshots as the store"
 	sudo umount /.snapshots
 	sudo rmdir /.snapshots
@@ -48,8 +67,10 @@ sudo snapper -c root set-config \
 step "Enabling the cleanup timer"
 sudo systemctl enable --now snapper-cleanup.timer
 
-step "Taking the first snapshot, as $USER"
-snapper -c root create --description "Groma: first snapshot" --cleanup-algorithm number
+if [ "$fresh" = yes ]; then
+	step "Taking the first snapshot, as $USER"
+	snapper -c root create --description "Groma: first snapshot" --cleanup-algorithm number
+fi
 
 step "What is there now"
 snapper -c root list
