@@ -4,6 +4,7 @@ import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
 import QtQuick
 import "modules"
+import "ui"
 import "integrations/nothingear"
 
 ShellRoot {
@@ -60,6 +61,12 @@ ShellRoot {
 	// Type, pick, Enter.
 	Launcher {
 		clipboard: clipboard
+	}
+
+	// Booted into a snapshot from the boot menu? A sheet at login, and the
+	// chip in the bar below for the rest of the session.
+	SnapshotBoot {
+		id: snapshotBoot
 	}
 
 	// The file manager: an ordinary window, opened from SUPER+E.
@@ -173,6 +180,16 @@ ShellRoot {
 				verticalCenter: parent.verticalCenter
 			}
 			spacing: Theme.spacingL
+
+			// Only while running a snapshot: amber, because nothing done in
+			// this session survives a restart.
+			Chip {
+				anchors.verticalCenter: parent.verticalCenter
+				visible: snapshotBoot.active
+				text: "Snapshot " + snapshotBoot.number
+				accent: Theme.warning
+				onClicked: snapshotBoot.open = true
+			}
 
 			BluetoothControl {
 				anchors.verticalCenter: parent.verticalCenter

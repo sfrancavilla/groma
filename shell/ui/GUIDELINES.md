@@ -118,7 +118,8 @@ Which puts every surface built so far in exactly one place:
 | Groma Store: details | X | `Cancel` · `Install` / `Update` / `Remove` (destructive) |
 | Groma Store: a job in flight | none - a card | `Show terminal` · `Cancel` |
 | Power popup | none - a bar popup | none - a row acts |
-| Power: log out, restart, power off | none | `Cancel` `Log Out` / `Restart` / `Power Off` (destructive) |
+| Power: log out, restart, power off | none | `Cancel` `Log out` / `Restart` / `Power off` (destructive) |
+| Booted into a snapshot | none | `Restart to current` · `Cancel` `Restore…` |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
 there as well as the X - two chips side by side doing one thing. Note that the

@@ -456,9 +456,9 @@ Scope {
 	readonly property var systemActions: [
 		{ key: "lock", label: "Lock", glyph: "lock", words: ["lock", "lock screen"] },
 		{ key: "suspend", label: "Suspend", glyph: "moon", words: ["suspend", "sleep", "freeze"] },
-		{ key: "logout", label: "Log Out…", glyph: "leave", words: ["log out", "logout", "sign out", "exit"] },
+		{ key: "logout", label: "Log out…", glyph: "leave", words: ["log out", "logout", "sign out", "exit"] },
 		{ key: "restart", label: "Restart…", glyph: "restart", words: ["restart", "reboot"] },
-		{ key: "poweroff", label: "Power Off…", glyph: "power", words: ["power off", "poweroff", "shut down", "shutdown", "turn off"] }
+		{ key: "poweroff", label: "Power off…", glyph: "power", words: ["power off", "poweroff", "shut down", "shutdown", "turn off"] }
 	]
 
 	readonly property var systemItems: {

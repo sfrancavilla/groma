@@ -51,15 +51,15 @@ BarPopup {
 			run: () => Quickshell.execDetached(["qs", "-c", "groma", "ipc", "call", "lock", "lock"]) },
 		{ key: "suspend", label: "Suspend", hint: "", glyph: "moon", ask: false,
 			run: () => Quickshell.execDetached(["systemctl", "suspend"]) },
-		{ key: "logout", label: "Log Out…", hint: "", glyph: "leave", ask: true,
-			title: "Log out?", verb: "Log Out",
+		{ key: "logout", label: "Log out…", hint: "", glyph: "leave", ask: true,
+			title: "Log out?", verb: "Log out",
 			run: () => Quickshell.execDetached(["sh", "-c",
 				"command -v hyprshutdown >/dev/null 2>&1 && exec hyprshutdown; exec hyprctl dispatch 'hl.dsp.exit()'"]) },
 		{ key: "restart", label: "Restart…", hint: "", glyph: "restart", ask: true,
 			title: "Restart the laptop?", verb: "Restart",
 			run: () => Quickshell.execDetached(["systemctl", "reboot"]) },
-		{ key: "poweroff", label: "Power Off…", hint: "", glyph: "power", ask: true,
-			title: "Power off the laptop?", verb: "Power Off",
+		{ key: "poweroff", label: "Power off…", hint: "", glyph: "power", ask: true,
+			title: "Power off the laptop?", verb: "Power off",
 			run: () => Quickshell.execDetached(["systemctl", "poweroff"]) }
 	]
 
