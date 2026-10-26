@@ -1,22 +1,25 @@
 import QtQuick
 import QtQuick.Shapes
 
-// Wi-Fi: a dot with arcs above it. `level` is how many arcs are lit, and
-// `crossed` strikes it through when the radio is off.
+// Wi-Fi: a dot with three arcs fanning out above it. `level` is how many arcs
+// are lit; the rest stay faintly drawn, so the glyph keeps its shape at any
+// strength instead of shrinking to a dot. `crossed` strikes it through when
+// the radio is off.
 //
-// The arcs are state, not strength: Quickshell's Network exposes whether a
-// network is connected but not how strong it is, so claiming bars would be
-// inventing a reading.
+// Drawn on the shared 24-unit grid with a 2-unit stroke, like the other bar
+// glyphs, so at one size they all carry the same weight.
 Item {
 	id: icon
 
 	property color color: "#ffffff"
-	// 0..2 arcs above the dot.
-	property int level: 2
+	// 0..3 arcs lit above the dot.
+	property int level: 3
 	property bool crossed: false
 
-	readonly property real baseWidth: 18
-	readonly property real baseHeight: 14
+	readonly property color unlit: Qt.rgba(icon.color.r, icon.color.g, icon.color.b, icon.color.a * 0.3)
+
+	readonly property real baseWidth: 24
+	readonly property real baseHeight: 24
 	readonly property real aspect: icon.baseWidth / icon.baseHeight
 
 	implicitWidth: icon.baseWidth
@@ -35,56 +38,68 @@ Item {
 			anchors.fill: parent
 			preferredRendererType: Shape.CurveRenderer
 
-			// The dot, always present: the radio exists even when nothing is
+			// The dot, always lit: the radio exists even when nothing is
 			// connected.
 			ShapePath {
 				strokeWidth: 0
 				fillColor: icon.color
 
 				PathAngleArc {
-					centerX: 9; centerY: 11.5
+					centerX: 12; centerY: 18.5
 					radiusX: 1.6; radiusY: 1.6
 					startAngle: 0; sweepAngle: 360
 				}
 			}
 
 			ShapePath {
-				strokeColor: icon.level >= 1 ? icon.color : "transparent"
-				strokeWidth: 1.6
+				strokeColor: icon.level >= 1 ? icon.color : icon.unlit
+				strokeWidth: 2
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 
 				PathAngleArc {
-					centerX: 9; centerY: 11.5
+					centerX: 12; centerY: 18.5
 					radiusX: 4.5; radiusY: 4.5
-					startAngle: 200; sweepAngle: 140
+					startAngle: 225; sweepAngle: 90
 				}
 			}
 
 			ShapePath {
-				strokeColor: icon.level >= 2 ? icon.color : "transparent"
-				strokeWidth: 1.6
+				strokeColor: icon.level >= 2 ? icon.color : icon.unlit
+				strokeWidth: 2
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 
 				PathAngleArc {
-					centerX: 9; centerY: 11.5
-					radiusX: 8; radiusY: 8
-					startAngle: 205; sweepAngle: 130
+					centerX: 12; centerY: 18.5
+					radiusX: 8.5; radiusY: 8.5
+					startAngle: 225; sweepAngle: 90
+				}
+			}
+
+			ShapePath {
+				strokeColor: icon.level >= 3 ? icon.color : icon.unlit
+				strokeWidth: 2
+				fillColor: "transparent"
+				capStyle: ShapePath.RoundCap
+
+				PathAngleArc {
+					centerX: 12; centerY: 18.5
+					radiusX: 12.5; radiusY: 12.5
+					startAngle: 225; sweepAngle: 90
 				}
 			}
 
 			// Struck through when the radio is off.
 			ShapePath {
 				strokeColor: icon.crossed ? icon.color : "transparent"
-				strokeWidth: 1.6
+				strokeWidth: 2
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 
-				startX: 2.5; startY: 2
-				PathLine { x: 15.5; y: 13 }
+				startX: 4; startY: 4
+				PathLine { x: 20; y: 20 }
 			}
 		}
 	}
 }
-

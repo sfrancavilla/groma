@@ -88,8 +88,12 @@ BarPopup {
 	}
 
 	trigger: PowerIcon {
-		height: Theme.barIconHeight + 1
+		// A ring reads larger than the line glyphs beside it at the same
+		// height, so it is drawn a little smaller - with its stroke widened to
+		// match, since the stroke scales with the glyph.
+		height: Theme.barIconSize - 2
 		width: height
+		stroke: Theme.barIconSize / height
 		color: Theme.glassTextPrimary
 		opacity: root.active ? 1.0 : 0.85
 

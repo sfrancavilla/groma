@@ -35,7 +35,7 @@ BarPopup {
 	}
 
 	trigger: SpeakerIcon {
-		height: Theme.barIconHeight
+		height: Theme.barIconSize
 		width: height * aspect
 
 		// The glyph is the readout: no waves when silent, one below half, two

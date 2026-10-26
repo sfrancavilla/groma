@@ -3,6 +3,10 @@ import QtQuick.Shapes
 
 // A battery outline with a nub, drawn as paths, optionally filled to its
 // charge level.
+//
+// Drawn on the shared 24-unit grid with a 2-unit stroke, like the other bar
+// glyphs, so at one size they all carry the same weight. It is the one glyph
+// wider than it is tall: 28 units, for the nub.
 Item {
 	id: icon
 
@@ -14,9 +18,14 @@ Item {
 	// The paths below are drawn at this size; setting width or height scales
 	// them rather than cropping, which absolute path coordinates would
 	// otherwise do.
-	readonly property real baseWidth: 26
-	readonly property real baseHeight: 11
+	readonly property real baseWidth: 28
+	readonly property real baseHeight: 24
 	readonly property real aspect: icon.baseWidth / icon.baseHeight
+
+	// Where the cell sits, so whatever is laid over it - the charging bolt -
+	// can be centred on the cell rather than on the cell and nub together.
+	readonly property real cellCenterX: 12.5 * icon.width / icon.baseWidth
+	readonly property real cellHeight: 12 * icon.height / icon.baseHeight
 
 	implicitWidth: icon.baseWidth
 	implicitHeight: icon.baseHeight
@@ -39,41 +48,40 @@ Item {
 			// Cell.
 			ShapePath {
 				strokeColor: icon.color
-				strokeWidth: 1.5
+				strokeWidth: 2
 				fillColor: "transparent"
 				joinStyle: ShapePath.RoundJoin
 
-				startX: 1.5; startY: 0.75
-				PathLine { x: 19.5; y: 0.75 }
-				PathArc { x: 21.25; y: 2.5; radiusX: 1.75; radiusY: 1.75 }
-				PathLine { x: 21.25; y: 8.5 }
-				PathArc { x: 19.5; y: 10.25; radiusX: 1.75; radiusY: 1.75 }
-				PathLine { x: 1.5; y: 10.25 }
-				PathArc { x: -0.25; y: 8.5; radiusX: 1.75; radiusY: 1.75 }
-				PathLine { x: -0.25; y: 2.5 }
-				PathArc { x: 1.5; y: 0.75; radiusX: 1.75; radiusY: 1.75 }
+				startX: 4.5; startY: 7
+				PathLine { x: 20.5; y: 7 }
+				PathArc { x: 23; y: 9.5; radiusX: 2.5; radiusY: 2.5 }
+				PathLine { x: 23; y: 14.5 }
+				PathArc { x: 20.5; y: 17; radiusX: 2.5; radiusY: 2.5 }
+				PathLine { x: 4.5; y: 17 }
+				PathArc { x: 2; y: 14.5; radiusX: 2.5; radiusY: 2.5 }
+				PathLine { x: 2; y: 9.5 }
+				PathArc { x: 4.5; y: 7; radiusX: 2.5; radiusY: 2.5 }
 			}
 
 			// Nub.
 			ShapePath {
-				strokeWidth: 0
-				fillColor: icon.color
+				strokeColor: icon.color
+				strokeWidth: 2
+				fillColor: "transparent"
+				capStyle: ShapePath.RoundCap
 
-				startX: 22.5; startY: 3.5
-				PathLine { x: 24.5; y: 3.5 }
-				PathLine { x: 24.5; y: 7.5 }
-				PathLine { x: 22.5; y: 7.5 }
-				PathLine { x: 22.5; y: 3.5 }
+				startX: 26; startY: 10.5
+				PathLine { x: 26; y: 13.5 }
 			}
 		}
 
 		// Charge level, when asked for.
 		Rectangle {
 			visible: icon.level >= 0
-			x: 1.75
-			y: 2.5
-			width: 17.5 * Math.min(1, Math.max(0, icon.level))
-			height: 6
+			x: 4.5
+			y: 9.5
+			width: 16 * Math.min(1, Math.max(0, icon.level))
+			height: 5
 			radius: 1
 			color: icon.color
 		}

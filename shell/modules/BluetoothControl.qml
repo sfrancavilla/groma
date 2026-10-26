@@ -64,7 +64,7 @@ BarPopup {
 		: "No devices"
 
 	trigger: BluetoothIcon {
-		height: Theme.barIconHeight
+		height: Theme.barIconSize
 		width: height * aspect
 
 		crossed: !root.enabled

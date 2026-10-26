@@ -85,7 +85,7 @@ BarPopup {
 	}
 
 	trigger: BatteryIcon {
-		height: Theme.barIconHeight
+		height: Theme.barIconSize
 		width: height * aspect
 
 		// The cell fills with the charge, so the number is not needed to read
@@ -103,9 +103,10 @@ BarPopup {
 		}
 
 		BoltIcon {
-			anchors.centerIn: parent
-			width: 7
-			height: 11
+			x: parent.cellCenterX - width / 2
+			anchors.verticalCenter: parent.verticalCenter
+			height: parent.cellHeight - 1
+			width: height * 0.6
 			visible: root.charging
 			// On top of a filled cell, so it has to hold its own against both.
 			color: Theme.glassTextOnLens

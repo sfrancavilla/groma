@@ -251,9 +251,10 @@ Singleton {
 	readonly property int chipHeight: 29
 
 	readonly property int barHeight: 32
-	// Glyphs in the bar share a height so they read as a set. Widths follow
-	// from each glyph's own proportions.
-	readonly property int barIconHeight: 11
+	// Glyphs in the bar are drawn on one 24-unit grid with a 2-unit stroke and
+	// shown at this height, so they share a size and a line weight and read as
+	// a set. Widths follow from each grid: square, except the battery's.
+	readonly property int barIconSize: 17
 	// Gap between the bar and a panel it opens. The panel's own shadow padding
 	// is subtracted from the window margin, or the visible gap is that much
 	// bigger than this.

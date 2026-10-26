@@ -307,12 +307,13 @@ BarPopup {
 		? Theme.warning : Theme.glassTextPrimary
 
 	trigger: WifiIcon {
-		height: Theme.barIconHeight
+		height: Theme.barIconSize
 		width: height * aspect
 
 		crossed: !root.enabled
+		// Four bars of signal onto three arcs: the top two bars share one.
 		level: !root.enabled || !root.current ? 0
-			: root.barsFor(root.current.name) >= 3 ? 2 : 1
+			: Math.max(1, root.barsFor(root.current.name) - 1)
 
 		// Connected but no route out is worth flagging - a captive portal
 		// looks exactly like a working connection otherwise.
