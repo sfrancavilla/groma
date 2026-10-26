@@ -46,7 +46,7 @@ PACKAGES=(
 
 	brightnessctl       # the idle chain dims with this, the OSD reads it
 	playerctl           # media keys, and pausing when an earbud comes out
-	python              # the Files, Software and earbud helpers
+	python              # the Files, Sofwwttware and earbud helpers
 	curl                # the public-address lookup in the network tile
 
 	xdg-desktop-portal  # screen sharing, file pickers
@@ -136,9 +136,13 @@ gsettings set org.gnome.desktop.interface icon-theme Papirus 2>/dev/null || true
 
 # An editor for text, only where one is installed. Files asks "Open with…"
 # for anything nothing claims, so this is a convenience, not a requirement.
-if [ -f /usr/share/applications/code.desktop ]; then
-	xdg-mime default code.desktop text/plain text/markdown
-fi
+# VS Code's entry has more than one name, depending on how it was packaged.
+for editor in code.desktop com.microsoft.VSCode.desktop code-oss.desktop; do
+	if [ -f "/usr/share/applications/$editor" ]; then
+		xdg-mime default "$editor" text/plain text/markdown
+		break
+	fi
+done
 
 # --- starting the desktop -------------------------------------------------------
 
