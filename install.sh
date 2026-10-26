@@ -66,6 +66,7 @@ PACKAGES=(
 	desktop-file-utils  # update-desktop-database, after the desktop entries are linked in
 	papirus-icon-theme  # application icons, one consistent set (QS_ICON_THEME in hyprland.lua)
 	archlinux-appstream-data  # icons for applications Groma Store shows before they are installed
+	libjxl              # djxl: the catalogue's icons are JPEG XL, which Qt cannot read
 
 	git                 # cloning this repository, and building AUR packages
 	base-devel          # makepkg, for the AUR helper Groma Store uses

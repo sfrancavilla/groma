@@ -95,6 +95,7 @@ Scope {
 
 		command: ["python3", `${Quickshell.shellDir}/modules/software-worker.py`]
 		stdinEnabled: true
+		onStarted: root.wantIcons(root.rows.map(r => r.name))
 		onExited: if (root.open) reviveWorker.start()
 
 		stdout: SplitParser {
@@ -588,12 +589,47 @@ Scope {
 	}
 
 	// A tinted disc with the application's icon, or its initial.
+	// pkgname -> { names, file }, from the worker: the names to try in the
+	// icon theme, and a converted catalogue icon for when none of them is.
+	property var iconInfo: ({})
+
+	// Only once the worker is running: a request written before it starts
+	// is lost, and the packages in it would stay pending for good. It asks
+	// again for the whole page when it does start.
+	function wantIcons(names) {
+		if (!worker.running)
+			return;
+		const missing = names.filter(n => n && root.iconInfo[n] === undefined);
+		if (missing.length === 0)
+			return;
+		const pending = Object.assign({}, root.iconInfo);
+		for (const n of missing)
+			pending[n] = null;
+		root.iconInfo = pending;
+		root.ask("icons", { packages: missing }, msg => {
+			root.iconInfo = Object.assign({}, root.iconInfo, msg.icons);
+		});
+	}
+
+	function iconFor(pkg) {
+		const info = root.iconInfo[pkg];
+		const names = info ? info.names : [pkg];
+		for (const n of names) {
+			const themed = Quickshell.iconPath(n, true);
+			if (themed !== "")
+				return themed;
+		}
+		return info && info.file ? "file://" + info.file : "";
+	}
+
+	onRowsChanged: root.wantIcons(root.rows.map(r => r.name))
+
 	component AppDisc: Lens {
 		id: appDisc
 
 		property string name: ""
 		property string label: name
-		readonly property string iconFile: Quickshell.iconPath(name, true)
+		readonly property string iconFile: root.iconFor(name)
 
 		sheen: false
 		tint: root.tint(label)

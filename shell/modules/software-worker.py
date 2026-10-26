@@ -214,7 +214,100 @@ def op_updates(_):
             "checked": time.time(), "hasCheck": shutil.which("checkupdates") is not None}
 
 
-OPS = {"state": op_state, "search": op_search, "info": op_info, "updates": op_updates}
+# --- icons ------------------------------------------------------------------
+#
+# An application's icon arrives with the application, so a package that is not
+# installed has none - unless the icon theme happens to draw it, which Papirus
+# usually does, under the name the package's AppStream entry gives. Arch ships
+# that catalogue (archlinux-appstream-data) with an icon name per package, and
+# a pre-rendered icon for the ones a theme does not cover. Those are JPEG XL,
+# which Qt cannot read, so they are converted to PNG once and kept.
+
+APPSTREAM = "/usr/share/swcatalog"
+ICON_CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"),
+                          "groma", "store-icons")
+_catalog = None
+_catalog_lock = threading.Lock()
+
+
+def catalog():
+    """pkgname -> (names to try in the icon theme, cached icon files by size)."""
+    global _catalog
+    with _catalog_lock:
+        if _catalog is not None:
+            return _catalog
+        import gzip
+        import xml.etree.ElementTree as ET
+        found = {}
+        for repo in ("core", "extra", "multilib"):
+            path = os.path.join(APPSTREAM, "xml", f"{repo}.xml.gz")
+            if not os.path.exists(path):
+                continue
+            try:
+                root = ET.parse(gzip.open(path)).getroot()
+            except Exception:
+                continue
+            origin = root.get("origin") or f"archlinux-arch-{repo}"
+            for c in root.iter("component"):
+                pkg = c.findtext("pkgname")
+                if not pkg:
+                    continue
+                names, files = [], {}
+                for icon in c.findall("icon"):
+                    kind, text = icon.get("type"), (icon.text or "").strip()
+                    if kind == "stock" and text:
+                        names.append(text)
+                    elif kind == "cached" and text:
+                        size = icon.get("width") or "64"
+                        files[size] = os.path.join(APPSTREAM, "icons", origin, f"{size}x{size}", text)
+                cid = (c.findtext("id") or "").removesuffix(".desktop")
+                if cid:
+                    names.append(cid)
+                if pkg not in found:
+                    found[pkg] = (names, files)
+        _catalog = found
+        return found
+
+
+def plain_name(pkg):
+    """visual-studio-code-bin -> visual-studio-code, zen-browser-bin -> zen-browser."""
+    for suffix in ("-bin", "-git", "-beta", "-nightly", "-appimage"):
+        if pkg.endswith(suffix):
+            return pkg[: -len(suffix)]
+    return pkg
+
+
+def cached_png(files):
+    """The largest cached icon, as a PNG the shell can show; "" if none."""
+    for size in ("128", "64", "48"):
+        src = files.get(size)
+        if not src or not os.path.exists(src):
+            continue
+        os.makedirs(ICON_CACHE, exist_ok=True)
+        out = os.path.join(ICON_CACHE, os.path.basename(src).rsplit(".", 1)[0] + ".png")
+        if os.path.exists(out):
+            return out
+        if src.endswith(".png"):
+            return src
+        if shutil.which("djxl") and subprocess.run(["djxl", src, out], capture_output=True).returncode == 0:
+            return out
+    return ""
+
+
+def op_icons(req):
+    cat = catalog()
+    result = {}
+    for pkg in req.get("packages", []):
+        names, files = cat.get(pkg, ([], {}))
+        tries = []
+        for n in names + [pkg, plain_name(pkg)]:
+            if n and n not in tries:
+                tries.append(n)
+        result[pkg] = {"names": tries, "file": cached_png(files)}
+    return {"icons": result}
+
+
+OPS = {"state": op_state, "search": op_search, "info": op_info, "updates": op_updates, "icons": op_icons}
 
 
 def handle(request):
