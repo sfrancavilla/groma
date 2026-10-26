@@ -130,10 +130,14 @@ Singleton {
 	readonly property color glassTrackBorderFocus: Qt.rgba(1, 1, 1, 0.55)
 	readonly property color glassTrackFill: Qt.rgba(1, 1, 1, 0.40)
 
-	readonly property color glassKnobCore: Qt.rgba(1, 1, 1, 0.95)
-	readonly property color glassKnobMid: Qt.rgba(1, 1, 1, 0.55)
-	readonly property color glassKnobRim: Qt.rgba(1, 1, 1, 0.25)
-	readonly property color glassKnobEdge: Qt.rgba(1, 1, 1, 0.70)
+	// The lens: pearl. White at the highlight, falling to a cool pale grey-blue
+	// at the rim, and nearly opaque. The design's white at falling alpha let
+	// the panel through at the rim, which on a dark panel turned it a muddy
+	// grey; this keeps the sphere's shading without borrowing the background.
+	readonly property color glassKnobCore: "#ffffff"
+	readonly property color glassKnobMid: Qt.rgba(240 / 255, 244 / 255, 250 / 255, 0.94)
+	readonly property color glassKnobRim: Qt.rgba(205 / 255, 214 / 255, 228 / 255, 0.88)
+	readonly property color glassKnobEdge: Qt.rgba(1, 1, 1, 0.90)
 	readonly property color glassSheen: Qt.rgba(1, 1, 1, 0.80)
 
 	// A slider fill carries state through its tint: charging green, low amber.
@@ -147,15 +151,17 @@ Singleton {
 	// the design's oklch(0.5 0.14 60) and oklch(0.45 0.13 150), converted.
 	readonly property color calcInk: "#8a5a10"
 	readonly property color runInk: "#1f6b3a"
-	// The file and folder outlines in the launcher's FILES rows, oklch(0.45 0.08 250).
-	readonly property color fileInk: "#305880"
+	// The marks drawn on a lens - file and folder outlines, the power menu,
+	// search - in navy, oklch(0.36 0.076 255). The design's oklch(0.45 0.08
+	// 250) was chosen for 2px lines; at the finer markLine it read faint.
+	readonly property color fileInk: "#1e3d63"
 	readonly property color glassTextOnLens: "#16161c"
 
 	// Depth cues the design carries as inset box-shadows, for the lens. The
 	// panel's own inset highlight is not here: on screen it read as a line
 	// drawn on the top edge rather than as a surface catching light.
-	readonly property color glassLensShade: Qt.rgba(0, 0, 0, 0.16)
-	readonly property color glassLensGlow: Qt.rgba(1, 1, 1, 0.80)
+	readonly property color glassLensShade: Qt.rgba(0, 0, 0, 0.10)
+	readonly property color glassLensGlow: Qt.rgba(1, 1, 1, 0.85)
 
 	// A menu drawn inside a window sits on that window's own content, and
 	// the compositor blurs nothing there: the same glass as a sheet would show
