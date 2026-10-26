@@ -1834,18 +1834,15 @@ Scope {
 
 					spacing: Theme.spacingM
 
-					Lens {
+					FileIcon {
 						id: fileDisc
 
 						anchors.verticalCenter: parent.verticalCenter
 						width: 30
 						height: 30
-						sheen: false
-
-						FileGlyph {
-							anchors.centerIn: parent
-							kind: fileSlot.file.folder ? "folder" : "file"
-						}
+						fileName: fileSlot.file.name
+						folder: fileSlot.file.folder
+						path: fileSlot.file.path
 					}
 
 					Text {

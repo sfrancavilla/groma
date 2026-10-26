@@ -25,7 +25,7 @@ Item {
 	property real zoom: 1
 
 	readonly property string chosen: icon.iconName !== "" ? icon.iconName
-		: icon.path !== "" ? FileIcons.name(icon.fileName, icon.folder, icon.path, Quickshell.env("HOME")) : ""
+		: icon.fileName !== "" || icon.path !== "" ? FileIcons.name(icon.fileName, icon.folder, icon.path, Quickshell.env("HOME")) : ""
 	readonly property string source: icon.chosen !== "" ? Quickshell.iconPath(icon.chosen, true) : ""
 
 	Image {

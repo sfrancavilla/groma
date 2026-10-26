@@ -3119,18 +3119,15 @@ Scope {
 
 						spacing: 10
 
-						Lens {
+						FileIcon {
 							id: ghostDisc
 
 							anchors.verticalCenter: parent.verticalCenter
 							width: 28
 							height: 28
-							sheen: false
-
-							FileGlyph {
-								anchors.centerIn: parent
-								kind: ghost.d?.folder ? "folder" : "file"
-							}
+							fileName: ghost.d?.names?.[0] ?? ""
+							folder: ghost.d?.folder ?? false
+							path: ghost.d?.paths?.[0] ?? ""
 						}
 
 						Text {
@@ -3479,19 +3476,16 @@ Scope {
 					width: parent.width
 					height: 44
 
-					Lens {
+					FileIcon {
 						id: propsDisc
 
 						anchors.verticalCenter: parent.verticalCenter
 						width: 44
 						height: 44
-						sheen: false
-
-						FileGlyph {
-							anchors.centerIn: parent
-							kind: root.props?.entry?.folder ? "folder" : "file"
-							zoom: 1.3
-						}
+						fileName: root.props?.entry?.name ?? ""
+						folder: root.props?.entry?.folder ?? false
+						path: root.props?.entry?.path ?? ""
+						zoom: 1.3
 					}
 
 					Column {
@@ -3617,16 +3611,13 @@ Scope {
 							? `A ${root.opener.type} file. Nothing is set to open these yet; these look like a fit.`
 							: `A ${root.opener.type} file. Nothing is set to open these yet.`
 
-				icon: Lens {
+				icon: FileIcon {
 					width: 44
 					height: 44
-					sheen: false
-
-					FileGlyph {
-						anchors.centerIn: parent
-						kind: root.opener !== null && root.opener.entry.folder ? "folder" : "file"
-						zoom: 1.3
-					}
+					fileName: root.opener?.entry?.name ?? ""
+					folder: root.opener?.entry?.folder ?? false
+					path: root.opener?.entry?.path ?? ""
+					zoom: 1.3
 				}
 
 				ListView {
@@ -3855,17 +3846,12 @@ Scope {
 					? `${root.nameOf(root.transfer?.to ?? root.path)} already has ${root.conflict.existing.folder ? "a folder" : "a file"} with this name. Choose which one to keep.`
 					: ""
 
-				icon: Lens {
+				icon: FileIcon {
 					width: 44
 					height: 44
-					sheen: false
-
-					FileGlyph {
-						anchors.centerIn: parent
-						kind: root.conflict !== null && root.conflict.existing.folder ? "folder" : "file"
-						zoom: 1.3
-						color: Theme.calcInk
-					}
+					fileName: root.conflict?.name ?? ""
+					folder: root.conflict?.existing?.folder ?? false
+					zoom: 1.3
 				}
 
 				Column {
@@ -3901,16 +3887,12 @@ Scope {
 
 								spacing: 10
 
-								Lens {
+								FileIcon {
 									anchors.verticalCenter: parent.verticalCenter
 									width: 28
 									height: 28
-									sheen: false
-
-									FileGlyph {
-										anchors.centerIn: parent
-										kind: option.modelData.info.folder ? "folder" : "file"
-									}
+									fileName: root.conflict?.name ?? ""
+									folder: option.modelData.info.folder ?? false
 								}
 
 								Column {
