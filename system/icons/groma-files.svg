@@ -1,18 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Groma Files: a folder, back panel in the shell's file ink, front panel
-       in the desktop's teal, lit along its top edge. -->
+  <!-- Groma Files: a folder - the shell's file ink behind, the desktop's teal
+       in front, a sheet of paper between them, glass along the top.
+       Depth is layered shapes, not filters: Qt's SVG renderer draws none. -->
   <defs>
     <linearGradient id="back" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#3f6f9a"/>
+      <stop offset="0" stop-color="#5a8fc0"/>
       <stop offset="1" stop-color="#22466c"/>
     </linearGradient>
-    <linearGradient id="front" x1="0" y1="0" x2="0.4" y2="1">
-      <stop offset="0" stop-color="#8ad8dc"/>
-      <stop offset="0.55" stop-color="#4f9cc2"/>
-      <stop offset="1" stop-color="#305880"/>
+    <linearGradient id="front" x1="0.15" y1="0" x2="0.55" y2="1">
+      <stop offset="0" stop-color="#a6eef0"/>
+      <stop offset="0.45" stop-color="#5fb2d4"/>
+      <stop offset="1" stop-color="#2c5a86"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dfe9f2"/>
     </linearGradient>
   </defs>
+  <path d="M15 37a10 10 0 0 1 10-10h25a8 8 0 0 1 5.7 2.4L64 38h40a10 10 0 0 1 10 10v51a10 10 0 0 1-10 10H25a10 10 0 0 1-10-10z" fill="#000000" fill-opacity="0.22"/>
   <path d="M14 32a10 10 0 0 1 10-10h26a8 8 0 0 1 5.7 2.4L64 33h40a10 10 0 0 1 10 10v51a10 10 0 0 1-10 10H24a10 10 0 0 1-10-10z" fill="url(#back)"/>
+  <rect x="24" y="36" width="80" height="40" rx="5" fill="url(#paper)"/>
   <path d="M14 52a9 9 0 0 1 9-9h82a9 9 0 0 1 9 9v42a12 12 0 0 1-12 12H26a12 12 0 0 1-12-12z" fill="url(#front)"/>
-  <path d="M22 46.5h84" stroke="#ffffff" stroke-opacity="0.55" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M14 52a9 9 0 0 1 9-9h82a9 9 0 0 1 9 9v14H14z" fill="url(#gloss)"/>
+  <path d="M22 45.5h84" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2.5" stroke-linecap="round"/>
 </svg>

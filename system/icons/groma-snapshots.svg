@@ -1,14 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Groma Snapshots: a clock face with an arrow turning back round it, in
-       the desktop's violet wash - the system as it was. -->
+  <!-- Groma Snapshots: a glass clock face with an arrow turning back round
+       it, in the desktop's violet wash - the system as it was. -->
   <defs>
     <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#c3b5ff"/>
-      <stop offset="0.5" stop-color="#886de9"/>
-      <stop offset="1" stop-color="#5a42c4"/>
+      <stop offset="0" stop-color="#cfc3ff"/>
+      <stop offset="0.5" stop-color="#8b70ec"/>
+      <stop offset="1" stop-color="#5136b8"/>
     </linearGradient>
+    <radialGradient id="face" cx="0.38" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.6" stop-color="#ece7ff"/>
+      <stop offset="1" stop-color="#c9bdf6"/>
+    </radialGradient>
   </defs>
+  <circle cx="65" cy="68" r="31" fill="#000000" fill-opacity="0.2"/>
+  <circle cx="64" cy="64" r="31" fill="url(#face)"/>
+  <path d="M27.4 46.5A40 40 0 1 1 30.4 85.8" fill="none" stroke="#000000" stroke-opacity="0.18" stroke-width="11" stroke-linecap="round" transform="translate(1 3)"/>
   <path d="M27.4 46.5A40 40 0 1 1 30.4 85.8" fill="none" stroke="url(#ring)" stroke-width="11" stroke-linecap="round"/>
+  <path d="M30 41A37 37 0 0 1 86 32" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="2.5" stroke-linecap="round"/>
   <path d="M22.3 58.4L17.5 40.6L39.2 51.0z" fill="#b1a0f7" stroke="#b1a0f7" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M64 42v23l15 9" fill="none" stroke="#5a42c4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M64 44v21l14 8.5" fill="none" stroke="#4a33ad" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="64" cy="65" r="5" fill="#4a33ad"/>
 </svg>

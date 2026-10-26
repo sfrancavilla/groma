@@ -1,14 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Groma Store: a bag in the desktop's green wash, with an arrow into it. -->
+  <!-- Groma Store: a bag in the desktop's green wash with an arrow into it;
+       glass across the top, a shadow under the arrow. -->
   <defs>
-    <linearGradient id="bag" x1="0" y1="0" x2="0.35" y2="1">
-      <stop offset="0" stop-color="#c3e59a"/>
-      <stop offset="0.5" stop-color="#7fb85a"/>
-      <stop offset="1" stop-color="#3f7d3e"/>
+    <linearGradient id="bag" x1="0.15" y1="0" x2="0.5" y2="1">
+      <stop offset="0" stop-color="#d4f0ae"/>
+      <stop offset="0.45" stop-color="#86c25f"/>
+      <stop offset="1" stop-color="#3a7539"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="handle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5c9a4c"/>
+      <stop offset="1" stop-color="#2a5f33"/>
     </linearGradient>
   </defs>
-  <path d="M46 48V40a18 18 0 0 1 36 0v8" fill="none" stroke="#2f6b3a" stroke-width="8" stroke-linecap="round"/>
+  <path d="M27 51h76a5 5 0 0 1 5 5.5l-5 50A10 10 0 0 1 93 115H37a10 10 0 0 1-10-8.5l-5-50A5 5 0 0 1 27 51z" fill="#000000" fill-opacity="0.22"/>
+  <path d="M45 50V40a19 19 0 0 1 38 0v10" fill="none" stroke="url(#handle)" stroke-width="9" stroke-linecap="round"/>
+  <path d="M45 46V40a19 19 0 0 1 38 0v6" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="2.5" stroke-linecap="round" transform="translate(-1.5 -2.5)"/>
   <path d="M26 46h76a5 5 0 0 1 5 5.5l-5 50A10 10 0 0 1 92 110H36a10 10 0 0 1-10-8.5l-5-50A5 5 0 0 1 26 46z" fill="url(#bag)"/>
-  <path d="M30 51h68" stroke="#ffffff" stroke-opacity="0.5" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M64 62v28M52 79l12 12 12-12" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M26 46h76a5 5 0 0 1 5 5.5l-1.6 16H22.6l-1.6-16A5 5 0 0 1 26 46z" fill="url(#gloss)"/>
+  <path d="M29 50.5h70" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M64 66v27M52 82l12 12 12-12" fill="none" stroke="#1f4d26" stroke-opacity="0.35" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 2.5)"/>
+  <path d="M64 63v27M52 79l12 12 12-12" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
