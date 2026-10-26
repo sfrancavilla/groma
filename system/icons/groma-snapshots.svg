@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Groma Snapshots: a clock face with an arrow turning back round it, in
+       the desktop's violet wash - the system as it was. -->
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c3b5ff"/>
+      <stop offset="0.5" stop-color="#886de9"/>
+      <stop offset="1" stop-color="#5a42c4"/>
+    </linearGradient>
+  </defs>
+  <path d="M27.4 46.5A40 40 0 1 1 30.4 85.8" fill="none" stroke="url(#ring)" stroke-width="11" stroke-linecap="round"/>
+  <path d="M22.3 58.4L17.5 40.6L39.2 51.0z" fill="#b1a0f7" stroke="#b1a0f7" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M64 42v23l15 9" fill="none" stroke="#5a42c4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -118,6 +118,12 @@ mkdir -p "$HOME/.local/share/applications"
 for entry in groma-files groma-software groma-snapshots; do
 	ln -sfn "$GROMA/system/$entry.desktop" "$HOME/.local/share/applications/$entry.desktop"
 done
+# Their icons, drawn for Groma (system/icons), in the user's hicolor theme so
+# every icon theme falls back to them.
+mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
+for icon in "$GROMA"/system/icons/*.svg; do
+	ln -sfn "$icon" "$HOME/.local/share/icons/hicolor/scalable/apps/$(basename "$icon")"
+done
 update-desktop-database "$HOME/.local/share/applications"
 xdg-mime default groma-files.desktop inode/directory
 

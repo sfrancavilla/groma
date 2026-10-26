@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Groma Store: a bag in the desktop's green wash, with an arrow into it. -->
+  <defs>
+    <linearGradient id="bag" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#c3e59a"/>
+      <stop offset="0.5" stop-color="#7fb85a"/>
+      <stop offset="1" stop-color="#3f7d3e"/>
+    </linearGradient>
+  </defs>
+  <path d="M46 48V40a18 18 0 0 1 36 0v8" fill="none" stroke="#2f6b3a" stroke-width="8" stroke-linecap="round"/>
+  <path d="M26 46h76a5 5 0 0 1 5 5.5l-5 50A10 10 0 0 1 92 110H36a10 10 0 0 1-10-8.5l-5-50A5 5 0 0 1 26 46z" fill="url(#bag)"/>
+  <path d="M30 51h68" stroke="#ffffff" stroke-opacity="0.5" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M64 62v28M52 79l12 12 12-12" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

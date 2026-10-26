@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Groma Files: a folder, back panel in the shell's file ink, front panel
+       in the desktop's teal, lit along its top edge. -->
+  <defs>
+    <linearGradient id="back" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f6f9a"/>
+      <stop offset="1" stop-color="#22466c"/>
+    </linearGradient>
+    <linearGradient id="front" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#8ad8dc"/>
+      <stop offset="0.55" stop-color="#4f9cc2"/>
+      <stop offset="1" stop-color="#305880"/>
+    </linearGradient>
+  </defs>
+  <path d="M14 32a10 10 0 0 1 10-10h26a8 8 0 0 1 5.7 2.4L64 33h40a10 10 0 0 1 10 10v51a10 10 0 0 1-10 10H24a10 10 0 0 1-10-10z" fill="url(#back)"/>
+  <path d="M14 52a9 9 0 0 1 9-9h82a9 9 0 0 1 9 9v42a12 12 0 0 1-12 12H26a12 12 0 0 1-12-12z" fill="url(#front)"/>
+  <path d="M22 46.5h84" stroke="#ffffff" stroke-opacity="0.55" stroke-width="2.5" stroke-linecap="round"/>
+</svg>
