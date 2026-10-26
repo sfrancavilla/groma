@@ -89,11 +89,11 @@ BarPopup {
 
 	trigger: PowerIcon {
 		// A ring reads larger than the line glyphs beside it at the same
-		// height, so it is drawn a little smaller - with its stroke widened to
-		// match, since the stroke scales with the glyph.
+		// height, so it is drawn a little smaller - with the stroke they have
+		// at full size, 2 units of 24.
 		height: Theme.barIconSize - 2
 		width: height
-		stroke: Theme.barIconSize / height
+		lineWidth: 2 * Theme.barIconSize / 24
 		color: Theme.glassTextPrimary
 		opacity: root.active ? 1.0 : 0.85
 
@@ -191,10 +191,10 @@ BarPopup {
 
 							PowerIcon {
 								anchors.centerIn: parent
-								width: 13
-								height: 13
+								width: 16
+								height: 16
 								kind: row.modelData.glyph
-								stroke: 1.6
+								lineWidth: 2
 								color: Theme.fileInk
 							}
 						}
@@ -273,9 +273,9 @@ BarPopup {
 
 				PowerIcon {
 					anchors.centerIn: parent
-					width: 18
-					height: 18
-					stroke: 1.5
+					width: 22
+					height: 22
+					lineWidth: 2.5
 					kind: root.asking?.glyph ?? "power"
 					color: Theme.calcInk
 				}

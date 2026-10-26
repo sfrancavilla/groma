@@ -145,9 +145,9 @@ Scope {
 
 				PowerIcon {
 					anchors.centerIn: parent
-					width: 18
-					height: 18
-					stroke: 1.5
+					width: 22
+					height: 22
+					lineWidth: 2.5
 					kind: "restart"
 					color: Theme.calcInk
 				}

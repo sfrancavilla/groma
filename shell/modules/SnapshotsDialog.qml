@@ -341,9 +341,9 @@ Scope {
 							PowerIcon {
 								anchors.centerIn: parent
 								visible: root.config === "root"
-								width: 14
-								height: 14
-								stroke: 1.6
+								width: 18
+								height: 18
+								lineWidth: 2
 								kind: "restart"
 								color: Theme.fileInk
 							}

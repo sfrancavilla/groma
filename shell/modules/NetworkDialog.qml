@@ -488,6 +488,9 @@ Scope {
 						placeholder: "Search networks"
 
 						leading: SearchIcon {
+							width: 15
+							height: 15
+							lineWidth: 1.6
 							color: Theme.glassTextPrimary
 							opacity: 0.8
 						}

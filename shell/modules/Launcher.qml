@@ -913,8 +913,9 @@ Scope {
 						SearchIcon {
 							anchors.centerIn: parent
 							visible: root.mode === "all"
-							width: 15
-							height: 15
+							width: 20
+							height: 20
+							lineWidth: 2
 							color: Theme.glassOnLens
 						}
 
@@ -2010,9 +2011,9 @@ Scope {
 
 						PowerIcon {
 							anchors.centerIn: parent
-							width: 14
-							height: 14
-							stroke: 1.6
+							width: 18
+							height: 18
+							lineWidth: 2
 							kind: modelData.action.glyph
 							color: Theme.fileInk
 						}

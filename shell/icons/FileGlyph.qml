@@ -227,32 +227,14 @@ Item {
 			}
 		}
 
-		// search: a ring with a handle, as the design draws it in a 26px disc
-		Item {
+		// search: the magnifier the launcher uses, at this set's 2px.
+		SearchIcon {
 			anchors.centerIn: parent
-			anchors.horizontalCenterOffset: -1.5
-			anchors.verticalCenterOffset: -1.5
 			visible: glyph.kind === "search"
-			width: 11
-			height: 11
-
-			Rectangle {
-				anchors.fill: parent
-				radius: width / 2
-				color: "transparent"
-				border.width: 2
-				border.color: glyph.color
-			}
-
-			Rectangle {
-				x: parent.width - 2
-				y: parent.height - 3
-				width: 6
-				height: 2
-				radius: 1
-				rotation: 45
-				color: glyph.color
-			}
+			width: 16
+			height: 16
+			lineWidth: 2
+			color: glyph.color
 		}
 	}
 }
