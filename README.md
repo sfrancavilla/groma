@@ -117,10 +117,18 @@ Every colour, spacing, radius and type size in the shell now comes from
 
 ## Requirements
 
-An Arch Linux base install with a user in the `wheel` group — the
-[book](https://github.com/sfrancavilla/learning-linux-guide)'s chapter 1, or
-`archinstall`. Everything else, including Hyprland and Quickshell, comes from
-the installer.
+An Arch Linux base install with a user in the `wheel` group, made with the
+[Arch installation guide](https://wiki.archlinux.org/title/Installation_guide)
+or `archinstall`. Everything else, including Hyprland and Quickshell, comes
+from the installer.
+
+For snapshots, the root filesystem should be Btrfs with `/` on a subvolume
+named `@` and an `@snapshots` subvolume mounted at `/.snapshots` - the layout
+`archinstall` offers. Without it, everything but snapshots still installs.
+
+Tested on Arch Linux with Hyprland 0.56 (its Lua configuration) and
+Quickshell 0.3.1, on a Framework Laptop 13 with AMD graphics. Both projects move
+quickly; a newer release may need small changes here.
 
 ## Install
 
@@ -218,3 +226,22 @@ stray Escape does not spend one of the three.
 
 Moving this directory while the shell is running kills the process. Restart with
 `qs -c groma`.
+
+## Credits
+
+- [Omarchy](https://github.com/basecamp/omarchy), by DHH and contributors - the
+  reference for most of the choices here, from the components a Hyprland
+  desktop needs to Limine with snapper for bootable snapshots. Groma follows
+  its picks unless there is a reason not to, and says so when it differs.
+- [EarA-linux](https://github.com/oneydef/EarA-linux), by oneydef - the
+  community's decode of the Nothing earbuds' own protocol, which
+  `shell/integrations/nothingear/` is built on. That integration only wakes
+  when a pair of Nothing earbuds connects.
+- [Quickshell](https://quickshell.org) and [Hyprland](https://hypr.land), which
+  this is built on.
+- The interface follows a design made with Claude in claude.ai.
+
+## Licence
+
+MIT - see [LICENSE](LICENSE).
+

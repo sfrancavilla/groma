@@ -9,8 +9,13 @@ no query that returns the state (measured 2026-09-25, every GET identical bud
 out vs in), so it is reported as a bare event and the shell decides what a
 bare event is worth.
 
-Protocol from the community decode of the Ear (2), confirmed on the Ear (3):
-RFCOMM channel 15, frames 55|60 01|cmd|dir|len u16|seq|payload|crc16-arc.
+The protocol facts - RFCOMM channel 15, the frame layout
+55|60 01|cmd|dir|len u16|seq|payload|crc16-arc, the command numbers and the
+battery payload - come from EarA-linux by oneydef
+(https://github.com/oneydef/EarA-linux), the community's decode of the Ear (2)
+protocol, confirmed here against an Ear (3). This file is Groma's own code,
+written from those facts; EarA-linux itself is GPL-3.0 and none of its code is
+copied here.
 """
 import json, signal, socket, sys, time
 

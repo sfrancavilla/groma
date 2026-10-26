@@ -1,8 +1,9 @@
-# If the laptop will not boot, or an update broke it
+# If the machine will not boot, or an update broke it
 
-Limine lists snapper snapshots in its boot menu, so the first way out is
-always the same: boot the system as it was before. Keep this note somewhere
-off the laptop - it is in the private GitHub repo for that reason:
+For machines set up with `setup-limine-snapshots.sh`: Limine lists snapper
+snapshots in its boot menu, so the first way out is always the same - boot the
+system as it was before. Keep this note somewhere off the machine it is meant
+to recover; it is in the repository for that reason:
 https://github.com/sfrancavilla/groma/blob/main/system/BOOT-RECOVERY.md
 
 ## 1. Boot a snapshot from the menu
@@ -50,12 +51,15 @@ disk itself rather than a named entry.
 The boot partition can always be regenerated from the installed system.
 
 1. Plug in the Arch ISO stick, power on, **F12**, pick the USB.
-2. At the root prompt:
+2. Find your partitions with `lsblk -f`: the boot partition is the small
+   `vfat` one, the system the `crypto_LUKS` one (or `btrfs`, if the disk is not
+   encrypted). The names below are an NVMe laptop's; yours may differ.
+3. At the root prompt:
 
 ```bash
-cryptsetup open /dev/nvme0n1p2 cryptroot          # your disk password
+cryptsetup open /dev/nvme0n1p2 cryptroot          # the crypto_LUKS partition; your disk password
 mount -o subvol=@ /dev/mapper/cryptroot /mnt
-mount /dev/nvme0n1p1 /mnt/boot
+mount /dev/nvme0n1p1 /mnt/boot                      # the vfat partition
 arch-chroot /mnt
 limine-update                                       # kernels, initramfs, limine.conf
 limine-snapper-sync                                 # the snapshot entries
@@ -67,10 +71,9 @@ If `@` itself is the problem, mount a snapshot instead of `@` in the second
 line - `-o subvol=@snapshots/<N>/snapshot` - to look around, and use
 `limine-snapper-restore` from a snapshot boot (step 2) to make it permanent.
 
-## What changed on 2026-10-25
+## The backup from the migration
 
-Before that date the machine booted `\EFI\arch-limine\BOOTX64.EFI` with a
-hand-written menu (firmware entry `0005`). It was retired once the new layout
-had booted both normally and into a snapshot. A copy of the old boot
-partition is in `~/boot-backup-20261025-1921/`; it is for reference, not for
-restoring - its kernel goes out of date with the first kernel update.
+`setup-limine-snapshots.sh` copies the boot partition to `~/boot-backup-<date>/`
+before it changes anything. Keep it until the new menu has booted both normally
+and into a snapshot; after that it is for reference, not for restoring - its
+kernel goes out of date with the first kernel update.
