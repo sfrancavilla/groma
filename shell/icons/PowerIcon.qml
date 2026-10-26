@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import ".."
 
 // The power mark and its family: the bar's button, the power menu's rows, its
 // confirmation sheet, and the restart mark in Snapshots.
@@ -13,14 +14,14 @@ Item {
 	property color color: "#ffffff"
 	// Which mark: power, lock, moon (suspend), leave (log out), restart.
 	property string kind: "power"
-	// The stroke in pixels as drawn. 0 keeps the grid's 2 units, which thins
-	// with the glyph; inside a disc it is set, to match the marks beside it.
-	property real lineWidth: 0
+	// The stroke in pixels as drawn: the bar's weight unless set - inside a
+	// disc it is Theme.markLine, to match the marks beside it.
+	property real lineWidth: Theme.barIconLine
 
 	readonly property real baseWidth: 24
 	readonly property real baseHeight: 24
 	readonly property real aspect: 1
-	readonly property real units: icon.lineWidth > 0 ? icon.lineWidth * icon.baseWidth / Math.max(1, icon.width) : 2
+	readonly property real units: icon.lineWidth * icon.baseWidth / Math.max(1, icon.width)
 
 	implicitWidth: 16
 	implicitHeight: 16

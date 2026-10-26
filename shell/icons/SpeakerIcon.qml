@@ -1,11 +1,12 @@
 import QtQuick
 import QtQuick.Shapes
+import ".."
 
 // The speaker glyph, drawn rather than taken from an icon font.
 //
 // The design builds it from a box, a cone and two arcs. Here the box and cone
 // are one outline, so it carries the same weight as the other bar glyphs - all
-// drawn on the shared 24-unit grid with a 2-unit stroke.
+// drawn on the shared 24-unit grid with one stroke.
 Item {
 	id: icon
 
@@ -23,6 +24,10 @@ Item {
 	readonly property real baseHeight: 24
 	readonly property real aspect: icon.baseWidth / icon.baseHeight
 
+	// The stroke in pixels as drawn; the paths below are in grid units.
+	property real lineWidth: Theme.barIconLine
+	readonly property real units: icon.lineWidth * icon.baseHeight / Math.max(1, icon.height)
+
 	implicitWidth: icon.baseWidth
 	implicitHeight: icon.baseHeight
 
@@ -39,7 +44,7 @@ Item {
 		// Box and cone as a single outline.
 		ShapePath {
 			strokeColor: icon.color
-			strokeWidth: 2
+			strokeWidth: icon.units
 			fillColor: "transparent"
 			joinStyle: ShapePath.RoundJoin
 
@@ -55,7 +60,7 @@ Item {
 		// Inner arc.
 		ShapePath {
 			strokeColor: icon.waves === 0 ? "transparent" : icon.color
-			strokeWidth: 2
+			strokeWidth: icon.units
 			fillColor: "transparent"
 			capStyle: ShapePath.RoundCap
 
@@ -69,7 +74,7 @@ Item {
 		// Outer arc.
 		ShapePath {
 			strokeColor: icon.waves === 0 ? "transparent" : icon.waves >= 2 ? icon.color : icon.unlit
-			strokeWidth: 2
+			strokeWidth: icon.units
 			fillColor: "transparent"
 			capStyle: ShapePath.RoundCap
 
@@ -83,7 +88,7 @@ Item {
 		// Muted: a cross where the waves would be.
 		ShapePath {
 			strokeColor: icon.waves === 0 ? icon.color : "transparent"
-			strokeWidth: 2
+			strokeWidth: icon.units
 			fillColor: "transparent"
 			capStyle: ShapePath.RoundCap
 
@@ -93,7 +98,7 @@ Item {
 
 		ShapePath {
 			strokeColor: icon.waves === 0 ? icon.color : "transparent"
-			strokeWidth: 2
+			strokeWidth: icon.units
 			fillColor: "transparent"
 			capStyle: ShapePath.RoundCap
 

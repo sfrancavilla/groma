@@ -1,10 +1,11 @@
 import QtQuick
 import QtQuick.Shapes
+import ".."
 
 // A battery outline with a nub, drawn as paths, optionally filled to its
 // charge level.
 //
-// Drawn on the shared 24-unit grid with a 2-unit stroke, like the other bar
+// Drawn on the shared 24-unit grid with one stroke, like the other bar
 // glyphs, so at one size they all carry the same weight. It is the one glyph
 // wider than it is tall: 28 units, for the nub.
 Item {
@@ -27,6 +28,10 @@ Item {
 	readonly property real cellCenterX: 12.5 * icon.width / icon.baseWidth
 	readonly property real cellHeight: 12 * icon.height / icon.baseHeight
 
+	// The stroke in pixels as drawn; the paths below are in grid units.
+	property real lineWidth: Theme.barIconLine
+	readonly property real units: icon.lineWidth * icon.baseHeight / Math.max(1, icon.height)
+
 	implicitWidth: icon.baseWidth
 	implicitHeight: icon.baseHeight
 
@@ -48,7 +53,7 @@ Item {
 			// Cell.
 			ShapePath {
 				strokeColor: icon.color
-				strokeWidth: 2
+				strokeWidth: icon.units
 				fillColor: "transparent"
 				joinStyle: ShapePath.RoundJoin
 
@@ -66,7 +71,7 @@ Item {
 			// Nub.
 			ShapePath {
 				strokeColor: icon.color
-				strokeWidth: 2
+				strokeWidth: icon.units
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 

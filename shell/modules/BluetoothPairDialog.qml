@@ -86,6 +86,7 @@ Scope {
 						anchors.centerIn: parent
 						height: 28
 						width: height * aspect
+						lineWidth: Theme.markLine * 1.3
 						color: Theme.glassTextOnLens
 					}
 				}

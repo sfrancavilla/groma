@@ -147,7 +147,7 @@ Scope {
 					anchors.centerIn: parent
 					width: 22
 					height: 22
-					lineWidth: 2.5
+					lineWidth: Theme.markLine * 1.3
 					kind: "restart"
 					color: Theme.calcInk
 				}

@@ -343,7 +343,7 @@ Scope {
 								visible: root.config === "root"
 								width: 18
 								height: 18
-								lineWidth: 2
+								lineWidth: Theme.markLine
 								kind: "restart"
 								color: Theme.fileInk
 							}

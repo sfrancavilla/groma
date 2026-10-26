@@ -915,7 +915,7 @@ Scope {
 							visible: root.mode === "all"
 							width: 20
 							height: 20
-							lineWidth: 2
+							lineWidth: Theme.markLine
 							color: Theme.glassOnLens
 						}
 
@@ -2013,7 +2013,7 @@ Scope {
 							anchors.centerIn: parent
 							width: 18
 							height: 18
-							lineWidth: 2
+							lineWidth: Theme.markLine
 							kind: modelData.action.glyph
 							color: Theme.fileInk
 						}

@@ -49,7 +49,7 @@ Rectangle {
 				required property int modelData
 
 				anchors.centerIn: parent
-				width: 2 * button.scale36
+				width: Theme.markLine * button.scale36
 				height: 12 * button.scale36
 				radius: width / 2
 				color: button.markColor
@@ -70,7 +70,7 @@ Rectangle {
 
 		Rectangle {
 			anchors.left: parent.left
-			width: 2 * button.scale36
+			width: Theme.markLine * button.scale36
 			height: parent.height
 			radius: width / 2
 			color: button.markColor
@@ -79,7 +79,7 @@ Rectangle {
 		Rectangle {
 			anchors.bottom: parent.bottom
 			width: parent.width
-			height: 2 * button.scale36
+			height: Theme.markLine * button.scale36
 			radius: height / 2
 			color: button.markColor
 		}

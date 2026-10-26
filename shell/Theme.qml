@@ -255,6 +255,12 @@ Singleton {
 	// shown at this height, so they share a size and a line weight and read as
 	// a set. Widths follow from each grid: square, except the battery's.
 	readonly property int barIconSize: 17
+	// Line weights of the shell's own glyphs, in pixels as drawn. Thin, so
+	// they read as drawn rather than heavy. A glyph standing on the bar or in
+	// a field takes barIconLine; a mark inside a lens disc is dark ink on
+	// bright glass and carries a little more, markLine.
+	readonly property real barIconLine: 1.1
+	readonly property real markLine: 1.5
 	// Gap between the bar and a panel it opens. The panel's own shadow padding
 	// is subtracted from the window margin, or the visible gap is that much
 	// bigger than this.

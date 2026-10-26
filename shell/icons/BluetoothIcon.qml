@@ -1,10 +1,11 @@
 import QtQuick
 import QtQuick.Shapes
+import ".."
 
 // The Bluetooth rune: a spine with a triangle either side of it, drawn as one
 // continuous stroke the way the mark itself is constructed.
 //
-// Drawn on the shared 24-unit grid with a 2-unit stroke, like the other bar
+// Drawn on the shared 24-unit grid with one stroke, like the other bar
 // glyphs, so at one size they all carry the same weight.
 Item {
 	id: icon
@@ -15,6 +16,10 @@ Item {
 	readonly property real baseWidth: 24
 	readonly property real baseHeight: 24
 	readonly property real aspect: icon.baseWidth / icon.baseHeight
+
+	// The stroke in pixels as drawn; the paths below are in grid units.
+	property real lineWidth: Theme.barIconLine
+	readonly property real units: icon.lineWidth * icon.baseHeight / Math.max(1, icon.height)
 
 	implicitWidth: icon.baseWidth
 	implicitHeight: icon.baseHeight
@@ -34,7 +39,7 @@ Item {
 
 			ShapePath {
 				strokeColor: icon.color
-				strokeWidth: 2
+				strokeWidth: icon.units
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 				joinStyle: ShapePath.RoundJoin
@@ -50,7 +55,7 @@ Item {
 			// Struck through when the radio is off, as the Wi-Fi glyph is.
 			ShapePath {
 				strokeColor: icon.crossed ? icon.color : "transparent"
-				strokeWidth: 2
+				strokeWidth: icon.units
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 

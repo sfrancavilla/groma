@@ -1997,8 +1997,8 @@ Scope {
 
 												Rectangle {
 													width: 14
-													height: 2
-													radius: 1
+													height: Theme.markLine
+													radius: height / 2
 													color: Theme.glassTextPrimary
 												}
 											}
@@ -2019,7 +2019,7 @@ Scope {
 													height: 5
 													radius: 1.5
 													color: "transparent"
-													border.width: 1.5
+													border.width: Theme.markLine
 													border.color: Theme.glassTextPrimary
 												}
 											}

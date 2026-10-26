@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import ".."
 
 // What kind of thing a Bluetooth device is, from the `icon` bluez reports.
 //
@@ -37,7 +38,7 @@ Item {
 
 			ShapePath {
 				strokeColor: icon.color
-				strokeWidth: 1.8
+				strokeWidth: Theme.markLine
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 
@@ -71,7 +72,7 @@ Item {
 			width: 10; height: 15
 			radius: 2.5
 			color: "transparent"
-			border.width: 1.8
+			border.width: Theme.markLine
 			border.color: icon.color
 
 			Rectangle {
@@ -79,7 +80,7 @@ Item {
 				width: 5.8; height: 5.8
 				radius: 2.9
 				color: "transparent"
-				border.width: 1.6
+				border.width: Theme.markLine * 0.9
 				border.color: icon.color
 			}
 		}
@@ -91,7 +92,7 @@ Item {
 			width: 15; height: 10
 			radius: 2.5
 			color: "transparent"
-			border.width: 1.8
+			border.width: Theme.markLine
 			border.color: icon.color
 		}
 
@@ -101,7 +102,7 @@ Item {
 			width: 8; height: 15
 			radius: 2
 			color: "transparent"
-			border.width: 1.8
+			border.width: Theme.markLine
 			border.color: icon.color
 		}
 
@@ -112,7 +113,7 @@ Item {
 			width: 10; height: 10
 			radius: 5
 			color: "transparent"
-			border.width: 1.8
+			border.width: Theme.markLine
 			border.color: icon.color
 		}
 	}

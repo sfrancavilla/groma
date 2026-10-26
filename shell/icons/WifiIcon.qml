@@ -1,12 +1,13 @@
 import QtQuick
 import QtQuick.Shapes
+import ".."
 
 // Wi-Fi: a dot with three arcs fanning out above it. `level` is how many arcs
 // are lit; the rest stay faintly drawn, so the glyph keeps its shape at any
 // strength instead of shrinking to a dot. `crossed` strikes it through when
 // the radio is off.
 //
-// Drawn on the shared 24-unit grid with a 2-unit stroke, like the other bar
+// Drawn on the shared 24-unit grid with one stroke, like the other bar
 // glyphs, so at one size they all carry the same weight.
 Item {
 	id: icon
@@ -21,6 +22,10 @@ Item {
 	readonly property real baseWidth: 24
 	readonly property real baseHeight: 24
 	readonly property real aspect: icon.baseWidth / icon.baseHeight
+
+	// The stroke in pixels as drawn; the paths below are in grid units.
+	property real lineWidth: Theme.barIconLine
+	readonly property real units: icon.lineWidth * icon.baseHeight / Math.max(1, icon.height)
 
 	implicitWidth: icon.baseWidth
 	implicitHeight: icon.baseHeight
@@ -53,7 +58,7 @@ Item {
 
 			ShapePath {
 				strokeColor: icon.level >= 1 ? icon.color : icon.unlit
-				strokeWidth: 2
+				strokeWidth: icon.units
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 
@@ -66,7 +71,7 @@ Item {
 
 			ShapePath {
 				strokeColor: icon.level >= 2 ? icon.color : icon.unlit
-				strokeWidth: 2
+				strokeWidth: icon.units
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 
@@ -79,7 +84,7 @@ Item {
 
 			ShapePath {
 				strokeColor: icon.level >= 3 ? icon.color : icon.unlit
-				strokeWidth: 2
+				strokeWidth: icon.units
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 
@@ -93,7 +98,7 @@ Item {
 			// Struck through when the radio is off.
 			ShapePath {
 				strokeColor: icon.crossed ? icon.color : "transparent"
-				strokeWidth: 2
+				strokeWidth: icon.units
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 

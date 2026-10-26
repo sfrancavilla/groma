@@ -3,9 +3,9 @@ import QtQuick.Shapes
 import ".."
 
 // The marks the design draws inside a lens disc for things in the file
-// system: a sheet, a tray, a house, and the rest of turn 10's set. All are
-// 2px strokes in the file ink against a 16px box, built from rectangles as
-// the design builds them, so they match it to the pixel.
+// system: a sheet, a tray, a house, and the rest of turn 10's set, in the
+// file ink against a 16px box. The design draws them in 2px lines; they take
+// Theme.markLine, a little finer, like the shell's other glyphs.
 //
 // `kind`: file · folder · home · downloads · pictures · trash · drive ·
 //         back · forward · search
@@ -38,7 +38,7 @@ Item {
 
 			ShapePath {
 				strokeColor: glyph.kind === "file" ? glyph.color : "transparent"
-				strokeWidth: 2
+				strokeWidth: Theme.markLine
 				fillColor: "transparent"
 				joinStyle: ShapePath.RoundJoin
 				capStyle: ShapePath.RoundCap
@@ -56,7 +56,7 @@ Item {
 
 			ShapePath {
 				strokeColor: glyph.kind === "folder" ? glyph.color : "transparent"
-				strokeWidth: 2
+				strokeWidth: Theme.markLine
 				fillColor: "transparent"
 				joinStyle: ShapePath.RoundJoin
 				capStyle: ShapePath.RoundCap
@@ -85,7 +85,7 @@ Item {
 			// home: a roof, then the walls and floor as one open box.
 			ShapePath {
 				strokeColor: glyph.kind === "home" ? glyph.color : "transparent"
-				strokeWidth: 2
+				strokeWidth: Theme.markLine
 				fillColor: "transparent"
 				joinStyle: ShapePath.RoundJoin
 				capStyle: ShapePath.RoundCap
@@ -102,7 +102,7 @@ Item {
 			// downloads: an arrow into a tray.
 			ShapePath {
 				strokeColor: glyph.kind === "downloads" ? glyph.color : "transparent"
-				strokeWidth: 2
+				strokeWidth: Theme.markLine
 				fillColor: "transparent"
 				joinStyle: ShapePath.RoundJoin
 				capStyle: ShapePath.RoundCap
@@ -121,7 +121,7 @@ Item {
 			// trash: a lid with a handle over a bin that narrows a little.
 			ShapePath {
 				strokeColor: glyph.kind === "trash" ? glyph.color : "transparent"
-				strokeWidth: 2
+				strokeWidth: Theme.markLine
 				fillColor: "transparent"
 				joinStyle: ShapePath.RoundJoin
 				capStyle: ShapePath.RoundCap
@@ -147,7 +147,7 @@ Item {
 			height: 11
 			radius: 3
 			color: "transparent"
-			border.width: 2
+			border.width: Theme.markLine
 			border.color: glyph.color
 
 			Rectangle {
@@ -159,28 +159,6 @@ Item {
 			}
 		}
 
-		// trash: a lid with a handle over a bin
-		Item {
-			anchors.centerIn: parent
-			visible: glyph.kind === "trash"
-			width: 14
-			height: 15
-
-			Rectangle { y: 2; width: 14; height: 2; radius: 1; color: glyph.color }
-			Rectangle { x: 5; y: 0; width: 4; height: 2; radius: 1; color: glyph.color }
-
-			Item {
-				x: 2
-				y: 5
-				width: 6
-				height: 8
-
-				Rectangle { anchors.left: parent.left; width: 2; height: parent.height; color: glyph.color }
-				Rectangle { anchors.right: parent.right; width: 2; height: parent.height; color: glyph.color }
-				Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1; color: glyph.color }
-			}
-		}
-
 		// drive: a low box with a light
 		Rectangle {
 			anchors.centerIn: parent
@@ -189,7 +167,7 @@ Item {
 			height: 9
 			radius: 3
 			color: "transparent"
-			border.width: 2
+			border.width: Theme.markLine
 			border.color: glyph.color
 
 			Rectangle {
@@ -213,7 +191,7 @@ Item {
 			Rectangle {
 				anchors.left: glyph.kind === "back" ? parent.left : undefined
 				anchors.right: glyph.kind === "forward" ? parent.right : undefined
-				width: 2
+				width: Theme.markLine
 				height: parent.height
 				color: glyph.color
 			}
@@ -222,7 +200,7 @@ Item {
 				anchors.bottom: glyph.kind === "back" ? parent.bottom : undefined
 				anchors.top: glyph.kind === "forward" ? parent.top : undefined
 				width: parent.width
-				height: 2
+				height: Theme.markLine
 				color: glyph.color
 			}
 		}
@@ -233,7 +211,7 @@ Item {
 			visible: glyph.kind === "search"
 			width: 16
 			height: 16
-			lineWidth: 2
+			lineWidth: Theme.markLine
 			color: glyph.color
 		}
 	}
