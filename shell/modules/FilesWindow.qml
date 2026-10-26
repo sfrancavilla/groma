@@ -2146,9 +2146,12 @@ Scope {
 										height: 26
 										sheen: false
 
-										FileGlyph {
-											anchors.centerIn: parent
-											kind: place.modelData.kind
+										FileIcon {
+											anchors.fill: parent
+											anchors.margins: 3
+											iconName: ({ home: "user-home", folder: "folder-documents", downloads: "folder-download",
+												pictures: "folder-pictures", trash: "user-trash" })[place.modelData.kind] ?? ""
+											glyph: place.modelData.kind
 										}
 									}
 
@@ -2240,9 +2243,11 @@ Scope {
 										height: 26
 										sheen: false
 
-										FileGlyph {
-											anchors.centerIn: parent
-											kind: "drive"
+										FileIcon {
+											anchors.fill: parent
+											anchors.margins: 3
+											iconName: driveRow.modelData.removable ? "drive-removable-media" : "drive-harddisk"
+											glyph: "drive"
 										}
 									}
 
@@ -2497,9 +2502,12 @@ Scope {
 								height: 30
 								sheen: false
 
-								FileGlyph {
-									anchors.centerIn: parent
-									kind: row.modelData.folder ? "folder" : "file"
+								FileIcon {
+									anchors.fill: parent
+									anchors.margins: 3
+									fileName: row.modelData.name
+									folder: row.modelData.folder
+									path: row.modelData.path
 								}
 							}
 
@@ -2754,18 +2762,25 @@ Scope {
 									radius: 12
 									color: Qt.rgba(1, 1, 1, 0.06)
 									border.width: 1
-									border.color: cell.image ? Qt.rgba(1, 1, 1, 0.30) : Qt.rgba(1, 1, 1, 0.14)
+									border.color: thumb.showsPicture ? Qt.rgba(1, 1, 1, 0.30) : Qt.rgba(1, 1, 1, 0.14)
+
+									// An image Qt cannot read - empty, broken, a format it has
+									// no plugin for - gets its file-type icon like anything else.
+									readonly property bool showsPicture: cell.image && picture.status !== Image.Error
 
 									Lens {
 										anchors.centerIn: parent
 										width: 56
 										height: 56
 										sheen: false
-										visible: !cell.image
+										visible: !thumb.showsPicture
 
-										FileGlyph {
-											anchors.centerIn: parent
-											kind: cell.modelData.folder ? "folder" : "file"
+										FileIcon {
+											anchors.fill: parent
+											anchors.margins: 6
+											fileName: cell.modelData.name
+											folder: cell.modelData.folder
+											path: cell.modelData.path
 											zoom: 1.5
 										}
 									}
