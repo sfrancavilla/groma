@@ -115,17 +115,17 @@ BarPopup {
 		Text {
 			id: volumeValue
 
-			anchors {
-				right: parent.right
-				rightMargin: Theme.spacingL
-				verticalCenter: parent.verticalCenter
-			}
+			// At the right end of the track, moving ahead of the lens when it
+			// gets there rather than sitting half under it - as the battery's
+			// does.
+			x: Math.min(parent.width - Theme.spacingL - width,
+				volumeSlider.knobLeft - Theme.spacingS - width)
+			anchors.verticalCenter: parent.verticalCenter
 
 			text: root.muted ? "Muted" : Math.round(root.volume * 100)
 			font.pixelSize: Theme.fontBody
 
-			color: volumeSlider.knobRight > volumeValue.x
-				? Theme.glassTextOnLens : Theme.glassTextPrimary
+			color: Theme.glassTextPrimary
 		}
 	}
 

@@ -172,20 +172,18 @@ BarPopup {
 		Text {
 			id: batteryValue
 
-			anchors {
-				right: parent.right
-				rightMargin: Theme.spacingL
-				verticalCenter: parent.verticalCenter
-			}
+			// At the right end of the track - until the lens would cover it,
+			// which a nearly full battery does. "100%" is wider than the lens,
+			// so turning it dark under the glass left it half on, half off;
+			// it moves ahead of the lens onto the fill instead.
+			x: Math.min(parent.width - Theme.spacingL - width,
+				batterySlider.knobLeft - Theme.spacingS - width)
+			anchors.verticalCenter: parent.verticalCenter
 
 			text: Math.round(root.level * 100) + "%"
 			font.pixelSize: Theme.fontBody
 
-			// A full battery puts the lens right under this.
-			color: batterySlider.knobRight > batteryValue.x
-				? Theme.glassTextOnLens
-				: root.low ? Theme.warning
-				: Theme.glassTextPrimary
+			color: root.low ? Theme.warning : Theme.glassTextPrimary
 		}
 	}
 
