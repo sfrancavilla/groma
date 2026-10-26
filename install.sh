@@ -64,6 +64,8 @@ PACKAGES=(
 	pacman-contrib      # checkupdates, which Groma Store uses to see updates without a half-synced database
 	libnotify           # notify-send, for testing the notification daemon
 	desktop-file-utils  # update-desktop-database, after the desktop entries are linked in
+	papirus-icon-theme  # application icons, one consistent set (QS_ICON_THEME in hyprland.lua)
+	archlinux-appstream-data  # icons for applications Groma Store shows before they are installed
 
 	git                 # cloning this repository, and building AUR packages
 	base-devel          # makepkg, for the AUR helper Groma Store uses
@@ -126,6 +128,10 @@ for icon in "$GROMA"/system/icons/*.svg; do
 done
 update-desktop-database "$HOME/.local/share/applications"
 xdg-mime default groma-files.desktop inode/directory
+
+# GTK applications - file pickers, pavucontrol - take their icons from here;
+# the shell takes them from QS_ICON_THEME in the compositor config.
+gsettings set org.gnome.desktop.interface icon-theme Papirus 2>/dev/null || true
 
 # An editor for text, only where one is installed. Files asks "Open with…"
 # for anything nothing claims, so this is a convenience, not a requirement.

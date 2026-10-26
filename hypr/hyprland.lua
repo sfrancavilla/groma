@@ -70,6 +70,10 @@ end)
 
 hl.env("XCURSOR_SIZE", "24")
 hl.env("HYPRCURSOR_SIZE", "24")
+-- Application icons: Papirus, the most complete theme in Arch's own
+-- repositories, so every app reads as one set inside the shell's lens discs.
+-- Quickshell reads its own variable rather than a desktop's settings.
+hl.env("QS_ICON_THEME", "Papirus")
 
 
 -----------------------
