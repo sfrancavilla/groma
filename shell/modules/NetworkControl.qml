@@ -262,6 +262,29 @@ BarPopup {
 		}
 	}
 
+	// The bar's arcs need the joined network's strength while nothing is
+	// open, too, or they show whatever it was when the tile last closed.
+	// NetworkManager keeps that reading current for the network it is on, so
+	// asking without a rescan costs no airtime - it reads what is cached.
+	Process {
+		id: signalRead
+
+		command: ["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY,FREQ",
+			"device", "wifi", "list", "--rescan", "no"]
+
+		stdout: StdioCollector {
+			onStreamFinished: root.parseScan(text)
+		}
+	}
+
+	Timer {
+		running: root.enabled && !root.scanning && !!root.current
+		interval: 30000
+		triggeredOnStart: true
+		repeat: true
+		onTriggered: signalRead.running = true
+	}
+
 	// Scan while anything that shows networks is open. A wifi scan costs power
 	// and airtime, and the list is worthless when nobody is looking - with the
 	// scanner off the device reports only the network it is already on, which
