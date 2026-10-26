@@ -2140,19 +2140,13 @@ Scope {
 
 									spacing: 10
 
-									Lens {
+									FileIcon {
 										anchors.verticalCenter: parent.verticalCenter
 										width: 26
 										height: 26
-										sheen: false
-
-										FileIcon {
-											anchors.fill: parent
-											anchors.margins: 3
-											iconName: ({ home: "user-home", folder: "folder-documents", downloads: "folder-download",
-												pictures: "folder-pictures", trash: "user-trash" })[place.modelData.kind] ?? ""
-											glyph: place.modelData.kind
-										}
+										iconName: ({ home: "user-home", folder: "folder-documents", downloads: "folder-download",
+											pictures: "folder-pictures", trash: "user-trash" })[place.modelData.kind] ?? ""
+										glyph: place.modelData.kind
 									}
 
 									Text {
@@ -2235,20 +2229,14 @@ Scope {
 
 									spacing: 10
 
-									Lens {
+									FileIcon {
 										id: driveDisc
 
 										anchors.verticalCenter: parent.verticalCenter
 										width: 26
 										height: 26
-										sheen: false
-
-										FileIcon {
-											anchors.fill: parent
-											anchors.margins: 3
-											iconName: driveRow.modelData.removable ? "drive-removable-media" : "drive-harddisk"
-											glyph: "drive"
-										}
+										iconName: driveRow.modelData.removable ? "drive-removable-media" : "drive-harddisk"
+										glyph: "drive"
 									}
 
 									Column {
@@ -2493,22 +2481,16 @@ Scope {
 								}
 							}
 
-							Lens {
+							FileIcon {
 								id: rowDisc
 
-								x: 12
+								x: 11
 								anchors.verticalCenter: parent.verticalCenter
-								width: 30
-								height: 30
-								sheen: false
-
-								FileIcon {
-									anchors.fill: parent
-									anchors.margins: 3
-									fileName: row.modelData.name
-									folder: row.modelData.folder
-									path: row.modelData.path
-								}
+								width: 32
+								height: 32
+								fileName: row.modelData.name
+								folder: row.modelData.folder
+								path: row.modelData.path
 							}
 
 							readonly property bool editing: root.renaming === modelData.path
@@ -2747,7 +2729,7 @@ Scope {
 									ColorAnimation { duration: 120 }
 								}
 
-								// The picture, or a disc standing in for one.
+								// The picture, or the file's icon standing in for one.
 								Rectangle {
 									id: thumb
 
@@ -2768,21 +2750,15 @@ Scope {
 									// no plugin for - gets its file-type icon like anything else.
 									readonly property bool showsPicture: cell.image && picture.status !== Image.Error
 
-									Lens {
+									FileIcon {
 										anchors.centerIn: parent
-										width: 56
-										height: 56
-										sheen: false
+										width: 64
+										height: 64
 										visible: !thumb.showsPicture
-
-										FileIcon {
-											anchors.fill: parent
-											anchors.margins: 6
-											fileName: cell.modelData.name
-											folder: cell.modelData.folder
-											path: cell.modelData.path
-											zoom: 1.5
-										}
+										fileName: cell.modelData.name
+										folder: cell.modelData.folder
+										path: cell.modelData.path
+										zoom: 1.5
 									}
 
 									Image {

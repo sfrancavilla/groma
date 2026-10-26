@@ -1,10 +1,16 @@
 import Quickshell
 import QtQuick
+import QtQuick.Effects
+import "../ui"
 import "fileicons.js" as FileIcons
 
 // A file's or folder's icon from the icon theme - Papirus' file types and
-// places - inside whatever disc holds it; the drawn outline (FileGlyph) where
-// the theme has none.
+// places - standing on its own, with a small shadow to lift it off the glass.
+// A page or a folder is already a shape; set inside a round disc the two
+// outlines fight, and the disc's grey dulls the colour.
+//
+// Where the theme has none, the drawn outline (FileGlyph) on a disc, which is
+// what the outlines were drawn for.
 Item {
 	id: icon
 
@@ -29,12 +35,29 @@ Item {
 		sourceSize: Qt.size(icon.width * 2, icon.height * 2)
 		fillMode: Image.PreserveAspectFit
 		smooth: true
+
+		// Drawn once into a texture and kept: the icon does not change while
+		// it is on screen.
+		layer.enabled: visible
+		layer.effect: MultiEffect {
+			shadowEnabled: true
+			shadowColor: "#000000"
+			shadowOpacity: 0.30
+			shadowBlur: 0.25
+			shadowVerticalOffset: Math.max(1, icon.height / 32)
+			shadowHorizontalOffset: 0
+		}
 	}
 
-	FileGlyph {
-		anchors.centerIn: parent
+	Lens {
+		anchors.fill: parent
 		visible: icon.source === ""
-		kind: icon.glyph
-		zoom: icon.zoom
+		sheen: false
+
+		FileGlyph {
+			anchors.centerIn: parent
+			kind: icon.glyph
+			zoom: icon.zoom
+		}
 	}
 }
