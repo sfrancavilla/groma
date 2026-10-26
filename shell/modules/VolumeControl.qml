@@ -118,8 +118,9 @@ BarPopup {
 			// At the right end of the track, moving ahead of the lens when it
 			// gets there rather than sitting half under it - as the battery's
 			// does.
-			x: Math.min(parent.width - Theme.spacingL - width,
-				volumeSlider.knobLeft - Theme.spacingS - width)
+			readonly property real endX: parent.width - Theme.spacingL - width
+			x: volumeSlider.knobRight + Theme.spacingS > endX
+				? volumeSlider.knobLeft - Theme.spacingS - width : endX
 			anchors.verticalCenter: parent.verticalCenter
 
 			text: root.muted ? "Muted" : Math.round(root.volume * 100)

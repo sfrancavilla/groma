@@ -176,8 +176,9 @@ BarPopup {
 			// which a nearly full battery does. "100%" is wider than the lens,
 			// so turning it dark under the glass left it half on, half off;
 			// it moves ahead of the lens onto the fill instead.
-			x: Math.min(parent.width - Theme.spacingL - width,
-				batterySlider.knobLeft - Theme.spacingS - width)
+			readonly property real endX: parent.width - Theme.spacingL - width
+			x: batterySlider.knobRight + Theme.spacingS > endX
+				? batterySlider.knobLeft - Theme.spacingS - width : endX
 			anchors.verticalCenter: parent.verticalCenter
 
 			text: Math.round(root.level * 100) + "%"
