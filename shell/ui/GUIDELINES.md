@@ -121,6 +121,8 @@ Which puts every surface built so far in exactly one place:
 | Power: log out, restart, power off | none | `Cancel` `Log out` / `Restart` / `Power off` (destructive) |
 | Booted into a snapshot | none | `Restart to current` · `Cancel` `Restore…` |
 | Snapshots | X | `Snapshot now` · `Undo…` (destructive, system) / `Browse` (home) |
+| Workspace name | none - under its pill, like a bar popup | none - `Enter` keeps it, `Escape` or a click away leaves |
+| Workspace preview | none - it goes when the pointer does | none - it takes no input |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
 there as well as the X - two chips side by side doing one thing. Note that the

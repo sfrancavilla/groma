@@ -35,6 +35,43 @@ Singleton {
 			: [...now, id].slice(0, 5);
 	}
 
+	// What each workspace is for - "Terminals", "Groma", "YouTube" - by
+	// number. Kept by number rather than handed to Hyprland, because Hyprland
+	// forgets a workspace the moment its last window closes, and a name is
+	// worth more than the windows that happen to be on it today.
+	readonly property alias workspaceNames: adapter.workspaceNames
+
+	function workspaceName(id) {
+		return (adapter.workspaceNames ?? {})[String(id)] ?? "";
+	}
+
+	function setWorkspaceName(id, name) {
+		const next = Object.assign({}, adapter.workspaceNames ?? {});
+		const clean = String(name ?? "").trim();
+		if (clean === "")
+			delete next[String(id)];
+		else
+			next[String(id)] = clean;
+		adapter.workspaceNames = next;
+	}
+
+	// And a colour for each, as a key into Theme.tagPalette - "blue", not a
+	// hex value, so a new theme moves everyone's blue along with it.
+	readonly property alias workspaceColors: adapter.workspaceColors
+
+	function workspaceColor(id) {
+		return (adapter.workspaceColors ?? {})[String(id)] ?? "";
+	}
+
+	function setWorkspaceColor(id, key) {
+		const next = Object.assign({}, adapter.workspaceColors ?? {});
+		if (!key)
+			delete next[String(id)];
+		else
+			next[String(id)] = key;
+		adapter.workspaceColors = next;
+	}
+
 	// --- Integration: Nothing earbuds (integrations/nothingear) ----------
 	// One settings file for everything, so these keep the baseline's store;
 	// the prefix in the comment is the only namespacing there is.
@@ -75,6 +112,8 @@ Singleton {
 
 			property bool publicAddressLookup: false
 			property var pinnedApps: []
+			property var workspaceNames: ({})
+			property var workspaceColors: ({})
 			property bool pauseOnBudRemoved: true
 			property bool resumeOnBudReplaced: true
 		}

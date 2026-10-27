@@ -304,6 +304,7 @@ hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 -- `hyprctl dispatch exit` to end the session.
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("qs -c groma ipc call lock lock"))
 hl.bind(mainMod .. " + Escape", hl.dsp.exec_cmd("qs -c groma ipc call power toggle"))  -- lock, suspend, log out, restart, power off
+hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("qs -c groma ipc call workspaces edit"))  -- name this workspace
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))    -- dwindle only
 
 -- Move focus with mainMod + arrow keys

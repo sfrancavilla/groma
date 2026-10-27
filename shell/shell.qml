@@ -123,55 +123,12 @@ ShellRoot {
 		readonly property color barText:
 			Theme.glass ? Theme.glassTextPrimary : Theme.textPrimary
 
-		// LEFT: workspaces
-		Row {
+		// LEFT: workspaces, by number or by what they are for.
+		Workspaces {
 			anchors {
 				left: parent.left
 				leftMargin: Theme.spacingM
-				verticalCenter: parent.verticalCenter	
-			}	
-	
-			spacing: Theme.spacingS
-
-			Repeater {
-				model: Hyprland.workspaces
-				
-				Rectangle {
-					id: workspaceButton
-					required property var modelData
-					readonly property int workspaceId: modelData.id
-					readonly property bool isFocused: modelData.focused
-					
-					width: 26
-					height: 22
-					radius: Theme.radiusSmall
-
-					color: Theme.glass
-						? (workspaceButton.isFocused ? Theme.glassControlStrong
-							: workspaceMouse.containsMouse ? Theme.glassControlHover
-							: "transparent")
-						: (workspaceButton.isFocused ? Theme.surfaceStrong
-							: workspaceMouse.containsMouse ? Theme.surfaceHover
-							: Theme.surface)
-
-					Text {
-						anchors.centerIn: parent
-						text: workspaceButton.workspaceId
-						color: Theme.glass ? Theme.glassTextPrimary
-							: workspaceButton.isFocused ? Theme.textOnStrong
-							: Theme.textPrimary
-						style: Theme.glass ? Text.Raised : Text.Normal
-						styleColor: Theme.glassTextShadow
-					}
-
-					MouseArea {
-						id: workspaceMouse
-						anchors.fill: parent
-						hoverEnabled: true
-						cursorShape: Qt.PointingHandCursor
-						onClicked: workspaceButton.modelData.activate()
-					}
-				}
+				verticalCenter: parent.verticalCenter
 			}
 		}
 

@@ -271,6 +271,44 @@ Singleton {
 	// is subtracted from the window margin, or the visible gap is that much
 	// bigger than this.
 	readonly property int barPopupGap: 6
+	// A workspace in the bar: a square-ish key with its number, or wider to
+	// carry a name, capped so one long name cannot push the rest off.
+	readonly property int workspacePillWidth: 26
+	readonly property int workspacePillHeight: 22
+	readonly property int workspaceNameMaxWidth: 140
+	// The colours a workspace can be tagged with: Chrome's tab-group set as
+	// it draws them on a dark toolbar, light enough to tint glass without
+	// darkening the white text on it. Stored by key, never by value.
+	readonly property var tagPalette: [
+		{ key: "grey", color: "#dadce0" },
+		{ key: "blue", color: "#8ab4f8" },
+		{ key: "red", color: "#f28b82" },
+		{ key: "yellow", color: "#fdd663" },
+		{ key: "green", color: "#81c995" },
+		{ key: "pink", color: "#ff8bcb" },
+		{ key: "purple", color: "#c58af9" },
+		{ key: "cyan", color: "#78d9ec" },
+		{ key: "orange", color: "#fcad70" }
+	]
+
+	function tagColor(key) {
+		return tagPalette.find(tag => tag.key === key)?.color ?? "transparent";
+	}
+
+	// A tagged pill is solid, as Chrome draws a group: any see-through tint
+	// takes on the wallpaper, and over the green wash red came out brown.
+	// Solid pastel wants dark ink. Focus is a ring outside, since the fill
+	// is already as bright as it goes; an empty tagged workspace is the
+	// outline alone, because fading a colour muddies it the same way.
+	readonly property real tagFill: 0.80
+	readonly property real tagFillHover: 0.92
+	readonly property real tagEdge: 0.60
+	readonly property color tagInk: "#202124"
+	readonly property color tagRing: Qt.rgba(1, 1, 1, 0.75)
+	readonly property int tagSwatchSize: 22
+	// The card that shows a workspace from the bar. Wider than a tile, so a
+	// miniature of a 3:2 screen is big enough to tell a terminal from a page.
+	readonly property int workspacePreviewWidth: 360
 
 	readonly property int dialogWidth: 320
 	readonly property int dialogPadding: 20
