@@ -29,7 +29,9 @@ BarPopup {
 
 	readonly property bool charging: root.state === UPowerDeviceState.Charging
 	readonly property bool full: root.state === UPowerDeviceState.FullyCharged
-	readonly property bool low: !root.onPower && root.level <= 0.20
+	// Only with a battery to be low: without one the level reads 0, and a
+	// desktop or a virtual machine would sit in the red forever.
+	readonly property bool low: root.ready && !root.onPower && root.level <= 0.20
 
 	// Green means "on mains", not "electrons currently moving". A battery
 	// already at 100% goes straight to FullyCharged when you plug in - it
@@ -92,7 +94,8 @@ BarPopup {
 		// it at a glance.
 		level: root.ready ? root.level : -1
 
-		color: root.low ? Theme.danger
+		color: !root.ready ? Theme.glassTextMuted
+			: root.low ? Theme.danger
 			: root.onPower ? Theme.success
 			: Theme.glassTextPrimary
 
