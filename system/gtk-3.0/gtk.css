@@ -1,0 +1,165 @@
+/* Groma's question sheet, for the dialogs other apps ask through GTK 3.
+ *
+ * VS Code, Chromium and Slack ask "Save changes?" through a GtkMessageDialog,
+ * which Groma cannot replace: the app draws it in its own process. It can only
+ * restyle it, so this is GlassDialog redrawn in GTK's CSS, value for value.
+ * Every colour and size below is a Theme.qml token, named in the comment; change
+ * the token there and here together.
+ *
+ * Only message dialogs. The rest of every GTK 3 app is left as its theme draws
+ * it - a dark sheet over a light app is a question asked over it, which is what
+ * it is.
+ *
+ * Linked to ~/.config/gtk-3.0/gtk.css by install.sh. GTK reads it at start, so
+ * an app has to be restarted to pick up a change. */
+
+/* Theme.tabCardSurface. A dialog is a window over another window, and the
+ * compositor blurs that window but cannot make it legible: the glass recipe
+ * over a light editor is white text on white. So it is dense, and in the
+ * slate the bar's cards use for the same reason - one glass that reads over
+ * anything, in the colour Groma's clear glass mostly comes out as. The
+ * menu's near-black was legible too, but read as some other desktop's. */
+@define-color groma_sheet rgba(61, 76, 87, 0.92);
+/* Under XWayland the window has no alpha, and .92 over black is a darker
+ * slate than anywhere else; there it is the same colour, opaque. */
+@define-color groma_sheet_opaque #3d4c57;
+@define-color groma_text #ffffff;                          /* glassTextPrimary */
+@define-color groma_body rgba(255, 255, 255, 0.82);        /* GlassDialog body opacity */
+@define-color groma_control rgba(255, 255, 255, 0.10);     /* glassControl */
+@define-color groma_control_hover rgba(255, 255, 255, 0.18);
+@define-color groma_control_edge rgba(255, 255, 255, 0.20);
+@define-color groma_primary rgba(255, 255, 255, 0.50);     /* chipPrimary */
+@define-color groma_primary_hover rgba(255, 255, 255, 0.62);
+@define-color groma_primary_edge rgba(255, 255, 255, 0.70);
+@define-color groma_on_primary #16161c;                    /* glassTextOnLens */
+@define-color groma_ring rgba(255, 255, 255, 0.18);        /* focusRing */
+
+/* The pane. Hyprland cuts its corners at radiusWindow, 20 (the groma-sheets
+ * rule), and draws its edge, glassEdge, as the border in that same rule: GTK
+ * draws no border and no background on a dialog's decoration, only on the
+ * window and the title bar inside it. So those two carry the fill, square,
+ * and the compositor does the rest. It casts the shadow too, so GTK's goes.
+ *
+ * No selector here says .csd. Under XWayland - VS Code, Chromium and Slack
+ * all run there unless told otherwise - GTK draws the same dialog as
+ * .solid-csd, with an opaque frame of its own, and a rule that matched only
+ * .csd left white text on Adwaita's light grey. */
+messagedialog decoration {
+	margin: 0;
+	padding: 0;
+	border: none;
+	border-radius: 0;
+	background: none;
+	box-shadow: none;
+}
+
+messagedialog.background {
+	background-color: @groma_sheet;
+	color: @groma_text;
+	border-radius: 0;
+}
+
+/* The title bar carries the app's name, where the design has none: a question
+ * has no header (GUIDELINES.md, "Getting out"). It stays as the sheet's top
+ * padding - dialogPadding, 20 - and as something to drag it by. */
+messagedialog .titlebar {
+	min-height: 20px;
+	background: @groma_sheet;
+	border-style: none;
+	border-radius: 0;
+	box-shadow: none;
+}
+
+messagedialog.solid-csd.background,
+messagedialog.solid-csd .titlebar {
+	background: @groma_sheet_opaque;
+}
+
+messagedialog .titlebar label.title {
+	color: transparent;
+	font-size: 1px;
+}
+
+/* The question and its explanation. The sheet's padding is 20 on every side;
+ * GTK already insets this box by 6 and adds 12 more between the text and the
+ * buttons, so this makes up the rest. */
+messagedialog .dialog-vbox > box {
+	margin: 0 14px;
+}
+
+/* fontLead bold for the question. GTK scales the primary label up by its own
+ * "large" (1.2) when there is a second line, so this is 14 / 1.2 to land on
+ * 14. */
+messagedialog .dialog-vbox > box > box > label:first-child {
+	color: @groma_text;
+	font-size: 11.67px;
+	font-weight: bold;
+}
+
+/* fontBody at the body's 0.82. */
+messagedialog .dialog-vbox > box > box > label:last-child:not(:first-child) {
+	color: @groma_body;
+	font-size: 12px;
+}
+
+/* The footer. GTK spreads the buttons across the width and CSS cannot gather
+ * them to the right, so they stay a row of equal chips. */
+messagedialog .dialog-action-box {
+	padding: 0 20px 20px;
+}
+
+messagedialog .dialog-action-area button,
+messagedialog .dialog-action-area button:first-child,
+messagedialog .dialog-action-area button:last-child {
+	min-height: 29px;                                      /* chipHeight */
+	padding: 0 16px;                                       /* spacingL */
+	margin-left: 8px;                                      /* spacingS */
+	border: 1px solid @groma_control_edge;
+	border-radius: 12px;                                   /* radiusPill */
+	-gtk-outline-radius: 15px;
+	background: @groma_control;
+	box-shadow: none;
+	text-shadow: none;
+	color: @groma_text;
+	font-size: 12px;                                       /* fontBody */
+	font-weight: 600;                                      /* DemiBold */
+}
+
+messagedialog .dialog-action-area button:first-child {
+	margin-left: 0;
+}
+
+messagedialog .dialog-action-area button:hover {
+	background: @groma_control_hover;
+}
+
+/* The default answer is the primary chip: the one Enter would press, and the
+ * one the app marked as the main action. Bright enough that its label goes
+ * dark. */
+messagedialog .dialog-action-area button.default {
+	background: @groma_primary;
+	border-color: @groma_primary_edge;
+	color: @groma_on_primary;
+	font-weight: bold;
+}
+
+messagedialog .dialog-action-area button.default:hover {
+	background: @groma_primary_hover;
+}
+
+messagedialog .dialog-action-area button label {
+	color: inherit;
+}
+
+/* A ring outside the chip, 3 wide, as GlassField draws one - not GTK's dashed
+ * outline, and not a thicker border, which would move the label. It is drawn
+ * as the outline because GTK draws that only once the keyboard is in use;
+ * a box-shadow would ring the default button the moment the dialog opened. */
+messagedialog .dialog-action-area button {
+	outline: 3px solid @groma_ring;
+	outline-offset: 0;
+}
+
+messagedialog .dialog-action-area button:backdrop {
+	opacity: 0.85;
+}

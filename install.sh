@@ -134,6 +134,11 @@ xdg-mime default groma-files.desktop inode/directory
 # the shell takes them from QS_ICON_THEME in the compositor config.
 gsettings set org.gnome.desktop.interface icon-theme Papirus 2>/dev/null || true
 
+# The questions GTK 3 apps ask - VS Code's "Save changes?", Chromium's and
+# Slack's - drawn as Groma's sheet rather than Adwaita's.
+mkdir -p "$HOME/.config/gtk-3.0"
+ln -sfn "$GROMA/system/gtk-3.0/gtk.css" "$HOME/.config/gtk-3.0/gtk.css"
+
 # An editor for text, only where one is installed. Files asks "Open with…"
 # for anything nothing claims, so this is a convenience, not a requirement.
 # VS Code's entry has more than one name, depending on how it was packaged.

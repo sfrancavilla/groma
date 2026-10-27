@@ -419,6 +419,21 @@ hl.window_rule({
     border_size = 0,
 })
 
+-- What floats is a sheet: an app's "Save changes?", a file picker, a window
+-- floated with SUPER+V. Same corners as Groma's own windows, and the glass
+-- edge rather than the gradient - Theme.glassEdge, white at .32, which
+-- system/gtk-3.0/gtk.css cannot draw itself: GTK 3 leaves the dialog's frame
+-- to the compositor. GTK 3 dialogs carry no xdg-dialog hint to match on more
+-- narrowly; floating is the only thing they all have in common.
+hl.window_rule({
+    name  = "groma-sheets",
+    match = { float = true },
+
+    rounding     = 20,
+    border_size  = 1,
+    border_color = "rgba(ffffff52)",
+})
+
 -- Hyprland-run windowrule
 hl.window_rule({
     name  = "move-hyprland-run",

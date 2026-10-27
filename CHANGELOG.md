@@ -9,6 +9,10 @@
 - **Bar cards** — everything the bar opens hangs from its icon like a tab and
   grows out of it, in one dense slate glass: sound, battery, Wi-Fi,
   Bluetooth, power, and a workspace's preview and name field.
+- **Other apps' questions** — the "Save changes?" that VS Code, Chromium and
+  Slack ask through GTK 3 is drawn as Groma's sheet: dense glass, the glass
+  edge, chip buttons with the default one bright. Every floating window gets
+  the same corners and edge. An app picks it up when it next starts.
 
 ## v0.1.0-alpha — 2026-10-27
 
