@@ -1,0 +1,55 @@
+# Changelog
+
+## v0.1.0-alpha — 2026-10-27
+
+The first alpha. Groma provides the whole desktop shell for Hyprland as one
+Quickshell process, and installs on a machine it was not written on.
+
+### What it does
+
+- **Bar** — workspaces, clock, Wi-Fi, Bluetooth, volume, battery and power,
+  each opening its own tile.
+- **Launcher** — applications, a calculator (qalc for units), files (fd),
+  clipboard history and commands, from one search field.
+- **Files** — a file manager of its own: list and grid views, copy and move
+  with progress and name conflicts, drag and drop in and out, Trash, drives
+  through udisks2, properties, and Open with.
+- **Groma Store** — install, remove and update from the official repositories
+  and the AUR, with the source marked on every row.
+- **Desktop services** — notifications, the polkit agent, and an on-screen
+  display for volume and brightness.
+- **Locking** — lock screen, an idle chain (dim, lock, blank, and suspend on
+  battery), and locking before every sleep.
+- **Power menu** — lock, suspend, log out, restart and power off.
+- **Snapshots** — snapper for `/`, around every pacman transaction, and for
+  `/home` on a timeline; a Snapshots view with Undo and Browse; Limine's boot
+  menu lists system snapshots, and the shell says when it is running one.
+- **Nothing earbuds** — per-bud battery, and playback paused when the buds
+  come out, read over the earbuds' own protocol.
+- **Installer** — `install.sh` from a bare Arch install: hardware detected,
+  snapshot steps that check the disk and say why they skip, Hyprland started
+  after login on the first console. Safe to re-run.
+
+### Tested
+
+- **Daily use:** Framework Laptop 13 (AMD Ryzen AI 7 350), Arch Linux on
+  LUKS2 and Btrfs, booting with Limine.
+- **Fresh install:** an `archinstall` machine (Btrfs default layout, Limine, no
+  disk encryption) in QEMU/KVM with OVMF, made by `tools/vm.sh`: the installer,
+  Hyprland starting on login, system and `/home` snapshots, and booting a
+  snapshot from the Limine menu with its overlay.
+- **Versions:** Hyprland 0.56.2, Quickshell 0.3.2, Limine 12.9.4, snapper
+  0.13.2, Linux 7.2.11.
+
+### Known gaps
+
+- **One real machine.** Wi-Fi, Bluetooth, battery and backlight are proven on
+  the Framework only; the virtual machine has none of them.
+- **Disk encryption on a fresh install** is untested: the test machine's disk
+  was not encrypted.
+- **NVIDIA** is detected and left alone; it has never been tried.
+- **Secure Boot** is not set up.
+- **No settings window.** Choices live in `shell/Theme.qml`,
+  `shell/Settings.qml` and `hypr/hyprland.lua`, and machine-only overrides in
+  `~/.config/hypr/machine.lua`.
+- **Nobody else has installed it yet.**

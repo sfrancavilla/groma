@@ -8,7 +8,9 @@ everything else is built from — and every camp in the empire was laid out
 identically with one. That is the goal here: a desktop you can reproduce
 exactly, on any machine, from this repository.
 
-> **Status:** early. Working, in daily use, and changing often.
+> **Status:** v0.1.0-alpha. In daily use on one laptop, and installed from
+> scratch on a second machine; see [CHANGELOG.md](CHANGELOG.md) for what was
+> tested where and what was not.
 
 ## What it does
 
@@ -73,20 +75,20 @@ whole shell instead of leaving one widget behind.
 | `ui/DialogButton.qml` | Buttons in dialogs and notification actions. `variant`: secondary, primary, destructive |
 | `SpeakerIcon.qml` / `BatteryIcon.qml` / `BoltIcon.qml` | Drawn glyphs, as paths rather than an icon font |
 
-### Why no icon pack
+### Two kinds of icon
 
-Shell glyphs are drawn as `QtQuick.Shapes` paths, not taken from a font or an
-SVG set. They carry state: the speaker's waves follow the level, the battery's
-cell fills with the charge, and a bolt appears over it when charging. A pack
-would need a separate icon for each of those and code to swap between them.
+The shell's own glyphs - the bar, the power menu, search, the marks on glass
+discs - are drawn as `QtQuick.Shapes` paths, not taken from a font or an SVG
+set. They carry state: the speaker's waves follow the level, the battery's
+cell fills with the charge, the Wi-Fi arcs follow the signal. They share one
+24-unit grid, and their line weights come from two values in `Theme.qml`,
+`barIconLine` and `markLine`.
 
-It also means no font to install, which matters for something meant to be
-cloned, and the glyphs match the panels because they are built the same way.
-
-This does not scale to dozens of icons. When something needs a large set - a
-launcher, a settings panel - use SVGs from Material Symbols or Lucide (qt6-svg
-is present, so `Image` renders them), and `Quickshell.iconPath` for
-*application* icons, which the notification toasts already do.
+Applications, files and folders are a large, open-ended set, and for those
+the shell uses an icon theme: **Papirus**, chosen through `QS_ICON_THEME` in
+`hypr/hyprland.lua` and looked up with `Quickshell.iconPath`. Files maps file
+types to Papirus names in `shell/icons/fileicons.js`. Groma's own applications
+have their own icons in `system/icons/`.
 
 The layering runs one way — `icons` depend on nothing, `ui` only on `Theme` and
 each other, `modules` on all three, and `shell.qml` only on `modules`. A `ui`
@@ -123,12 +125,14 @@ or `archinstall`. Everything else, including Hyprland and Quickshell, comes
 from the installer.
 
 For snapshots, the root filesystem should be Btrfs with `/` on a subvolume
-named `@` and an `@snapshots` subvolume mounted at `/.snapshots` - the layout
-`archinstall` offers. Without it, everything but snapshots still installs.
+named `@` - the layout `archinstall`'s Btrfs option makes. An `@snapshots`
+subvolume beside it is created and mounted at `/.snapshots` if it is not there
+yet. Without Btrfs, everything but snapshots still installs.
 
 Tested on Arch Linux with Hyprland 0.56 (its Lua configuration) and
-Quickshell 0.3.1, on a Framework Laptop 13 with AMD graphics. Both projects move
-quickly; a newer release may need small changes here.
+Quickshell 0.3.2: daily on a Framework Laptop 13 with AMD graphics, and as a
+fresh `archinstall` machine in a virtual machine. Both projects move quickly; a
+newer release may need small changes here.
 
 ## Install
 
@@ -226,6 +230,23 @@ stray Escape does not spend one of the three.
 
 Moving this directory while the shell is running kills the process. Restart with
 `qs -c groma`.
+
+### Testing a fresh install
+
+`tools/vm.sh` makes a throwaway UEFI virtual machine (QEMU with KVM, OVMF
+firmware) to install Arch and Groma into from nothing - the test that the
+installer is not relying on the machine it was written on:
+
+```bash
+sudo pacman -S qemu-desktop edk2-ovmf   # pick pipewire-jack if asked
+tools/vm.sh create                      # disk, firmware store, signed Arch ISO
+tools/vm.sh install                     # boot the ISO; run archinstall
+tools/vm.sh run                         # boot the installed system
+```
+
+Its disk lives in `~/vms`, made its own Btrfs subvolume without copy-on-write
+so `/home` snapshots leave it out. Inside the window, Ctrl+Alt+G grabs the
+keyboard, which is how SUPER reaches the guest.
 
 ## Credits
 
