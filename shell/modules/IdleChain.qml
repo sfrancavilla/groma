@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.UPower
 import QtQuick
+import ".."
 
 // What happens when you stop touching the machine.
 //
@@ -34,8 +35,9 @@ Scope {
 	readonly property int suspendAfter: root.onBattery ? 900 : 0
 
 	// The panel backlight, named explicitly: with no device brightnessctl walks
-	// everything it can find, which here includes two keyboard LEDs.
-	readonly property string backlight: "amdgpu_bl1"
+	// everything it can find, which here includes two keyboard LEDs. Found at
+	// start (Backlight.qml); without one there is nothing to dim.
+	readonly property string backlight: Backlight.device
 
 	// brightnessctl keeps the pre-dim value itself, so there is no state here
 	// to get out of step with the hardware.
@@ -44,6 +46,8 @@ Scope {
 		respectInhibitors: true
 
 		onIsIdleChanged: {
+			if (root.backlight === "")
+				return;
 			if (isIdle)
 				Quickshell.execDetached(["brightnessctl", "-d", root.backlight,
 					"-s", "set", "20%"]);

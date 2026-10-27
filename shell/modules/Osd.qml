@@ -24,13 +24,14 @@ Scope {
 	}
 
 	// Brightness is read from sysfs and written with brightnessctl. Watching
-	// the file keeps us right if it changes some other way.
-	readonly property string backlight: "amdgpu_bl1"
+	// the file keeps us right if it changes some other way. The device is
+	// found at start (Backlight.qml); with none there is nothing to read.
+	readonly property string backlight: Backlight.device
 
 	FileView {
 		id: brightnessFile
 
-		path: `/sys/class/backlight/${root.backlight}/brightness`
+		path: root.backlight !== "" ? `/sys/class/backlight/${root.backlight}/brightness` : ""
 		watchChanges: true
 		onFileChanged: reload()
 	}
@@ -38,7 +39,7 @@ Scope {
 	FileView {
 		id: brightnessMax
 
-		path: `/sys/class/backlight/${root.backlight}/max_brightness`
+		path: root.backlight !== "" ? `/sys/class/backlight/${root.backlight}/max_brightness` : ""
 	}
 
 	readonly property real brightness: {
@@ -115,6 +116,11 @@ Scope {
 	}
 
 	function stepBrightness(delta) {
+		// No backlight - a desktop, a virtual machine - and the keys do
+		// nothing, rather than flash a level nobody can change.
+		if (root.backlight === "")
+			return;
+
 		// brightnessctl clamps for us, and percentages keep the steps even
 		// across the curve.
 		Quickshell.execDetached(["brightnessctl", "-d", root.backlight,
