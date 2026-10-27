@@ -13,10 +13,13 @@
 #
 #   1. Back up /boot, the firmware entries, mkinitcpio.conf and the cmdline
 #   2. Write /etc/default/limine with this machine's kernel command line
-#   3. Add sd-btrfs-overlayfs to the initramfs, after "filesystems"
-#   4. Install both tools (built from source by yay - several minutes)
-#   5. Generate the kernel entries and the snapshot entries
+#   3. Install both tools (built from source by yay - several minutes)
+#   4. Add the overlay hook to the initramfs, and prove it builds
+#   5. Generate the kernel and snapshot entries, and check them
 #   6. Show the new limine.conf, the firmware entries and the boot partition
+#
+# Every step that could leave the machine unbootable is checked before the
+# next one runs; a failure stops here with what was changed and how to undo it.
 
 set -euo pipefail
 
@@ -47,7 +50,7 @@ ls -la "$backup"
 # rootflags=subvol= for each snapshot entry, so it must be here as written.
 cmdline="$(cat /proc/cmdline)"
 case "$cmdline" in
-	*rootflags=subvol=@*) ;;
+	*rootflags=subvol=@*|*rootflags=subvol=/@*) ;;
 	*) fail "the running cmdline has no rootflags=subvol=@: $cmdline" ;;
 esac
 
@@ -65,32 +68,82 @@ KERNEL_CMDLINE[default]+="$cmdline"
 EOF
 cat /etc/default/limine
 
-# --- 3. the overlay hook -----------------------------------------------------
+# --- 3. install -------------------------------------------------------------
 
-# Booting a snapshot mounts it read-only; sd-btrfs-overlayfs puts a throwaway
-# writable layer over it so the system can start normally. The systemd
-# variant, because this initramfs uses the systemd hooks.
-step "3. Adding sd-btrfs-overlayfs to the initramfs hooks"
-if grep -q '^HOOKS=.*sd-btrfs-overlayfs' /etc/mkinitcpio.conf; then
+step "3. Installing limine-mkinitcpio-hook and limine-snapper-sync (AUR)"
+echo "Both are built from source with GraalVM: a large download and a long compile."
+yay -S --needed limine-mkinitcpio-hook limine-snapper-sync
+
+# --- 4. the overlay hook -----------------------------------------------------
+
+# Booting a snapshot mounts it read-only; the overlay hook puts a throwaway
+# writable layer over it so the system can start normally. It comes in two
+# kinds, and the wrong one stops mkinitcpio cold: sd-btrfs-overlayfs for an
+# initramfs built on the systemd hook (the book's chapter 1), btrfs-overlayfs
+# for one built on base and udev (archinstall's).
+if grep -qE '^HOOKS=\(.*\bsystemd\b' /etc/mkinitcpio.conf; then
+	hook=sd-btrfs-overlayfs; other=btrfs-overlayfs
+else
+	hook=btrfs-overlayfs; other=sd-btrfs-overlayfs
+fi
+step "4. Adding $hook to the initramfs hooks"
+# The other kind goes, if an earlier run put it there.
+sudo sed -i -E "/^HOOKS=/ s/ $other\b//" /etc/mkinitcpio.conf
+if grep -qE "^HOOKS=.* $hook\b" /etc/mkinitcpio.conf; then
 	echo "already there"
 else
-	grep -q '^HOOKS=(.* filesystems ' /etc/mkinitcpio.conf || fail "no 'filesystems' in HOOKS to put it after"
-	sudo sed -i '/^HOOKS=/ s/ filesystems / filesystems sd-btrfs-overlayfs /' /etc/mkinitcpio.conf
+	grep -q '^HOOKS=(.* filesystems' /etc/mkinitcpio.conf || fail "no 'filesystems' in HOOKS to put it after"
+	sudo sed -i -E "/^HOOKS=/ s/ filesystems\b/ filesystems $hook/" /etc/mkinitcpio.conf
 fi
 grep '^HOOKS=' /etc/mkinitcpio.conf
 
-# --- 4. install -------------------------------------------------------------
-
-step "4. Installing limine-mkinitcpio-hook and limine-snapper-sync (AUR)"
-echo "Both are built from source with GraalVM: a large download and a long compile."
-yay -S --needed limine-mkinitcpio-hook limine-snapper-sync
+# Build one initramfs into a scratch file before anything on /boot is
+# regenerated. limine-update reports a failed build as "skipping" and carries
+# on, so this is where a bad hook line has to be caught.
+kver="$(basename "$(dirname "$(ls /usr/lib/modules/*/vmlinuz | sort -V | tail -1)")")"
+scratch="$(mktemp -d)"
+if ! sudo mkinitcpio -k "$kver" -g "$scratch/test.img" >"$scratch/log" 2>&1; then
+	sudo cp "$backup/mkinitcpio.conf" /etc/mkinitcpio.conf
+	cat "$scratch/log"
+	fail "a test initramfs did not build with $hook - mkinitcpio.conf is put back, /boot is untouched"
+fi
+sudo rm -rf "$scratch"
+echo "a test initramfs for $kver builds with it"
 
 # --- 5. generate ---------------------------------------------------------------
 
 step "5. Generating kernel entries (limine-update) and snapshot entries"
 sudo limine-update
+
+# Check what it wrote before anything relies on it: the OS entry
+# limine-snapper-sync hangs the snapshots under, and every kernel and
+# initramfs the config names, on disk. Kernels are "path:" (older configs say
+# "kernel_path:"), and each path may end in "#" and its checksum.
+os_name="$(. /etc/os-release && echo "$NAME")"
+sudo grep -q "^/+\?$os_name\$" /boot/limine.conf \
+	|| fail "/boot/limine.conf has no '$os_name' entry. Do not reboot; see $backup"
+missing=0
+while read -r path; do
+	if ! sudo test -f "/boot/$path"; then
+		echo "missing: /boot/$path"
+		missing=1
+	fi
+done < <(sudo sed -nE 's#^[[:space:]]*(path|kernel_path|module_path):[[:space:]]*boot\(\):/([^\#]*).*#\2#p' /boot/limine.conf | sort -u)
+[ "$missing" = 0 ] || fail "/boot/limine.conf points at files that are not there. Do not reboot; see $backup"
+echo "limine.conf has '$os_name', and every kernel and initramfs it names exists"
+
 sudo limine-snapper-sync
 sudo systemctl enable --now limine-snapper-sync.service
+
+# Limine reads the first limine.conf it finds, and one beside its own
+# executable comes before /boot/limine.conf - archinstall leaves one in
+# EFI/BOOT. Any other is moved into the backup, now that the new one is
+# known to be good.
+while read -r other_conf; do
+	mkdir -p "$backup/other-limine-conf"
+	sudo mv "$other_conf" "$backup/other-limine-conf/$(echo "${other_conf#/boot/}" | tr / _)"
+	echo "moved aside: $other_conf (kept in $backup/other-limine-conf)"
+done < <(sudo find /boot -name limine.conf -not -path /boot/limine.conf -not -path '*/limine_history/*')
 
 # --- 6. show -------------------------------------------------------------------
 
@@ -117,9 +170,8 @@ Paste the output above back for checking. Do not reboot yet.
 
 After it has been read: reboot once normally (BootCurrent should be the new
 "Limine" entry), then once into a snapshot from the menu (findmnt / says
-overlay). Only then retire a previous loader, if there was one - on the
-machine this was written on:
-  sudo efibootmgr -b 0005 -B
-  sudo rm -r /boot/EFI/arch-limine
-  sudo rm /boot/vmlinuz-linux /boot/initramfs-linux.img
+overlay). Only then retire a previous loader, if there was one: its firmware
+entry (sudo efibootmgr -b <number> -B, the number from the list above), its
+folder under /boot/EFI, and the kernel and initramfs it booted, if
+limine.conf no longer names them.
 EOF
