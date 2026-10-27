@@ -4,8 +4,8 @@
 # every pacman transaction is bracketed by a pre and a post snapshot. Nothing
 # here touches the boot loader.
 #
-# The disk already has an @snapshots subvolume mounted at /.snapshots. snapper
-# insists on creating its own .snapshots subvolume inside @ when a config is
+# Snapshots live in an @snapshots subvolume mounted at /.snapshots, made here
+# if the disk does not have one yet. snapper insists on creating its own .snapshots subvolume inside @ when a config is
 # made, so the usual Arch dance applies: unmount ours, let snapper create its
 # nested one, delete that, and mount ours back in its place. Snapshots then
 # live in @snapshots - a sibling of @, not inside it - which is what lets a
@@ -17,9 +17,8 @@ set -euo pipefail
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 
-# This layout - / on a Btrfs subvolume @, with @snapshots mounted beside it at
-# /.snapshots - is the one the book's chapter 1 creates, and the one
-# archinstall's Btrfs default creates. Anything else is skipped, not guessed at.
+# / must be a Btrfs subvolume called @ - the book's chapter 1 layout, and
+# archinstall's Btrfs default. Anything else is skipped, not guessed at.
 if [ "$(findmnt -n -o FSTYPE /)" != btrfs ]; then
 	echo "Skipping system snapshots: / is not Btrfs."
 	exit 0
@@ -28,10 +27,46 @@ if ! findmnt -n -o OPTIONS / | grep -qE 'subvol=/?@(,|$)'; then
 	echo "Skipping system snapshots: / is not the @ subvolume."
 	exit 0
 fi
+
+# Snapshots go in an @snapshots subvolume beside @, mounted at /.snapshots.
+# Chapter 1 makes it by hand; archinstall does not make it at all. Where it is
+# missing it is made here, the way chapter 1 does: create it at the top of the
+# filesystem, then mount it with the same options as /, by an fstab line.
 if ! grep -qE '[[:space:]]/\.snapshots[[:space:]]' /etc/fstab; then
-	echo "Skipping system snapshots: there is no /.snapshots line in /etc/fstab."
-	echo "Create an @snapshots subvolume and mount it there first (book, chapter 1)."
-	exit 0
+	if [ -e /.snapshots ] && ! sudo rmdir /.snapshots 2>/dev/null; then
+		echo "Skipping system snapshots: /.snapshots already exists and is not an empty folder."
+		exit 0
+	fi
+
+	step "Creating an @snapshots subvolume beside @"
+	device="$(findmnt -n -o SOURCE / | sed 's/\[.*//')"
+	top="$(mktemp -d)"
+	sudo mount -o subvolid=5 "$device" "$top"
+	[ -d "$top/@snapshots" ] || sudo btrfs subvolume create "$top/@snapshots"
+	sudo umount "$top"
+	rmdir "$top"
+
+	# The / line with its mount point and subvolume swapped. subvolid goes:
+	# it names @'s id, and would contradict the new subvol=.
+	line="$(awk '$2 == "/" && $3 == "btrfs" {
+		n = split($4, opt, ","); out = ""
+		for (i = 1; i <= n; i++) {
+			if (opt[i] ~ /^subvolid=/) continue
+			if (opt[i] ~ /^subvol=/) opt[i] = "subvol=/@snapshots"
+			out = out (out == "" ? "" : ",") opt[i]
+		}
+		$2 = "/.snapshots"; $4 = out
+		print; exit
+	}' /etc/fstab)"
+	[ -n "$line" ] || { echo "Skipping system snapshots: no Btrfs line for / in /etc/fstab."; exit 0; }
+
+	sudo cp /etc/fstab /etc/fstab.before-groma
+	printf '\n# @snapshots, added by Groma'"'"'s setup-snapshots.sh\n%s\n' "$line" | sudo tee -a /etc/fstab >/dev/null
+	sudo systemctl daemon-reload
+	sudo mkdir -p /.snapshots
+	sudo mount /.snapshots
+	echo "  Added to /etc/fstab (the old one is /etc/fstab.before-groma):"
+	echo "  $line"
 fi
 
 step "Installing snapper and snap-pac (official repositories)"

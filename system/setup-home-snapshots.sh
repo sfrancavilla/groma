@@ -24,6 +24,11 @@ if [ "$(findmnt -n -o FSTYPE --target /home)" != btrfs ] || ! findmnt -n /home >
 	exit 0
 fi
 
+# Installed here too, not left to the system snapshots: those are skipped on a
+# layout they cannot use, and /home's do not depend on it.
+step "Installing snapper (official repositories)"
+sudo pacman -S --needed snapper
+
 fresh=no
 if ! sudo snapper -c home get-config >/dev/null 2>&1; then
 	fresh=yes
