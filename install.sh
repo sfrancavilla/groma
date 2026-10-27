@@ -46,7 +46,7 @@ PACKAGES=(
 
 	brightnessctl       # the idle chain dims with this, the OSD reads it
 	playerctl           # media keys, and pausing when an earbud comes out
-	python              # the Files, Sofwwttware and earbud helpers
+	python              # the Files, Software and earbud helpers
 	curl                # the public-address lookup in the network tile
 
 	xdg-desktop-portal  # screen sharing, file pickers
