@@ -121,7 +121,7 @@ Which puts every surface built so far in exactly one place:
 | Power: log out, restart, power off | none | `Cancel` `Log out` / `Restart` / `Power off` (destructive) |
 | Booted into a snapshot | none | `Restart to current` · `Cancel` `Restore…` |
 | Snapshots | X | `Snapshot now` · `Undo…` (destructive, system) / `Browse` (home) |
-| Workspace name | none - under its pill, like a bar popup | none - `Enter` keeps it, `Escape` or a click away leaves |
+| Workspace name | none - a tab card on its pill | none - `Enter` keeps it, `Escape` or a click away leaves |
 | Workspace preview | none - it goes when the pointer does | none - it takes no input |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
@@ -166,6 +166,36 @@ The panel is 2880×1920 at scale 2, so one logical pixel is two physical ones.
   rounding at 20, the compositor cuts the corners and blurs the whole window
   rectangle, so the pane has to match it exactly: `Theme.radiusWindow`, and the
   rule in `hypr/hyprland.lua`. Sheets on layer surfaces keep `radiusPanel`.
+
+
+## What the bar opens
+
+Everything the bar opens - the sound, battery, Wi-Fi, Bluetooth and power
+tiles, and a workspace's preview and name field - is a **tab card**
+(`ui/TabCard.qml`). Not a tile floating under the bar.
+
+- **It hangs from what opened it.** A tab stands round the glyph or pill and
+  runs into the card in a curve. Left of centre the card opens rightward from
+  the tab, right of centre leftward, so it never leaves the screen.
+- **It grows out of the tab, and goes back in.** `Theme.motionSpatial` for
+  anything that moves or resizes, `Theme.motionEffects` for opacity - never a
+  duration or a curve of its own. Pointed at something else, the tab slides
+  there; it does not close and reopen.
+- **One dense glass, `Theme.tabCardSurface`.** The tab lies on the wallpaper
+  and the card usually on a window; see-through glass takes its colour from
+  each, and the two halves of one card no longer match.
+- **Whatever opened it is drawn again on the tab.** The glass hides the bar
+  under it. Draw the same component with the same state - `BarPopup` loads
+  its `trigger` a second time, the workspace cards lay out the whole row of
+  pills again - never a picture of it.
+- **Its own surface, never the bar's.** Growing the bar's surface to hold a
+  card redraws the whole bar, visibly, every time one opens.
+- **The blur region is null when there is nothing to blur.** An empty
+  region makes Hyprland blur the entire surface. `TabCard.blurRegion`
+  already does this; a caller passes it on unchanged.
+
+Sheets and windows are not tab cards: they open in the middle of the screen,
+from nothing in the bar.
 
 
 ## Where a thing belongs

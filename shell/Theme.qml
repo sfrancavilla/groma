@@ -267,10 +267,6 @@ Singleton {
 	// bright glass and carries a little more, markLine.
 	readonly property real barIconLine: 1.1
 	readonly property real markLine: 1.5
-	// Gap between the bar and a panel it opens. The panel's own shadow padding
-	// is subtracted from the window margin, or the visible gap is that much
-	// bigger than this.
-	readonly property int barPopupGap: 6
 	// A workspace in the bar: a square-ish key with its number, or wider to
 	// carry a name, capped so one long name cannot push the rest off.
 	readonly property int workspacePillWidth: 26
@@ -309,6 +305,25 @@ Singleton {
 	// The card that shows a workspace from the bar. Wider than a tile, so a
 	// miniature of a 3:2 screen is big enough to tell a terminal from a page.
 	readonly property int workspacePreviewWidth: 360
+	// A workspace's tab stands this far round its pill. A glyph's tab stands
+	// wider, tabPadding: the glyph is smaller than a pill and wants the room.
+	readonly property int workspaceTabLip: 3
+
+	// --- Tab cards ---
+	//
+	// Every card the bar opens hangs from what opened it, like a tab, and
+	// grows down out of it - the way Caelestia's popouts grow out of its bar.
+	// The tab runs from this far below the screen edge to this far above the
+	// bar's bottom, and meets the card in a curve this tight.
+	readonly property int tabInset: 2
+	readonly property int tabPadding: 8
+	readonly property int tabJoin: 8
+	// Card and tab in one dense glass. The tab lies on the wallpaper and the
+	// card usually on a window, and see-through glass took its colour from
+	// each: green above, grey below. Dense, they are one colour over anything.
+	// Slate, the mid-grey Groma's clear glass most often comes out as on this
+	// desktop; white text on it is 8.9:1.
+	readonly property color tabCardSurface: Qt.rgba(0x3d / 255, 0x4c / 255, 0x57 / 255, 0.92)
 
 	readonly property int dialogWidth: 320
 	readonly property int dialogPadding: 20
@@ -342,6 +357,20 @@ Singleton {
 	// sheet's padding on purpose: a page at full travel is exactly at the
 	// inside edge of the glass, so nothing has to be clipped to contain it.
 	readonly property int dialogPageSlide: 24
+
+	// --- Motion ---
+	//
+	// Material 3's expressive curves, as Caelestia uses them. Spatial is for
+	// anything that moves or resizes, and overshoots a touch, so a panel
+	// arrives rather than stops; effects is for opacity, and does not.
+	readonly property var motionSpatial: [0.38, 1.21, 0.22, 1, 1, 1]
+	// Caelestia's "fast" duration with its default curve: at its own 500 a
+	// card felt slow to open, and its fast curve overshoots enough to bounce.
+	readonly property int motionSpatialDuration: 350
+	readonly property var motionEffects: [0.34, 0.8, 0.34, 1, 1, 1]
+	readonly property int motionEffectsDuration: 200
+	readonly property var motionEffectsFast: [0.31, 0.94, 0.34, 1, 1, 1]
+	readonly property int motionEffectsFastDuration: 150
 
 	// --- Type scale ---
 	readonly property int fontCaption: 11

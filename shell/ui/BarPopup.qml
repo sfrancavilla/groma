@@ -3,7 +3,8 @@ import Quickshell.Wayland
 import QtQuick
 import ".."
 
-// A readout in the bar, and the tile it opens underneath itself.
+// A readout in the bar, and the card it opens: hanging from the readout like
+// a tab, and growing down out of it (TabCard.qml).
 //
 // Volume and battery were half identical before this existed - 155 lines of the
 // same window, click-catcher, animation and positioning. What differs between
@@ -35,10 +36,10 @@ Item {
 	readonly property bool active: mouse.containsMouse || root.open
 
 	// Value animations should run while the tile is open and settled, but not
-	// while it is opening - mapping the window lays everything out from zero
-	// width, and animating that reads as the contents sliding into place every
-	// time.
-	readonly property bool settled: root.open && tile.opacity > 0.99
+	// while it is opening - the card grows out of its tab with the contents
+	// sliding out of it, and a value animating on top of that reads as the
+	// contents moving twice.
+	readonly property bool settled: root.open && !tabCard.moving
 
 	signal secondaryClicked
 	signal scrolled(int direction)
@@ -46,18 +47,19 @@ Item {
 	implicitWidth: triggerLoader.implicitWidth
 	implicitHeight: triggerLoader.implicitHeight
 
-	// The bar spans the screen, so this item's position inside it is its
-	// position on screen.
+	// Where the trigger is on screen: the bar spans the screen, so its place
+	// in the bar is its place on screen.
 	//
 	// mapToItem is a function call, and QML cannot know when to re-run one -
 	// bound naively it evaluates once during early layout, before the row has
 	// positioned anything, and keeps that answer forever. Reading the geometry
 	// it depends on first registers those as dependencies.
-	readonly property real triggerRight: {
-		void [root.width, root.x, root.parent?.x, root.parent?.width,
+	readonly property rect triggerRect: {
+		void [root.width, root.height, root.x, root.y, root.parent?.x, root.parent?.width,
 			root.barWidth];
 
-		return root.mapToItem(null, root.width, 0).x;
+		const at = root.mapToItem(null, 0, 0);
+		return Qt.rect(at.x, at.y, root.width, root.height);
 	}
 
 	readonly property real barWidth: root.QsWindow?.window?.width ?? 0
@@ -112,65 +114,72 @@ Item {
 		}
 	}
 
+	// The card, hanging from the trigger (TabCard.qml), in a surface across
+	// the top of the screen.
 	PanelWindow {
 		id: panel
 
-		// Stays mapped until the closing animation has finished, otherwise the
-		// window unmaps instantly and there is nothing left to animate.
-		visible: root.open || tile.opacity > 0.01
+		visible: tabCard.out
 
 		anchors {
 			top: true
+			left: true
 			right: true
 		}
 
 		exclusionMode: ExclusionMode.Ignore
-
-		// Sit under the bar, and line the tile's right edge up with the readout
-		// that opened it rather than with the screen edge. The shadow padding
-		// is inside the window, so it comes out of both margins.
-		margins {
-			top: Math.max(0, Theme.barHeight + Theme.barPopupGap - panel.pad)
-			right: Math.max(0, root.barWidth - root.triggerRight - panel.pad)
-		}
-
-		readonly property int pad: Theme.glass ? Theme.glassShadowPadding : 0
-
-		implicitWidth: Theme.tileWidth + panel.pad * 2
-		implicitHeight: tile.implicitHeight + panel.pad * 2
+		implicitHeight: tabCard.extent
 		color: "transparent"
+
+		// The card takes clicks; the rest of this surface is the bar and the
+		// desktop, and leaves them to the catcher underneath.
+		mask: Region {
+			item: tabCard.bodyItem
+		}
 
 		WlrLayershell.layer: WlrLayer.Overlay
 		WlrLayershell.namespace: `groma:${root.name}`
 		WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-		BackgroundEffect.blurRegion: Region {
-			item: tile
-			radius: Theme.radiusPanel
-		}
+		BackgroundEffect.blurRegion: tabCard.blurRegion
 
-		GlassTile {
-			id: tile
+		TabCard {
+			id: tabCard
 
 			anchors.fill: parent
-			anchors.margins: panel.pad
+			anchorRect: root.triggerRect
+			// Opened from the right half of the bar, it opens leftward.
+			alignRight: root.triggerRect.x + root.triggerRect.width / 2 > root.barWidth / 2
+			open: root.open
+			contentHeight: tile.implicitHeight
 
-			title: root.title
-			trailing: root.trailing
-			trailingColor: root.trailingColor
+			// The trigger again, on the tab: the glass hides the real one.
+			// The same Component, so it shows the same state.
+			Item {
+				parent: tabCard.tabLayer
+				x: root.triggerRect.x - tabCard.tabX
+				y: root.triggerRect.y - tabCard.tabY
+				width: root.triggerRect.width
+				height: root.triggerRect.height
 
-			opacity: root.open ? 1 : 0
-			scale: root.open ? 1 : 0.96
-			y: root.open ? 0 : -6
-
-			Behavior on opacity {
-				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
+				Loader {
+					anchors.centerIn: parent
+					sourceComponent: root.trigger
+				}
 			}
-			Behavior on scale {
-				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
-			}
-			Behavior on y {
-				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
+
+			// The glass is the tab card's; this is only the tile's layout.
+			GlassTile {
+				id: tile
+
+				width: Theme.tileWidth
+				color: "transparent"
+				border.width: 0
+				shadowLayers: 0
+
+				title: root.title
+				trailing: root.trailing
+				trailingColor: root.trailingColor
 			}
 		}
 	}

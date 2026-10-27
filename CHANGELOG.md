@@ -6,6 +6,9 @@
   name it for what it holds and give it a colour, as with Chrome's tab
   groups. A named workspace keeps its place in the bar when it is empty.
   Pointing at one shows a live miniature of its windows.
+- **Bar cards** — everything the bar opens hangs from its icon like a tab and
+  grows out of it, in one dense slate glass: sound, battery, Wi-Fi,
+  Bluetooth, power, and a workspace's preview and name field.
 
 ## v0.1.0-alpha — 2026-10-27
 
@@ -59,4 +62,3 @@ Quickshell process, and installs on a machine it was not written on.
 - **No settings window.** Choices live in `shell/Theme.qml`,
   `shell/Settings.qml` and `hypr/hyprland.lua`, and machine-only overrides in
   `~/.config/hypr/machine.lua`.
-- **Nobody else has installed it yet.**

@@ -5,15 +5,18 @@ import ".."
 // The Bluetooth rune: a spine with a triangle either side of it, drawn as one
 // continuous stroke the way the mark itself is constructed.
 //
-// Drawn on the shared 24-unit grid with one stroke, like the other bar
-// glyphs, so at one size they all carry the same weight.
+// Drawn on the shared grid, 24 units high, with one stroke, like the other
+// bar glyphs, so at one size they all carry the same weight.
 Item {
 	id: icon
 
 	property color color: "#ffffff"
 	property bool crossed: false
 
-	readonly property real baseWidth: 24
+	// Half the grid's width: the rune is narrow, and in a square box it
+	// stood with nearly five pixels of nothing either side, so the bar's
+	// even spacing left a visibly wider gap beside it than between the rest.
+	readonly property real baseWidth: 12
 	readonly property real baseHeight: 24
 	readonly property real aspect: icon.baseWidth / icon.baseHeight
 
@@ -44,12 +47,15 @@ Item {
 				capStyle: ShapePath.RoundCap
 				joinStyle: ShapePath.RoundJoin
 
-				startX: 7; startY: 7
-				PathLine { x: 17; y: 17 }
-				PathLine { x: 12; y: 22 }
-				PathLine { x: 12; y: 2 }
-				PathLine { x: 17; y: 7 }
-				PathLine { x: 7; y: 17 }
+				// 17 units tall, not the grid's full 20: the rune is all
+				// height, and at 20 its ink stood two pixels above the other
+				// bar glyphs', which read as sitting higher than them.
+				startX: 1.75; startY: 7.75
+				PathLine { x: 10.25; y: 16.25 }
+				PathLine { x: 6; y: 20.5 }
+				PathLine { x: 6; y: 3.5 }
+				PathLine { x: 10.25; y: 7.75 }
+				PathLine { x: 1.75; y: 16.25 }
 			}
 
 			// Struck through when the radio is off, as the Wi-Fi glyph is.
@@ -59,8 +65,9 @@ Item {
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 
-				startX: 4; startY: 4
-				PathLine { x: 20; y: 20 }
+				// Shorter than the Wi-Fi glyph's, to stay inside the narrow box.
+				startX: 0.5; startY: 6.5
+				PathLine { x: 11.5; y: 17.5 }
 			}
 		}
 	}

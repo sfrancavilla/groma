@@ -3,6 +3,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import QtQuick
+import QtQuick.Shapes
 import "../ui"
 import ".."
 
@@ -43,16 +44,19 @@ Row {
 		return Settings.workspaceName(id) || `Workspace ${id}`;
 	}
 
-	// Where a workspace's pill starts on screen, for whatever opens under it.
+	// Where a workspace's pill is on screen, for whatever opens from it.
 	// Asked at the moment something opens, not bound: mapToItem is a call,
 	// and a binding on it would keep its first answer.
-	function anchorFor(id) {
+	function pillFor(id) {
 		for (let i = 0; i < pills.count; i++) {
 			const pill = pills.itemAt(i);
-			if (pill?.workspaceId === id)
-				return pill.mapToItem(null, 0, 0).x;
+			if (pill?.workspaceId === id) {
+				const at = pill.mapToItem(null, 0, 0);
+				return { x: at.x, y: at.y, width: pill.width, height: pill.height };
+			}
 		}
-		return root.mapToItem(null, 0, 0).x;
+		const at = root.mapToItem(null, 0, 0);
+		return { x: at.x, y: at.y, width: Theme.workspacePillWidth, height: Theme.workspacePillHeight };
 	}
 
 	// A workspace with no windows does not exist until something asks for it,
@@ -68,17 +72,49 @@ Row {
 	// --- the preview ---------------------------------------------------------
 
 	property bool previewOpen: false
+	// The workspace the card is going to, and the one it is showing. They
+	// differ for the moment the card moves between two, while the old
+	// contents fade out.
 	property int previewId: 0
-	property real previewX: 0
+	property int shownId: 0
+	// The pill the card hangs from.
+	property var previewPill: ({ x: 0, y: 0, width: 0, height: 0 })
+	// Where this row is on screen, for the copy of it drawn on the tab.
+	property point rowOrigin: Qt.point(0, 0)
 	// The pill the pointer is on, or 0.
 	property int pointed: 0
+	// The same, for the copies on the tabs to look as the real pills do. Not
+	// `pointed`, which a click clears while the pointer is still there.
+	property int hoveredId: 0
+
+	// A workspace can go while the pointer is on it: an empty one ends the
+	// moment you leave it, by key, and its pill goes from under the pointer.
+	// A pill that is gone never says the pointer left, so the card for it
+	// would stay until something else was pointed at.
+	onSlotsChanged: {
+		const ids = root.slots.map(slot => slot.id);
+		if (!ids.includes(root.pointed)) {
+			root.pointed = 0;
+			enterTimer.stop();
+		}
+		if (!ids.includes(root.hoveredId))
+			root.hoveredId = 0;
+		if (root.previewOpen && !ids.includes(root.previewId))
+			root.previewOpen = false;
+	}
 
 	function showPreview(id) {
+		const moving = card.shown && id !== root.shownId;
 		root.previewId = id;
-		root.previewX = root.anchorFor(id);
+		root.previewPill = root.pillFor(id);
+		root.rowOrigin = root.mapToItem(null, 0, 0);
 		// Window positions are in each toplevel's last IPC answer, which
 		// Hyprland only sends again when asked.
 		Hyprland.refreshToplevels();
+		if (moving)
+			swap.restart();
+		else if (!swap.running)
+			root.shownId = id;
 		root.previewOpen = true;
 	}
 
@@ -121,13 +157,15 @@ Row {
 
 	property bool editing: false
 	property int editId: 0
-	property real editX: 0
+	// The pill the field hangs from.
+	property var editPill: ({ x: 0, y: 0, width: 0, height: 0 })
 
 	function edit(id) {
 		root.previewOpen = false;
 		enterTimer.stop();
 		root.editId = id;
-		root.editX = root.anchorFor(id);
+		root.editPill = root.pillFor(id);
+		root.rowOrigin = root.mapToItem(null, 0, 0);
 		field.text = Settings.workspaceName(id);
 		root.editing = true;
 		field.focusInput();
@@ -172,97 +210,19 @@ Row {
 		}
 	}
 
-	component PillText: Text {
-		required property color ink
-		required property bool raised
-
-		anchors.verticalCenter: parent.verticalCenter
-		color: ink
-		style: raised ? Text.Raised : Text.Normal
-		styleColor: Theme.glassTextShadow
-	}
-
 	Repeater {
 		id: pills
 
 		model: root.slots
 
-		Rectangle {
+		WorkspacePill {
 			id: pill
 
 			required property var modelData
-			readonly property int workspaceId: modelData.id
-			readonly property string name: Settings.workspaceNames?.[String(workspaceId)] ?? ""
-			readonly property color tint: Theme.tagColor(Settings.workspaceColors?.[String(workspaceId)] ?? "")
-			readonly property bool tinted: tint.a > 0
-			readonly property bool isFocused: modelData.workspace?.focused ?? false
-			// Tagged, but nothing on it and Hyprland has not made it yet.
-			readonly property bool waiting: modelData.workspace === null
-			readonly property bool solid: tinted && !waiting
-			readonly property color ink: pill.solid ? Theme.tagInk
-				: Theme.glass ? Theme.glassTextPrimary
-				: pill.isFocused ? Theme.textOnStrong
-				: Theme.textPrimary
 
-			width: name === "" ? Theme.workspacePillWidth
-				: Math.max(Theme.workspacePillWidth, label.implicitWidth + Theme.spacingS * 2)
-			height: Theme.workspacePillHeight
-			radius: Theme.radiusSmall
-
-			border.width: pill.tinted && pill.waiting ? 1 : 0
-			border.color: Qt.rgba(pill.tint.r, pill.tint.g, pill.tint.b, Theme.tagEdge)
-
-			color: pill.solid
-				? Qt.rgba(pill.tint.r, pill.tint.g, pill.tint.b,
-					mouse.containsMouse || pill.isFocused ? Theme.tagFillHover : Theme.tagFill)
-				: pill.tinted ? (mouse.containsMouse ? Theme.glassControlHover : "transparent")
-				: Theme.glass
-				? (pill.isFocused ? Theme.glassControlStrong
-					: mouse.containsMouse ? Theme.glassControlHover
-					: "transparent")
-				: (pill.isFocused ? Theme.surfaceStrong
-					: mouse.containsMouse ? Theme.surfaceHover
-					: Theme.surface)
-
-			// The outline already says "empty" for a coloured one.
-			opacity: pill.waiting && !pill.tinted && !mouse.containsMouse ? 0.55 : 1.0
-
-			// Focus on a solid pill: a ring outside it, so nothing moves.
-			Rectangle {
-				anchors.fill: parent
-				anchors.margins: -2
-				radius: parent.radius + 2
-				color: "transparent"
-				border.width: 2
-				border.color: Theme.tagRing
-				visible: pill.solid && pill.isFocused
-			}
-
-			Row {
-				id: label
-
-				anchors.centerIn: parent
-				height: parent.height
-				spacing: Theme.spacingXs + 1
-
-				// The number stays beside the name: it is still the key.
-				PillText {
-					ink: pill.ink
-					raised: Theme.glass && !pill.solid
-					text: pill.workspaceId
-					opacity: pill.name !== "" ? 0.6 : 1.0
-				}
-
-				PillText {
-					ink: pill.ink
-					raised: Theme.glass && !pill.solid
-					visible: pill.name !== ""
-					width: Math.min(implicitWidth, Theme.workspaceNameMaxWidth)
-					elide: Text.ElideRight
-					text: pill.name
-					font.weight: Font.DemiBold
-				}
-			}
+			workspaceId: modelData.id
+			workspace: modelData.workspace
+			hovered: mouse.containsMouse
 
 			MouseArea {
 				id: mouse
@@ -272,9 +232,16 @@ Row {
 				cursorShape: Qt.PointingHandCursor
 				acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-				onContainsMouseChanged: containsMouse
-					? root.pointAt(pill.workspaceId)
-					: root.pointAway(pill.workspaceId)
+				onContainsMouseChanged: {
+					if (containsMouse) {
+						root.hoveredId = pill.workspaceId;
+						root.pointAt(pill.workspaceId);
+					} else {
+						if (root.hoveredId === pill.workspaceId)
+							root.hoveredId = 0;
+						root.pointAway(pill.workspaceId);
+					}
+				}
 
 				onClicked: event => {
 					if (event.button === Qt.RightButton) {
@@ -294,151 +261,222 @@ Row {
 
 	// --- the preview card ----------------------------------------------------
 
+	// The card hangs from its workspace like a tab (ui/TabCard.qml). Its own
+	// surface across the top of the screen, so moving to the next workspace
+	// is the tab sliding along the bar, not the surface jumping. Not the bar's
+	// surface: drawn in there, the bar had to grow every time the card came
+	// out, and the whole bar visibly redrew.
 	PanelWindow {
-		id: previewWindow
+		id: preview
 
-		readonly property var workspace: root.slotFor(root.previewId)?.workspace ?? null
-		readonly property var windows: previewWindow.workspace?.toplevels?.values ?? []
-		readonly property int pad: Theme.glass ? Theme.glassShadowPadding : 0
+		readonly property var workspace: root.slotFor(root.shownId)?.workspace ?? null
+		readonly property var windows: preview.workspace?.toplevels?.values ?? []
 
-		visible: (root.previewOpen && !root.editing) || card.opacity > 0.01
+		// Up while the card is out of its tab at all. Not tied to the body's
+		// height: showing the surface lays the card out, which can change
+		// that height, and a binding that moves its own trigger loops.
+		visible: tabCard.out
 
 		anchors {
 			top: true
 			left: true
+			right: true
 		}
 
 		exclusionMode: ExclusionMode.Ignore
-
-		margins {
-			top: Math.max(0, Theme.barHeight + Theme.barPopupGap - previewWindow.pad)
-			left: Math.max(0, root.previewX - previewWindow.pad)
-		}
-
-		implicitWidth: Theme.workspacePreviewWidth + previewWindow.pad * 2
-		implicitHeight: card.implicitHeight + previewWindow.pad * 2
+		implicitHeight: tabCard.extent
 		color: "transparent"
 
-		// Only to look at. A card that took clicks would catch the one meant
-		// for whatever is underneath it while it fades.
+		// Only to look at. It lies over the bar, and the bar keeps its clicks.
 		mask: Region {}
 
 		WlrLayershell.layer: WlrLayer.Overlay
 		WlrLayershell.namespace: "groma:workspace-preview"
 		WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-		BackgroundEffect.blurRegion: Region {
-			item: card
-			radius: Theme.radiusPanel
-		}
+		BackgroundEffect.blurRegion: tabCard.blurRegion
 
-		GlassTile {
-			id: card
-
-			readonly property bool shown: root.previewOpen && !root.editing
+		TabCard {
+			id: tabCard
 
 			anchors.fill: parent
-			anchors.margins: previewWindow.pad
-			implicitWidth: Theme.workspacePreviewWidth
+			anchorRect: Qt.rect(root.previewPill.x, root.previewPill.y,
+				root.previewPill.width, root.previewPill.height)
+			tabPadding: Theme.workspaceTabLip
+			open: card.shown
+			bodyWidth: Theme.workspacePreviewWidth
+			contentHeight: card.implicitHeight
 
-			title: root.titleFor(root.previewId)
-			trailing: previewWindow.windows.length === 0 ? "Empty"
-				: previewWindow.windows.length === 1 ? "1 window"
-				: `${previewWindow.windows.length} windows`
-
-			opacity: card.shown ? 1 : 0
-			y: card.shown ? 0 : -6
-
-			Behavior on opacity {
-				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
-			}
-			Behavior on y {
-				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
-			}
-
-			// The screen in miniature. Hyprland gives window positions in the
-			// monitor's logical pixels, so one factor maps the lot.
-			Rectangle {
-				id: miniature
-
-				readonly property var monitor: previewWindow.workspace?.monitor ?? Hyprland.focusedMonitor
-				readonly property real screenWidth: monitor ? monitor.width / monitor.scale : 1
-				readonly property real screenHeight: monitor ? monitor.height / monitor.scale : 1
-				readonly property real factor: width / screenWidth
-				readonly property color tint: Theme.tagColor(Settings.workspaceColor(root.previewId))
-
-				width: parent.width
-				height: Math.round(screenHeight * factor)
-				radius: Theme.radiusMedium
-				color: Theme.terminalInset
-				border.width: tint.a > 0 ? 1 : 0
-				border.color: Qt.rgba(tint.r, tint.g, tint.b, Theme.tagEdge)
-				clip: true
-
-				Text {
-					anchors.centerIn: parent
-					visible: previewWindow.windows.length === 0
-					text: "No windows."
-					font.pixelSize: Theme.fontBody
-					color: Theme.glassTextMuted
-				}
+			// The bar's workspaces again, on the tab: its glass is dense enough
+			// to hide the real ones underneath. Laid out as the bar lays them
+			// out, from the same place, so each lands on its own original
+			// wherever the tab is - also while it slides past others.
+			Row {
+				parent: tabCard.tabLayer
+				x: root.rowOrigin.x - tabCard.tabX
+				y: root.rowOrigin.y - tabCard.tabY
+				spacing: root.spacing
 
 				Repeater {
-					model: previewWindow.windows
+					model: root.slots
 
-					Rectangle {
-						id: thumb
-
+					WorkspacePill {
 						required property var modelData
-						readonly property var at: modelData.lastIpcObject?.at ?? [0, 0]
-						readonly property var size: modelData.lastIpcObject?.size ?? [0, 0]
 
-						x: (at[0] - (miniature.monitor?.x ?? 0)) * miniature.factor
-						y: (at[1] - (miniature.monitor?.y ?? 0)) * miniature.factor
-						width: size[0] * miniature.factor
-						height: size[1] * miniature.factor
-						radius: Theme.spacingXs
-						// Under the picture, for the moment before the first
-						// frame arrives, and for a window that will not give one.
-						color: Theme.glassControl
-						border.width: 1
-						border.color: Theme.glassControlBorder
+						workspaceId: modelData.id
+						workspace: modelData.workspace
+						hovered: root.hoveredId === modelData.id
+					}
+				}
+			}
 
-						// Live only while the card is up: a capture per window
-						// costs the compositor a render each frame.
-						ScreencopyView {
-							anchors.fill: parent
-							captureSource: card.shown ? thumb.modelData.wayland : null
-							live: card.shown
+			// The glass is the tab card's; this is only the tile's layout.
+			GlassTile {
+				id: card
+
+				readonly property bool shown: root.previewOpen && !root.editing
+
+				width: Theme.workspacePreviewWidth
+				color: "transparent"
+				border.width: 0
+				shadowLayers: 0
+
+				title: root.titleFor(root.shownId)
+				trailing: preview.windows.length === 0 ? "Empty"
+					: preview.windows.length === 1 ? "1 window"
+					: `${preview.windows.length} windows`
+
+				contentOpacity: 0
+
+				// The contents come up as the card comes out, and go as it goes.
+				onShownChanged: {
+					swap.stop();
+					fade.to = card.shown ? 1 : 0;
+					fade.restart();
+				}
+
+				NumberAnimation {
+					id: fade
+
+					target: card
+					property: "contentOpacity"
+					duration: Theme.motionEffectsDuration
+					easing.type: Easing.Bezier
+					easing.bezierCurve: Theme.motionEffects
+				}
+
+				// From one workspace to the next: the tab slides and the
+				// card resizes while what it shows fades across.
+				SequentialAnimation {
+					id: swap
+
+					NumberAnimation {
+						target: card
+						property: "contentOpacity"
+						to: 0
+						duration: Theme.motionEffectsFastDuration
+						easing.type: Easing.Bezier
+						easing.bezierCurve: Theme.motionEffectsFast
+					}
+					ScriptAction {
+						script: root.shownId = root.previewId
+					}
+					NumberAnimation {
+						target: card
+						property: "contentOpacity"
+						to: 1
+						duration: Theme.motionEffectsDuration
+						easing.type: Easing.Bezier
+						easing.bezierCurve: Theme.motionEffects
+					}
+				}
+				// The screen in miniature. Hyprland gives window positions in the
+				// monitor's logical pixels, so one factor maps the lot.
+				Rectangle {
+					id: miniature
+
+					readonly property var monitor: preview.workspace?.monitor ?? Hyprland.focusedMonitor
+					readonly property real screenWidth: monitor ? monitor.width / monitor.scale : 1
+					readonly property real screenHeight: monitor ? monitor.height / monitor.scale : 1
+					readonly property real factor: width / screenWidth
+					readonly property color tint: Theme.tagColor(Settings.workspaceColor(root.shownId))
+
+					width: parent.width
+					height: Math.round(screenHeight * factor)
+					radius: Theme.radiusMedium
+					color: Theme.terminalInset
+					border.width: tint.a > 0 ? 1 : 0
+					border.color: Qt.rgba(tint.r, tint.g, tint.b, Theme.tagEdge)
+					clip: true
+
+					Text {
+						anchors.centerIn: parent
+						visible: preview.windows.length === 0
+						text: "No windows."
+						font.pixelSize: Theme.fontBody
+						color: Theme.glassTextMuted
+					}
+
+					Repeater {
+						model: preview.windows
+
+						Rectangle {
+							id: thumb
+
+							required property var modelData
+							readonly property var at: modelData.lastIpcObject?.at ?? [0, 0]
+							readonly property var size: modelData.lastIpcObject?.size ?? [0, 0]
+
+							x: (at[0] - (miniature.monitor?.x ?? 0)) * miniature.factor
+							y: (at[1] - (miniature.monitor?.y ?? 0)) * miniature.factor
+							width: size[0] * miniature.factor
+							height: size[1] * miniature.factor
+							radius: Theme.spacingXs
+							// Under the picture, for the moment before the first
+							// frame arrives, and for a window that will not give one.
+							color: Theme.glassControl
+							border.width: 1
+							border.color: Theme.glassControlBorder
+
+							// Live only while the card is up: a capture per window
+							// costs the compositor a render each frame. On the way
+							// out it keeps its last frame, or the windows would go
+							// grey the moment the card starts to leave.
+							ScreencopyView {
+								anchors.fill: parent
+								captureSource: card.shown || preview.visible
+									? thumb.modelData.wayland : null
+								live: card.shown
+							}
 						}
 					}
 				}
-			}
 
-			Column {
-				width: parent.width
-				spacing: 2
-				visible: previewWindow.windows.length > 0
+				Column {
+					width: parent.width
+					spacing: 2
+					visible: preview.windows.length > 0
 
-				Repeater {
-					model: previewWindow.windows.slice(0, 4)
+					Repeater {
+						model: preview.windows.slice(0, 4)
+
+						Text {
+							required property var modelData
+
+							width: parent.width
+							elide: Text.ElideRight
+							text: modelData.title || modelData.lastIpcObject?.class || "Untitled window"
+							font.pixelSize: Theme.fontCaption
+							color: Theme.glassTextSecondary
+						}
+					}
 
 					Text {
-						required property var modelData
-
-						width: parent.width
-						elide: Text.ElideRight
-						text: modelData.title || modelData.lastIpcObject?.class || "Untitled window"
+						visible: preview.windows.length > 4
+						text: `and ${preview.windows.length - 4} more`
 						font.pixelSize: Theme.fontCaption
-						color: Theme.glassTextSecondary
+						color: Theme.glassTextMuted
 					}
-				}
-
-				Text {
-					visible: previewWindow.windows.length > 4
-					text: `and ${previewWindow.windows.length - 4} more`
-					font.pixelSize: Theme.fontCaption
-					color: Theme.glassTextMuted
 				}
 			}
 		}
@@ -449,7 +487,7 @@ Row {
 	// The whole screen, so a click anywhere else is a click this can hear -
 	// a client only receives input on its own surfaces.
 	PanelWindow {
-		visible: root.editing || nameCard.opacity > 0.01
+		visible: root.editing || nameTab.out
 
 		anchors {
 			top: true
@@ -465,10 +503,7 @@ Row {
 		WlrLayershell.namespace: "groma:workspace-name"
 		WlrLayershell.keyboardFocus: root.editing ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-		BackgroundEffect.blurRegion: Region {
-			item: nameCard
-			radius: Theme.radiusPanel
-		}
+		BackgroundEffect.blurRegion: nameTab.blurRegion
 
 		onVisibleChanged: if (visible) field.focusInput()
 
@@ -478,109 +513,136 @@ Row {
 			anchors.fill: parent
 
 			onClicked: event => {
-				const inside = nameCard.mapFromItem(catcher, event.x, event.y);
-				if (!nameCard.contains(inside))
+				const onCard = nameTab.bodyItem.contains(nameTab.bodyItem.mapFromItem(catcher, event.x, event.y));
+				const onTab = nameTab.tabLayer.contains(nameTab.tabLayer.mapFromItem(catcher, event.x, event.y));
+				if (!onCard && !onTab)
 					root.editing = false;
 			}
 		}
 
-		GlassTile {
-			id: nameCard
+		// Hangs from the workspace being named, as its preview does.
+		TabCard {
+			id: nameTab
 
-			x: Math.max(Theme.spacingS, Math.min(root.editX, parent.width - width - Theme.spacingS))
-			y: (root.editing ? 0 : -6) + Theme.barHeight + Theme.barPopupGap
+			anchors.fill: parent
+			anchorRect: Qt.rect(root.editPill.x, root.editPill.y,
+				root.editPill.width, root.editPill.height)
+			tabPadding: Theme.workspaceTabLip
+			open: root.editing
+			contentHeight: nameCard.implicitHeight
 
-			title: `Workspace ${root.editId}`
-
-			opacity: root.editing ? 1 : 0
-
-			Behavior on opacity {
-				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
-			}
-			Behavior on y {
-				NumberAnimation { duration: 180; easing.type: Easing.Bezier; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
-			}
-
-			GlassField {
-				id: field
-
-				width: parent.width
-				placeholder: "Terminals, a repo, YouTube"
-
-				onAccepted: root.commitEdit()
-				Keys.onEscapePressed: root.editing = false
-			}
-
-			// A colour takes effect on the click, as in Chrome: the pill
-			// behind the card is the preview. The name still waits for Enter.
-			Item {
-				id: swatches
-
-				readonly property string chosen: Settings.workspaceColors?.[String(root.editId)] ?? ""
-				readonly property var keys: ["", ...Theme.tagPalette.map(tag => tag.key)]
-
-				width: parent.width
-				// Room for the ring, which is drawn outside the disc.
-				height: Theme.tagSwatchSize + 6
+			// The bar's workspaces on the tab, as on the preview's.
+			Row {
+				parent: nameTab.tabLayer
+				x: root.rowOrigin.x - nameTab.tabX
+				y: root.rowOrigin.y - nameTab.tabY
+				spacing: root.spacing
 
 				Repeater {
-					model: swatches.keys
+					model: root.slots
 
-					Item {
-						id: swatch
+					WorkspacePill {
+						required property var modelData
 
-						required property string modelData
-						required property int index
-						readonly property color tint: Theme.tagColor(modelData)
-						readonly property bool chosen: swatches.chosen === modelData
-
-						x: index * (swatches.width - Theme.tagSwatchSize) / (swatches.keys.length - 1)
-						anchors.verticalCenter: parent.verticalCenter
-						width: Theme.tagSwatchSize
-						height: Theme.tagSwatchSize
-
-						// The selection ring, outside, so choosing moves nothing.
-						Rectangle {
-							anchors.fill: parent
-							anchors.margins: -3
-							radius: width / 2
-							color: "transparent"
-							border.width: 2
-							border.color: Theme.glassChipSelectedBorder
-							visible: swatch.chosen
-						}
-
-						Rectangle {
-							anchors.fill: parent
-							radius: width / 2
-							// "None" is the empty disc: a track, not a colour.
-							color: swatch.modelData === "" ? Theme.glassTrack : swatch.tint
-							border.width: 1
-							border.color: swatch.modelData === "" ? Theme.glassTrackBorder : Theme.glassEdge
-							opacity: swatchMouse.containsMouse || swatch.chosen ? 1.0 : 0.85
-						}
-
-						MouseArea {
-							id: swatchMouse
-
-							anchors.fill: parent
-							hoverEnabled: true
-							cursorShape: Qt.PointingHandCursor
-							onClicked: {
-								Settings.setWorkspaceColor(root.editId, swatch.modelData);
-								field.focusInput();
-							}
-						}
+						workspaceId: modelData.id
+						workspace: modelData.workspace
+						hovered: root.hoveredId === modelData.id
 					}
 				}
 			}
 
-			Text {
-				width: parent.width
-				wrapMode: Text.WordWrap
-				text: "Leave it empty to show just the number."
-				font.pixelSize: Theme.fontCaption
-				color: Theme.glassTextMuted
+			// The glass is the tab card's; this is only the tile's layout.
+			GlassTile {
+				id: nameCard
+
+				width: Theme.tileWidth
+				color: "transparent"
+				border.width: 0
+				shadowLayers: 0
+
+				title: `Workspace ${root.editId}`
+
+				GlassField {
+					id: field
+
+					width: parent.width
+					placeholder: "Terminals, a repo, YouTube"
+
+					onAccepted: root.commitEdit()
+					Keys.onEscapePressed: root.editing = false
+				}
+
+				// A colour takes effect on the click, as in Chrome: the pill
+				// behind the card is the preview. The name still waits for Enter.
+				Item {
+					id: swatches
+
+					readonly property string chosen: Settings.workspaceColors?.[String(root.editId)] ?? ""
+					readonly property var keys: ["", ...Theme.tagPalette.map(tag => tag.key)]
+
+					width: parent.width
+					// Room for the ring, which is drawn outside the disc.
+					height: Theme.tagSwatchSize + 6
+
+					Repeater {
+						model: swatches.keys
+
+						Item {
+							id: swatch
+
+							required property string modelData
+							required property int index
+							readonly property color tint: Theme.tagColor(modelData)
+							readonly property bool chosen: swatches.chosen === modelData
+
+							x: index * (swatches.width - Theme.tagSwatchSize) / (swatches.keys.length - 1)
+							anchors.verticalCenter: parent.verticalCenter
+							width: Theme.tagSwatchSize
+							height: Theme.tagSwatchSize
+
+							// The selection ring, outside, so choosing moves nothing.
+							Rectangle {
+								anchors.fill: parent
+								anchors.margins: -3
+								radius: width / 2
+								color: "transparent"
+								border.width: 2
+								border.color: Theme.glassChipSelectedBorder
+								visible: swatch.chosen
+							}
+
+							Rectangle {
+								anchors.fill: parent
+								radius: width / 2
+								// "None" is the empty disc: a track, not a colour.
+								color: swatch.modelData === "" ? Theme.glassTrack : swatch.tint
+								border.width: 1
+								border.color: swatch.modelData === "" ? Theme.glassTrackBorder : Theme.glassEdge
+								opacity: swatchMouse.containsMouse || swatch.chosen ? 1.0 : 0.85
+							}
+
+							MouseArea {
+								id: swatchMouse
+
+								anchors.fill: parent
+								hoverEnabled: true
+								cursorShape: Qt.PointingHandCursor
+								onClicked: {
+									Settings.setWorkspaceColor(root.editId, swatch.modelData);
+									field.focusInput();
+								}
+							}
+						}
+					}
+				}
+
+				Text {
+					width: parent.width
+					wrapMode: Text.WordWrap
+					text: "Leave it empty to show just the number."
+					font.pixelSize: Theme.fontCaption
+					color: Theme.glassTextMuted
+				}
 			}
 		}
 	}

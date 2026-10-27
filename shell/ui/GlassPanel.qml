@@ -39,35 +39,10 @@ Rectangle {
 		? (panel.danger ? Theme.glassEdgeDanger : Theme.glassEdge)
 		: (panel.danger ? Theme.danger : Theme.borderSubtle)
 
-	// Concentric rings of decreasing opacity, standing in for a blurred
-	// shadow. The curve matters more than the count: a linear fade reads as
-	// banding, so opacity falls off as a power of the distance.
-	Repeater {
-		model: Theme.glass ? panel.shadowLayers : 0
-
-		Rectangle {
-			id: ring
-
-			required property int index
-
-			readonly property real spread: ring.index + 1
-			readonly property real reach: Math.max(1, panel.shadowLayers)
-			// Shadows fall downward.
-			readonly property real drift: ring.spread * Theme.glassShadowDrift
-
-			anchors.fill: parent
-			anchors.leftMargin: -ring.spread
-			anchors.rightMargin: -ring.spread
-			anchors.topMargin: -ring.spread + ring.drift
-			anchors.bottomMargin: -ring.spread - ring.drift
-
-			radius: parent.radius + ring.spread
-			color: "transparent"
-			border.width: 1
-
-			border.color: Qt.rgba(0, 0, 0, Theme.glassShadowAlpha
-				* Math.pow(1 - ring.index / ring.reach, Theme.glassShadowFalloff))
-		}
+	GlassShadow {
+		anchors.fill: parent
+		radius: panel.radius
+		layers: panel.shadowLayers
 	}
 
 	// Declared last, so caller content sits above the glass.

@@ -16,6 +16,9 @@ GlassPanel {
 	property color trailingColor: Theme.glassTextPrimary
 
 	default property alias content: column.data
+	// The header and contents without the glass: a tile that changes what it
+	// shows can fade one into the next while the panel stays put.
+	property alias contentOpacity: column.opacity
 
 	radius: Theme.radiusPanel
 	implicitWidth: Theme.tileWidth
