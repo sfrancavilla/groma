@@ -632,7 +632,9 @@ Scope {
 		readonly property string iconFile: root.iconFor(name)
 
 		sheen: false
-		tint: root.tint(label)
+		// Plain pearl behind a real icon; the colour is only for the letter
+		// that stands in when there is none.
+		tint: appDisc.iconFile !== "" ? "transparent" : root.tint(label)
 
 		Image {
 			anchors.centerIn: parent

@@ -757,8 +757,8 @@ Scope {
 		root.close();
 	}
 
-	// A colour for each application, from its name, so any icon theme - or
-	// none - reads as one set. The same name always gets the same hue.
+	// A colour for each application, from its name, for the letter disc that
+	// stands in when it has no icon. The same name always gets the same hue.
 	function hue(name) {
 		let h = 0;
 		for (const ch of name)
@@ -1308,7 +1308,9 @@ Scope {
 					width: 48
 					height: 48
 					sheen: false
-					tint: root.tint(tile.modelData.name)
+					// Plain pearl behind a real icon; the colour is only for the
+					// letter that stands in when there is none.
+					tint: tile.iconFile !== "" ? "transparent" : root.tint(tile.modelData.name)
 
 					Image {
 						anchors.centerIn: parent
@@ -1426,7 +1428,7 @@ Scope {
 						width: slot.topHit ? 36 : 30
 						height: width
 						sheen: false
-						tint: root.tint(slot.entry.name)
+						tint: slot.iconFile !== "" ? "transparent" : root.tint(slot.entry.name)
 
 						Image {
 							anchors.centerIn: parent
