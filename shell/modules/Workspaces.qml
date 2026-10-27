@@ -21,15 +21,14 @@ Row {
 
 	spacing: Theme.spacingS
 
-	// Every workspace Hyprland has, and every named or coloured one it does
-	// not have yet.
+	// Every workspace Hyprland has, and every named one it does not have yet.
+	// The name is what holds the place: a colour alone is remembered for when
+	// the workspace comes back, but does not keep an empty one in the bar.
 	readonly property var slots: {
 		const live = Hyprland.workspaces.values;
-		const tagged = [...Object.keys(Settings.workspaceNames ?? {}),
-			...Object.keys(Settings.workspaceColors ?? {})].map(Number);
 		const liveIds = live.map(ws => ws.id);
-		const waiting = tagged
-			.filter((id, at) => id > 0 && !liveIds.includes(id) && tagged.indexOf(id) === at);
+		const waiting = Object.keys(Settings.workspaceNames ?? {}).map(Number)
+			.filter(id => id > 0 && !liveIds.includes(id));
 
 		return [...live.map(ws => ({ id: ws.id, workspace: ws })),
 				...waiting.map(id => ({ id: id, workspace: null }))]

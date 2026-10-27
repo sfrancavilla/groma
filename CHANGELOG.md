@@ -4,7 +4,7 @@
 
 - **Named workspaces** — right-click a workspace in the bar, or SUPER+N, to
   name it for what it holds and give it a colour, as with Chrome's tab
-  groups. A tagged workspace keeps its place in the bar when it is empty.
+  groups. A named workspace keeps its place in the bar when it is empty.
   Pointing at one shows a live miniature of its windows.
 
 ## v0.1.0-alpha — 2026-10-27
