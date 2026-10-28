@@ -276,6 +276,15 @@ Singleton {
 		adapter.resumeOnBudReplaced = value;
 	}
 
+	// The day a week starts on in the calendar: 1 for Monday, 0 for Sunday,
+	// or null for the locale's. Not the locale's alone, because a machine
+	// set to en_US outside the US is the usual case, not the odd one.
+	readonly property alias weekStart: adapter.weekStart
+
+	function setWeekStart(value) {
+		adapter.weekStart = value;
+	}
+
 	// What a screen recording hears: the computer's own sound, and the
 	// microphone. Sound on, microphone off - a recording that picks up the
 	// room by default has asked too late, as with the public address.
@@ -330,6 +339,7 @@ Singleton {
 			property bool clockDate: true
 			property bool pauseOnBudRemoved: true
 			property bool resumeOnBudReplaced: true
+			property var weekStart: null
 			property bool recordSound: true
 			property bool recordMicrophone: false
 		}

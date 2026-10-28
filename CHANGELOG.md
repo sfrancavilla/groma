@@ -39,6 +39,10 @@
   they are made. Hyprland's share is
   written to `~/.config/hypr/groma.lua`, loaded before `machine.lua`, so a
   hand-written override still wins.
+- **Calendar** — the clock in the bar opens a month, hung centred under it:
+  today lit, the ISO week number, arrows or a scroll to turn the page and
+  Today to come back. Settings → Date & Time chooses whether the week starts
+  on Monday or Sunday, since an en_US machine outside the US is common.
 - **Screenshots and recordings** — Print freezes the screen and lays a
   chooser over it: drag out an area, point at a window, or pick the whole
   screen, from the mouse or the keyboard (Tab walks the windows, Ctrl+Enter

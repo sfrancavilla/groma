@@ -8,11 +8,6 @@ import "ui"
 import "integrations/nothingear"
 
 ShellRoot {
-	SystemClock {
-		id: clock
-		precision: SystemClock.Minutes
-	}
-
 	// Settings' Hyprland choices, kept in step with ~/.config/hypr/groma.lua.
 	// Named here because a singleton nobody mentions is never made, and the
 	// file should follow settings.json from the start, not from the first
@@ -141,9 +136,6 @@ ShellRoot {
 		// just smear a band across the top of the wallpaper.
 		color: Theme.glass ? "transparent" : Theme.surface
 
-		readonly property color barText:
-			Theme.glass ? Theme.glassTextPrimary : Theme.textPrimary
-
 		// LEFT: workspaces, by number or by what they are for.
 		Workspaces {
 			anchors {
@@ -211,15 +203,9 @@ ShellRoot {
 
 		}
 
-		// CENTER: clock		
-		Text {
+		// CENTER: the clock, and the month it opens.
+		ClockControl {
 			anchors.centerIn: parent
-			color: bar.barText
-			style: Theme.glass ? Text.Raised : Text.Normal
-			styleColor: Theme.glassTextShadow
-			// As chosen in Settings: the date or not, 24 hours or 12.
-			text: Qt.formatDateTime(clock.date,
-				(Settings.clockDate ? "ddd d MMM " : "") + (Settings.clock24 ? "HH:mm" : "h:mm AP"))
 		}
  
 	}

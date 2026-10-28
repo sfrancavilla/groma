@@ -35,7 +35,7 @@ Scope {
 		{ id: "idle", title: "Idle & Sleep",
 			words: "idle sleep suspend lock dim screen off timeout battery power" },
 		{ id: "datetime", title: "Date & Time",
-			words: "date time clock 24-hour 12-hour hours am pm bar time zone timezone" },
+			words: "date time clock 24-hour 12-hour hours am pm bar time zone timezone calendar week monday sunday" },
 		{ id: "wallpaper", title: "Wallpaper",
 			words: "wallpaper background picture desktop image photo" },
 		{ id: "earbuds", title: "Earbuds",
@@ -1368,6 +1368,32 @@ Scope {
 									Switch {
 										checked: Settings.clockDate
 										onToggled: Settings.setClockDate(!checked)
+									}
+								}
+							}
+
+							Heading { text: "CALENDAR" }
+
+							Group {
+								SettingRow {
+									divider: false
+									title: "Week starts on"
+									caption: Settings.weekStart === null ? "As the language has it" : "In the clock's calendar"
+
+									Row {
+										spacing: 6
+
+										Repeater {
+											model: [[1, "Monday"], [0, "Sunday"]]
+
+											Chip {
+												required property var modelData
+
+												text: modelData[1]
+												active: (Settings.weekStart ?? Qt.locale().firstDayOfWeek % 7) === modelData[0]
+												onClicked: Settings.setWeekStart(modelData[0])
+											}
+										}
 									}
 								}
 							}

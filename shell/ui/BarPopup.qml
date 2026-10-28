@@ -24,6 +24,8 @@ Item {
 	// The card's width. A tile's unless what it holds wants more room.
 	property real cardWidth: Theme.tileWidth
 	property string trailing: ""
+	// Hung from the middle of the bar: the card opens centred under it.
+	property bool centred: false
 	property color trailingColor: Theme.glassTextPrimary
 
 	// Names this popup's layer-shell surfaces, so `hyprctl layers` can tell
@@ -152,6 +154,7 @@ Item {
 			anchorRect: root.triggerRect
 			// Opened from the right half of the bar, it opens leftward.
 			alignRight: root.triggerRect.x + root.triggerRect.width / 2 > root.barWidth / 2
+			centred: root.centred
 			open: root.open
 			bodyWidth: root.cardWidth
 			contentHeight: tile.implicitHeight

@@ -101,7 +101,7 @@ Which puts every surface built so far in exactly one place:
 
 | | Header | Footer |
 | --- | --- | --- |
-| Volume, battery, Wi-Fi, System tiles | none | none |
+| Volume, battery, Wi-Fi, System, clock tiles | none | none |
 | Network picker | X | `Join Hidden Network…` · `Join` |
 | Its join page | back | `Cancel` `Join` |
 | Bluetooth tile | none | none |
@@ -175,13 +175,14 @@ The panel is 2880×1920 at scale 2, so one logical pixel is two physical ones.
 
 ## What the bar opens
 
-Everything the bar opens - the sound, battery, Wi-Fi, Bluetooth, system and
-power tiles, and a workspace's preview and name field - is a **tab card**
+Everything the bar opens - the clock, sound, battery, Wi-Fi, Bluetooth,
+system and power tiles, and a workspace's preview and name field - is a **tab card**
 (`ui/TabCard.qml`). Not a tile floating under the bar.
 
 - **It hangs from what opened it.** A tab stands round the glyph or pill and
   runs into the card in a curve. Left of centre the card opens rightward from
-  the tab, right of centre leftward, so it never leaves the screen.
+  the tab, right of centre leftward, so it never leaves the screen. The clock,
+  in the middle, opens its card centred, with a curve on either side.
 - **It grows out of the tab, and goes back in.** `Theme.motionSpatial` for
   anything that moves or resizes, `Theme.motionEffects` for opacity - never a
   duration or a curve of its own. Pointed at something else, the tab slides

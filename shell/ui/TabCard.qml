@@ -25,6 +25,9 @@ Item {
 	property real tabPadding: Theme.tabPadding
 	// Things on the right of the bar open leftward, so the card stays on screen.
 	property bool alignRight: false
+	// The clock, in the middle of the bar, opens a card centred under it: the
+	// tab meets the body half way along, with a join on either side.
+	property bool centred: false
 	property bool open: false
 	property real bodyWidth: Theme.tileWidth
 	// How tall the card is when all the way out: the height of its contents.
@@ -39,7 +42,8 @@ Item {
 	property real tabX: card.anchorRect.x - card.tabPadding
 	property real tabWidth: card.anchorRect.width + card.tabPadding * 2
 	readonly property real tabY: Theme.tabInset
-	readonly property real bodyX: card.alignRight ? card.tabX + card.tabWidth - card.bodyWidth : card.tabX
+	readonly property real bodyX: card.centred ? card.tabX + (card.tabWidth - card.bodyWidth) / 2
+		: card.alignRight ? card.tabX + card.tabWidth - card.bodyWidth : card.tabX
 
 	// How far the card is out, 0 to 1 - a little past 1 on the way, as the
 	// curve overshoots. The first part of it drops the tab from the screen
@@ -182,8 +186,9 @@ Item {
 			readonly property real left: card.outlineLeft
 			readonly property real rightEdge: card.outlineRight
 
-			fillColor: Theme.tabCardSurface
-			strokeColor: Theme.glassEdge
+			// Centred, the outline below draws it instead.
+			fillColor: card.centred ? "transparent" : Theme.tabCardSurface
+			strokeColor: card.centred ? "transparent" : Theme.glassEdge
 			strokeWidth: 1
 
 			startX: edge.left
@@ -227,6 +232,56 @@ Item {
 			PathArc { x: edge.rightEdge - edge.big; y: edge.bottom; radiusX: edge.big; radiusY: edge.big }
 			PathLine { x: edge.left + edge.big; y: edge.bottom }
 			PathArc { x: edge.left; y: edge.bottom - edge.big; radiusX: edge.big; radiusY: edge.big }
+		}
+
+		// Centred: along the body's top to a join, up and over the tab, down
+		// into a second join, and on along the top. With no body out, the
+		// joins have no radius and the outline is the tab alone.
+		ShapePath {
+			id: middle
+
+			readonly property real r: card.tabRadius
+			readonly property real join: card.joinRadius
+			readonly property real big: card.bodyRadius
+			readonly property real tabLeft: card.tabX
+			readonly property real tabRight: card.tabX + card.tabWidth
+			readonly property real tabTop: card.tabY
+			readonly property real top: card.bodyY
+			readonly property real bottom: card.bodyY + card.bodyHeight
+			readonly property real left: card.outlineLeft
+			readonly property real rightEdge: card.outlineRight
+
+			fillColor: card.centred ? Theme.tabCardSurface : "transparent"
+			strokeColor: card.centred ? Theme.glassEdge : "transparent"
+			strokeWidth: 1
+
+			startX: middle.left
+			startY: middle.bottom - middle.big
+
+			PathLine { x: middle.left; y: middle.top + middle.big }
+			PathArc { x: middle.left + middle.big; y: middle.top; radiusX: middle.big; radiusY: middle.big }
+			PathLine { x: middle.tabLeft - middle.join; y: middle.top }
+			PathArc {
+				x: middle.tabLeft; y: middle.top - middle.join
+				radiusX: middle.join; radiusY: middle.join
+				direction: PathArc.Counterclockwise
+			}
+			PathLine { x: middle.tabLeft; y: middle.tabTop + middle.r }
+			PathArc { x: middle.tabLeft + middle.r; y: middle.tabTop; radiusX: middle.r; radiusY: middle.r }
+			PathLine { x: middle.tabRight - middle.r; y: middle.tabTop }
+			PathArc { x: middle.tabRight; y: middle.tabTop + middle.r; radiusX: middle.r; radiusY: middle.r }
+			PathLine { x: middle.tabRight; y: middle.top - middle.join }
+			PathArc {
+				x: middle.tabRight + middle.join; y: middle.top
+				radiusX: middle.join; radiusY: middle.join
+				direction: PathArc.Counterclockwise
+			}
+			PathLine { x: middle.rightEdge - middle.big; y: middle.top }
+			PathArc { x: middle.rightEdge; y: middle.top + middle.big; radiusX: middle.big; radiusY: middle.big }
+			PathLine { x: middle.rightEdge; y: middle.bottom - middle.big }
+			PathArc { x: middle.rightEdge - middle.big; y: middle.bottom; radiusX: middle.big; radiusY: middle.big }
+			PathLine { x: middle.left + middle.big; y: middle.bottom }
+			PathArc { x: middle.left; y: middle.bottom - middle.big; radiusX: middle.big; radiusY: middle.big }
 		}
 	}
 
