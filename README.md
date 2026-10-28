@@ -217,7 +217,15 @@ A fingerprint is a second, separate conversation, on Groma's own stack
 beside the password, not before it, its misses are not faillock strikes, and
 nothing outside the lock screen changes. Any reader libfprint drives works;
 without one, or without an enrolled finger, the lock screen shows the password
-alone. Five misses and it stops until the next lock. Fingers are added and
+alone. Five misses and it stops until the next lock.
+
+Polkit prompts take a finger too, but not side by side: polkitd trusts only
+its own helper's PAM stack, so the installer puts `pam_fprintd` before the
+password in `/etc/pam.d/polkit-1` (`system/polkit-1.pam`) — ten seconds, three
+tries, skipped with the lid shut. A password typed meanwhile is sent when the
+reader gives up. `sudo rm /etc/pam.d/polkit-1` goes back to password only.
+
+Fingers are added and
 removed in Fingerprint, from the launcher (`qs -c groma ipc call fingerprint
 opened`).
 

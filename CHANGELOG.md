@@ -16,7 +16,9 @@
 - **Fingerprint unlock** — on a laptop with a reader fprintd supports, touch it
   at the lock screen instead of typing; the password field works alongside
   it. The installer adds fprintd when it finds a reader. Off while the lid is
-  shut, and after five misses until the next lock.
+  shut, and after five misses until the next lock. Polkit prompts take a
+  finger as well: the reader gets ten seconds first, and a password typed
+  meanwhile goes in as soon as it gives up.
 - **Fingerprint** — add and remove fingers from the launcher: pick the finger,
   then touch the reader as the print fills in. On a laptop with a reader and
   nothing enrolled, Groma says so once, shortly after login.

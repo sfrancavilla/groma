@@ -30,25 +30,82 @@ Scope {
 		// lost the instant a follow-up line arrives.
 		property var supplementaryLines: []
 
+		// The reader's turn. Where there is one, /etc/pam.d/polkit-1 puts
+		// pam_fprintd before the password (system/polkit-1.pam), and it talks
+		// in info lines before anything asks for a response. Without a reader
+		// the password is asked for at once and this stays empty.
+		property string fingerPrompt: ""
+		property string fingerError: ""
+
+		readonly property bool readerTurn: dialogWindow.active
+			&& !(dialogWindow.flow?.isResponseRequired ?? false)
+			&& dialogWindow.fingerPrompt !== ""
+
+		// A password typed while the reader has its turn, sent the moment PAM
+		// asks for one - so preferring the password never means waiting.
+		property string pendingPassword: ""
+
 		// A new request starts with a clean slate.
 		onFlowChanged: {
 			dialogWindow.supplementaryLines = [];
 			dialogWindow.confirmingCancel = false;
+			dialogWindow.fingerPrompt = "";
+			dialogWindow.fingerError = "";
+			dialogWindow.pendingPassword = "";
 		}
 
 		Connections {
 			target: dialogWindow.flow
 
 			function onSupplementaryMessageChanged() {
-				const message = dialogWindow.flow.supplementaryMessage;
+				const flow = dialogWindow.flow;
+				const message = flow.supplementaryMessage;
 				if (message === "")
 					return;
+
+				// Before the password, a line is the reader's: what to do, or
+				// a touch that did not match.
+				if (!flow.isResponseRequired) {
+					if (!flow.supplementaryIsError) {
+						dialogWindow.fingerPrompt = message;
+						return;
+					}
+					if (dialogWindow.fingerPrompt !== "") {
+						dialogWindow.fingerError = message;
+						fingerErrorTimeout.restart();
+						return;
+					}
+				}
 
 				// Keep the last few lines so a long retry sequence cannot grow
 				// the dialog without bound.
 				dialogWindow.supplementaryLines =
 					dialogWindow.supplementaryLines.concat(message).slice(-4);
 			}
+
+			function onIsResponseRequiredChanged() {
+				const flow = dialogWindow.flow;
+				if (!flow.isResponseRequired || dialogWindow.pendingPassword === "")
+					return;
+
+				const value = dialogWindow.pendingPassword;
+				dialogWindow.pendingPassword = "";
+				flow.submit(value);
+			}
+
+			// A wrong password: Quickshell starts a new session, and the
+			// reader takes its turn again.
+			function onAuthenticationFailed() {
+				dialogWindow.fingerPrompt = "";
+				dialogWindow.fingerError = "";
+			}
+		}
+
+		Timer {
+			id: fingerErrorTimeout
+
+			interval: 2500
+			onTriggered: dialogWindow.fingerError = ""
 		}
 
 		// Abandoning a polkit prompt makes pam_unix fail, and pam_faillock
@@ -58,7 +115,9 @@ Scope {
 		property bool confirmingCancel: false
 
 		function requestCancel() {
-			if (dialogWindow.confirmingCancel) {
+			// While the reader has its turn pam_unix has not run, so there is
+			// nothing for faillock to count.
+			if (dialogWindow.confirmingCancel || dialogWindow.readerTurn) {
 				dialogWindow.flow?.cancelAuthenticationRequest();
 				return;
 			}
@@ -75,7 +134,14 @@ Scope {
 		}
 
 		function submitPassword() {
-			dialogWindow.flow?.submit(password.text);
+			const flow = dialogWindow.flow;
+			if (flow === null || password.text === "")
+				return;
+
+			if (flow.isResponseRequired)
+				flow.submit(password.text);
+			else
+				dialogWindow.pendingPassword = password.text;
 			password.clear();
 		}
 
@@ -130,16 +196,25 @@ Scope {
 				id: password
 
 				width: parent.width
-				visible: dialogWindow.flow?.isResponseRequired ?? false
 
+				// There from the start, though PAM may not ask yet: while the
+				// reader has its turn, what is typed waits for it.
 				// polkitd says what to ask for, so the field says it too.
-				placeholder: dialogWindow.flow?.inputPrompt ?? "Password"
+				placeholder: dialogWindow.pendingPassword !== "" ? "Waiting for the reader…"
+					: (dialogWindow.flow?.isResponseRequired ?? false)
+						? dialogWindow.flow.inputPrompt : "Password"
 
 				echoMode: (dialogWindow.flow?.responseVisible ?? false)
 					? TextInput.Normal : TextInput.Password
 
-				onVisibleChanged: if (visible) focusInput()
 				onAccepted: dialogWindow.submitPassword()
+			}
+
+			FingerprintLine {
+				visible: dialogWindow.readerTurn
+				isError: dialogWindow.fingerError !== ""
+				text: dialogWindow.fingerError !== ""
+					? dialogWindow.fingerError : dialogWindow.fingerPrompt
 			}
 
 			// Why cancelling is not free.
@@ -181,7 +256,8 @@ Scope {
 				DialogButton {
 					text: "Authenticate"
 					variant: "primary"
-					enabled: dialogWindow.flow?.isResponseRequired ?? false
+					enabled: (dialogWindow.flow?.isResponseRequired ?? false)
+						|| (dialogWindow.readerTurn && password.text !== "")
 					onClicked: dialogWindow.submitPassword()
 				}
 			}

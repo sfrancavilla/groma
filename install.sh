@@ -202,6 +202,18 @@ sudo install -Dm644 "$GROMA/system/groma-lock-on-sleep.service" /etc/systemd/sys
 sudo systemctl daemon-reload
 sudo systemctl enable groma-lock-on-sleep.service
 
+if [ -n "$fingerprint" ]; then
+	say "A fingerprint at polkit prompts"
+	# The reader before the password (system/polkit-1.pam). Copied, not
+	# linked: root runs both. A polkit-1 someone else wrote is left alone.
+	sudo install -Dm755 "$GROMA/system/groma-fingerprint-skip" /usr/local/lib/groma/groma-fingerprint-skip
+	if [ ! -e /etc/pam.d/polkit-1 ] || sudo grep -q '^# Groma:' /etc/pam.d/polkit-1; then
+		sudo install -Dm644 "$GROMA/system/polkit-1.pam" /etc/pam.d/polkit-1
+	else
+		note "/etc/pam.d/polkit-1 is not Groma's; left as it is."
+	fi
+fi
+
 say "Shortening the lockout after mistyped passwords"
 # pam_faillock locks an account for ten minutes after three wrong passwords -
 # at the lock screen that is ten minutes outside your own session. Two is

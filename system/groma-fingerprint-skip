@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+# Whether polkit should skip the fingerprint and ask for the password at once:
+# exit 0 to skip. Run by pam_exec from /etc/pam.d/polkit-1 (polkit-1.pam).
+#
+# Root runs it, inside polkit's sandboxed helper, so it is copied rather than
+# linked - a file the user can edit must not decide anything here. Skipping
+# only ever makes authentication stricter, never looser.
+
+# The lid is shut: the reader is out of reach, and waiting for it would only
+# delay the password. A machine with no lid has no file, and does not skip.
+grep -qs closed /proc/acpi/button/lid/*/state && exit 0
+
+exit 1

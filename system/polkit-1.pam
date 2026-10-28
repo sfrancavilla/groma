@@ -1,0 +1,23 @@
+#%PAM-1.0
+#
+# Groma: a fingerprint before the password at polkit prompts. Installed to
+# /etc/pam.d/polkit-1 by install.sh where there is a reader, over the
+# distribution's /usr/lib/pam.d/polkit-1, which is the last three lines alone.
+# Remove it to go back.
+#
+# polkitd trusts only its own helper's PAM conversation, so this cannot run
+# beside the password the way the lock screen's does: the reader goes first,
+# for ten seconds - pam_fprintd's minimum - and three tries, then the
+# password. The dialog takes a password typed in the meantime and sends it
+# when the reader gives up.
+#
+# Skipped with the lid shut, where the reader cannot be reached. A miss is
+# not a faillock strike; a finger also works while faillock holds the
+# password locked, since it is a separate factor with its own limit.
+
+auth       [success=1 default=ignore]  pam_exec.so quiet /usr/local/lib/groma/groma-fingerprint-skip
+auth       sufficient                  pam_fprintd.so max-tries=3 timeout=10
+auth       include                     system-auth
+account    include                     system-auth
+password   include                     system-auth
+session    include                     system-auth

@@ -2,7 +2,6 @@ import Quickshell
 import Quickshell.Services.Pam
 import QtQuick
 import ".."
-import "../icons"
 import "../ui"
 
 // The unlock face: clock, prompt, and the PAM conversation behind it.
@@ -133,28 +132,14 @@ Item {
 
 		// While the reader waits, say so; when a finger fails, say that here
 		// too, apart from what the password line says.
-		Row {
+		FingerprintLine {
 			readonly property Fingerprint fp: content.fingerprint
 			readonly property bool hasStatus: fp !== null && fp.status !== ""
-			readonly property color tone: hasStatus ? Theme.warning : Theme.glassTextMuted
 
 			anchors.horizontalCenter: parent.horizontalCenter
-			spacing: Theme.spacingS
 			visible: fp !== null && (fp.listening || hasStatus)
-
-			FingerprintIcon {
-				anchors.verticalCenter: parent.verticalCenter
-				width: 13
-				height: 14
-				color: parent.tone
-			}
-
-			Text {
-				anchors.verticalCenter: parent.verticalCenter
-				text: parent.hasStatus ? parent.fp.status : parent.fp?.prompt ?? ""
-				font.pixelSize: Theme.fontCaption
-				color: parent.tone
-			}
+			isError: hasStatus
+			text: hasStatus ? fp.status : fp?.prompt ?? ""
 		}
 
 		Text {
