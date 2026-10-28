@@ -276,6 +276,20 @@ Singleton {
 		adapter.resumeOnBudReplaced = value;
 	}
 
+	// What a screen recording hears: the computer's own sound, and the
+	// microphone. Sound on, microphone off - a recording that picks up the
+	// room by default has asked too late, as with the public address.
+	readonly property alias recordSound: adapter.recordSound
+	readonly property alias recordMicrophone: adapter.recordMicrophone
+
+	function setRecordSound(value) {
+		adapter.recordSound = value;
+	}
+
+	function setRecordMicrophone(value) {
+		adapter.recordMicrophone = value;
+	}
+
 	FileView {
 		id: file
 
@@ -316,6 +330,8 @@ Singleton {
 			property bool clockDate: true
 			property bool pauseOnBudRemoved: true
 			property bool resumeOnBudReplaced: true
+			property bool recordSound: true
+			property bool recordMicrophone: false
 		}
 	}
 }

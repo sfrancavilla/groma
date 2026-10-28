@@ -309,7 +309,7 @@ Scope {
 		id: pictureFinder
 
 		command: ["sh", "-c",
-			". \"${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs\" 2>/dev/null; "
+			"f=\"${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs\"; [ -f \"$f\" ] && . \"$f\"; "
 			+ "dir=\"${XDG_PICTURES_DIR:-$HOME/Pictures}\"; echo \"$dir\"; "
 			+ "[ -d \"$dir\" ] && find \"$dir\" -maxdepth 4 -type f "
 			+ "\\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \\) "

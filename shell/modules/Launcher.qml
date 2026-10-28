@@ -458,7 +458,12 @@ Scope {
 		{ key: "suspend", label: "Suspend", glyph: "moon", words: ["suspend", "sleep", "freeze"] },
 		{ key: "logout", label: "Log out…", glyph: "leave", words: ["log out", "logout", "sign out", "exit"] },
 		{ key: "restart", label: "Restart…", glyph: "restart", words: ["restart", "reboot"] },
-		{ key: "poweroff", label: "Power off…", glyph: "power", words: ["power off", "poweroff", "shut down", "shutdown", "turn off"] }
+		{ key: "poweroff", label: "Power off…", glyph: "power", words: ["power off", "poweroff", "shut down", "shutdown", "turn off"] },
+		// Not power actions, but the same kind of wish, said the same way.
+		{ key: "screenshot", label: "Screenshot…", glyph: "capture", ipc: ["capture", "open"],
+			words: ["screenshot", "screen shot", "capture", "print screen", "snip"] },
+		{ key: "record", label: "Record screen…", glyph: "record", ipc: ["capture", "record"],
+			words: ["record screen", "screen recording", "screencast", "video"] }
 	]
 
 	readonly property var systemItems: {
@@ -640,7 +645,12 @@ Scope {
 		}
 		case "system":
 			root.close();
-			Quickshell.execDetached(["qs", "-c", "groma", "ipc", "call", "power", "choose", item.action.key]);
+			if (item.action.ipc)
+				// After the launcher has gone, or the frozen frame has it in.
+				Quickshell.execDetached(["sh", "-c", 'sleep 0.3; exec qs -c groma ipc call "$@"', "sh",
+					...item.action.ipc]);
+			else
+				Quickshell.execDetached(["qs", "-c", "groma", "ipc", "call", "power", "choose", item.action.key]);
 			return;
 		case "file":
 			root.openFile(alternate ? item.file.parent : item.file.path);

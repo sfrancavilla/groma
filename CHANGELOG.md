@@ -39,6 +39,15 @@
   they are made. Hyprland's share is
   written to `~/.config/hypr/groma.lua`, loaded before `machine.lua`, so a
   hand-written override still wins.
+- **Screenshots and recordings** — Print freezes the screen and lays a
+  chooser over it: drag out an area, point at a window, or pick the whole
+  screen, from the mouse or the keyboard (Tab walks the windows, Ctrl+Enter
+  takes the screen). Shift+Print takes the screen at once. Pictures are
+  saved to Pictures/Screenshots and copied; a card in the corner opens one in
+  Satty to annotate, or drags it into another window. Alt+Print records the
+  same way - an area that can be adjusted before it starts, or a screen -
+  with the computer's sound and, if asked, the microphone; a red dot in the
+  bar counts the time and stops it. Both are in the launcher as well.
 
 ## v0.1.0-alpha — 2026-10-27
 

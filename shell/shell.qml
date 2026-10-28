@@ -82,7 +82,7 @@ ShellRoot {
 	FingerprintDialog {}
 
 	// The file manager: an ordinary window, opened from SUPER+E.
-	FilesWindow {}
+	FilesWindow { id: files }
 
 	// Groma Store: installing and updating, from the official repositories and the AUR.
 	SoftwareWindow {}
@@ -90,6 +90,13 @@ ShellRoot {
 	// Settings: keyboard, display, idle, wallpaper and the rest, as a window.
 	SettingsWindow {
 		earbuds: nothingEar
+	}
+
+	// Screenshots and screen recordings: Print, Shift+Print, Alt+Print.
+	Capture {
+		id: capture
+
+		files: files
 	}
 
 	// Feedback for the volume and brightness keys, and for things that
@@ -154,6 +161,12 @@ ShellRoot {
 				verticalCenter: parent.verticalCenter
 			}
 			spacing: Theme.spacingL
+
+			// Only while recording the screen: how long, and a click stops it.
+			RecordingControl {
+				anchors.verticalCenter: parent.verticalCenter
+				capture: capture
+			}
 
 			// Only while running a snapshot: amber, because nothing done in
 			// this session survives a restart.

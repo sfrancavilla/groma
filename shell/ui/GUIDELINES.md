@@ -126,6 +126,8 @@ Which puts every surface built so far in exactly one place:
 | Fingerprint | X | `Remove` (destructive) · `Add Finger…` |
 | Fingerprint: which finger | back | `Cancel` `Add right index finger` |
 | Fingerprint: the touches | none - a card in flight | `Cancel` alone; `Cancel` `Try again` when it fails |
+| Capture overlay | X, top right - it covers the screen | the toolbar: what to capture, and `Capture` / `Record`; a picture's area once drawn, or a window or screen clicked, captures at once |
+| Capture card | none - it goes by itself | none - a click opens, a drag shares, a right-click shows the folder |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
 there as well as the X - two chips side by side doing one thing. Note that the

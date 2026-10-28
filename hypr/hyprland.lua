@@ -307,6 +307,13 @@ hl.bind(mainMod .. " + Escape", hl.dsp.exec_cmd("qs -c groma ipc call power togg
 hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("qs -c groma ipc call workspaces edit"))  -- name this workspace
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))    -- dwindle only
 
+-- Screenshots and recordings (shell/modules/Capture.qml). Print chooses an
+-- area, a window or a screen; Shift+Print takes the whole screen at once;
+-- Alt+Print chooses what to record. Print again while recording stops it.
+hl.bind("Print",         hl.dsp.exec_cmd("qs -c groma ipc call capture open"))
+hl.bind("SHIFT + Print", hl.dsp.exec_cmd("qs -c groma ipc call capture screen"))
+hl.bind("ALT + Print",   hl.dsp.exec_cmd("qs -c groma ipc call capture record"))
+
 -- Move focus with mainMod + arrow keys
 hl.bind(mainMod .. " + left",  hl.dsp.focus({ direction = "left" }))
 hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "right" }))
@@ -438,6 +445,27 @@ hl.window_rule({
     rounding     = 20,
     border_size  = 1,
     border_color = "rgba(ffffff52)",
+})
+
+-- Satty, where a screenshot is annotated: a sheet over what it was taken
+-- of, not a tile that reshuffles the windows in it.
+hl.window_rule({
+    name  = "satty",
+    match = { class = "^com\\.gabm\\.satty$" },
+
+    float  = true,
+    center = true,
+    size   = "monitor_w*0.7 monitor_h*0.7",
+})
+
+-- The capture overlay comes and goes at once. It lies over a frozen frame
+-- of the screen, so a fade shows nothing; and fading out as a recording
+-- starts, it would be in the recording's first frames.
+hl.layer_rule({
+    name  = "groma-capture",
+    match = { namespace = "^groma:capture$" },
+
+    no_anim = true,
 })
 
 -- Hyprland-run windowrule

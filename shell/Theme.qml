@@ -358,6 +358,15 @@ Singleton {
 	readonly property int settingsHeight: 640
 	// Wider than Files' sidebar: "Keyboard & Touchpad" is its longest name.
 	readonly property int settingsSidebarWidth: 220
+	// Capture: the overlay over a frozen screen, and the card a capture
+	// leaves in the corner. The scrim is darker than a sheet's, because what
+	// it dims is the thing being chosen from, not a backdrop to ignore.
+	readonly property color captureScrim: Qt.rgba(0, 0, 0, 0.40)
+	readonly property color captureRing: Qt.rgba(1, 1, 1, 0.90)
+	readonly property int captureHandle: 9
+	readonly property int captureThumbWidth: 200
+	readonly property int captureThumbHeight: 150
+	readonly property int captureMargin: 16
 	// Between a prompt and a picker: 8d has to hold six passkey tiles.
 	readonly property int dialogWidthPrompt: 440
 	readonly property int dialogListHeight: 344

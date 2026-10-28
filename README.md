@@ -48,6 +48,18 @@ so a hand-written override still wins, and Hyprland reloads by itself when
 the file changes. A display scale is the exception: it is tried on the
 running compositor and goes back after 15 seconds unless it is kept.
 
+Print opens the capture overlay (`ipc call capture open`): every screen is
+frozen by `grim` first, and the overlay lies over the frozen frames, so a
+picture is cut from what was on screen at the moment Print was pressed, not
+taken again once a menu has closed. Shift+Print takes the whole screen at once;
+Alt+Print chooses what to record, and Print again stops it. Pictures go to
+`Pictures/Screenshots` and the clipboard, recordings to `Videos/Screen
+Recordings`, and a card in the corner opens either in Satty or a player, or
+drags the file into another window. `gpu-screen-recorder` is started by
+`modules/capture-record.sh`, outside the shell, so a reload of the shell does
+not cut a recording off; the shell reads the state file it leaves in
+`$XDG_RUNTIME_DIR/groma-capture`.
+
 The volume and brightness keys call the shell (`ipc call keys …`) rather than
 running `wpctl` and `brightnessctl` themselves, so the change and its on-screen
 readout are one action. The shell does not have to discover what a keybind just

@@ -3,7 +3,8 @@ import QtQuick.Shapes
 import ".."
 
 // The power mark and its family: the bar's button, the power menu's rows, its
-// confirmation sheet, and the restart mark in Snapshots.
+// confirmation sheet, the restart mark in Snapshots, and the launcher's
+// other commands - capture and record.
 //
 // Drawn on the shared 24-unit grid, each mark spanning 3..21 both ways so it
 // sits in the middle of its disc rather than wherever its shape happens to
@@ -12,7 +13,8 @@ Item {
 	id: icon
 
 	property color color: "#ffffff"
-	// Which mark: power, lock, moon (suspend), leave (log out), restart.
+	// Which mark: power, lock, moon (suspend), leave (log out), restart,
+	// capture (a screenshot), record (a screen recording).
 	property string kind: "power"
 	// The stroke in pixels as drawn: the bar's weight unless set - inside a
 	// disc it is Theme.markLine, to match the marks beside it.
@@ -148,6 +150,37 @@ Item {
 				PathArc { x: 4; y: 19; radiusX: 2; radiusY: 2 }
 				PathLine { x: 4; y: 13 }
 				PathArc { x: 6; y: 11; radiusX: 2; radiusY: 2 }
+			}
+
+			// capture: a viewfinder's four corners round a lens.
+			ShapePath {
+				strokeColor: icon.kind === "capture" ? icon.color : "transparent"
+				strokeWidth: icon.units
+				fillColor: "transparent"
+				capStyle: ShapePath.RoundCap
+				joinStyle: ShapePath.RoundJoin
+
+				PathSvg {
+					path: "M3 8V5A2 2 0 0 1 5 3H8M16 3H19A2 2 0 0 1 21 5V8"
+						+ "M21 16V19A2 2 0 0 1 19 21H16M8 21H5A2 2 0 0 1 3 19V16"
+						+ "M9 12A3 3 0 1 0 15 12A3 3 0 1 0 9 12Z"
+				}
+			}
+
+			// record: a ring round a dot, as on any recorder.
+			ShapePath {
+				strokeColor: icon.kind === "record" ? icon.color : "transparent"
+				strokeWidth: icon.units
+				fillColor: "transparent"
+
+				PathSvg { path: "M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12Z" }
+			}
+
+			ShapePath {
+				strokeColor: "transparent"
+				fillColor: icon.kind === "record" ? icon.color : "transparent"
+
+				PathSvg { path: "M8.5 12A3.5 3.5 0 1 0 15.5 12A3.5 3.5 0 1 0 8.5 12Z" }
 			}
 		}
 	}

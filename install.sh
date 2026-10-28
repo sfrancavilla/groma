@@ -71,10 +71,13 @@ PACKAGES=(
 	git                 # cloning this repository, and building AUR packages
 	base-devel          # makepkg, for the AUR helper Groma Store uses
 
-	# Screenshots. hyprshot is a script over grim and slurp, so this is also
-	# how the shell gets compared against the design it is built from - grim
-	# comes in as a dependency and takes a full frame on its own.
-	hyprshot
+	# Screenshots and recordings (shell/modules/Capture.qml): grim freezes the
+	# screens for the overlay, Satty annotates a picture, gpu-screen-recorder
+	# records - on the GPU, with its own capability-carrying helper for the
+	# display, so no portal prompt and no password.
+	grim
+	satty
+	gpu-screen-recorder
 )
 
 # --- hardware: detected, not listed ------------------------------------------
