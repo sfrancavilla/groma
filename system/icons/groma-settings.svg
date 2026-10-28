@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Groma Settings: two of the shell's switches (ui/Switch.qml), one on and
+       one off, in pearl on a slate glass disc. Depth is layered shapes, not
+       filters: Qt's SVG renderer draws none. -->
+  <defs>
+    <linearGradient id="disc" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#b9c7d3"/>
+      <stop offset="0.5" stop-color="#5d7180"/>
+      <stop offset="1" stop-color="#34424d"/>
+    </linearGradient>
+    <radialGradient id="lens" cx="0.5" cy="0.3" r="0.7">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.55" stop-color="#f0f4fa"/>
+      <stop offset="1" stop-color="#cdd6e4"/>
+    </radialGradient>
+  </defs>
+  <circle cx="65" cy="68" r="50" fill="#000000" fill-opacity="0.2"/>
+  <circle cx="64" cy="64" r="50" fill="url(#disc)"/>
+  <path d="M26 46A42 42 0 0 1 102 46" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- On: a bright track, the lens at the right. -->
+  <rect x="34" y="38" width="60" height="22" rx="11" fill="#ffffff" fill-opacity="0.55" stroke="#ffffff" stroke-opacity="0.8" stroke-width="2"/>
+  <circle cx="83.5" cy="50" r="10" fill="#1e3d63" fill-opacity="0.3"/>
+  <circle cx="83" cy="49" r="10" fill="url(#lens)"/>
+  <!-- Off: a dim track, the lens at the left. -->
+  <rect x="34" y="70" width="60" height="22" rx="11" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.4" stroke-width="2"/>
+  <circle cx="45.5" cy="82" r="10" fill="#1e3d63" fill-opacity="0.3"/>
+  <circle cx="45" cy="81" r="10" fill="url(#lens)"/>
+</svg>

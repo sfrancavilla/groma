@@ -352,6 +352,12 @@ Singleton {
 	readonly property int filesHeaderHeight: 60
 	readonly property int filesFooterHeight: 44
 	readonly property int filesSidebarWidth: 200
+	// Settings, from the Settings design's A: the same kind of window as
+	// Files, smaller, since a section is a column of rows and not a folder.
+	readonly property int settingsWidth: 900
+	readonly property int settingsHeight: 640
+	// Wider than Files' sidebar: "Keyboard & Touchpad" is its longest name.
+	readonly property int settingsSidebarWidth: 220
 	// Between a prompt and a picker: 8d has to hold six passkey tiles.
 	readonly property int dialogWidthPrompt: 440
 	readonly property int dialogListHeight: 344

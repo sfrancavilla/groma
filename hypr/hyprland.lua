@@ -419,6 +419,15 @@ hl.window_rule({
     border_size = 0,
 })
 
+-- And so is Settings.
+hl.window_rule({
+    name  = "groma-settings",
+    match = { class = "^org\\.quickshell$", title = "^Settings$" },
+
+    rounding    = 20,
+    border_size = 0,
+})
+
 -- What floats is a sheet: an app's "Save changes?", a file picker, a window
 -- floated with SUPER+V. Same corners as Groma's own windows, and the glass
 -- edge rather than the gradient - Theme.glassEdge, white at .32, which
@@ -442,6 +451,19 @@ hl.window_rule({
     move  = "20 monitor_h-120",
     float = true,
 })
+
+
+------------------------
+---- GROMA SETTINGS ----
+------------------------
+
+-- What was chosen in Groma's Settings window: keyboard layouts, touchpad,
+-- display scale. Written by the shell (shell/HyprConfig.qml) to
+-- ~/.config/hypr/groma.lua and holding only what was changed, so everything
+-- else above stays the default. Edit it from Settings, not by hand - it is
+-- rewritten on every change. pcall, since it does not exist until something
+-- is changed.
+pcall(require, "groma")
 
 
 ---------------------------------

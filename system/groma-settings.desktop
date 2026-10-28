@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+GenericName=Settings
+Comment=Keyboard, touchpad, display scale, idle and sleep, wallpaper
+Exec=qs -c groma ipc call settings opened
+Icon=groma-settings
+Terminal=false
+Categories=System;Settings;
+Keywords=settings;preferences;keyboard;layout;touchpad;scroll;display;scale;idle;sleep;lock;wallpaper;background;

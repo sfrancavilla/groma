@@ -39,6 +39,15 @@ That choice lives in `Settings.qml`, which is the one place holding what the
 user decided rather than what the shell looks like. It is written to
 `Quickshell.statePath("settings.json")` whenever it changes.
 
+The Settings window (`qs -c groma ipc call settings opened`, or Settings in
+the launcher) is where those choices are made, the switch above among them.
+The ones that belong to Hyprland - keyboard layouts, touchpad, pointer speed,
+display scale - are written by `HyprConfig.qml` to `~/.config/hypr/groma.lua`,
+holding only what was changed. `hyprland.lua` loads it before `machine.lua`,
+so a hand-written override still wins, and Hyprland reloads by itself when
+the file changes. A display scale is the exception: it is tried on the
+running compositor and goes back after 15 seconds unless it is kept.
+
 The volume and brightness keys call the shell (`ipc call keys …`) rather than
 running `wpctl` and `brightnessctl` themselves, so the change and its on-screen
 readout are one action. The shell does not have to discover what a keybind just

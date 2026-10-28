@@ -13,6 +13,12 @@ ShellRoot {
 		precision: SystemClock.Minutes
 	}
 
+	// Settings' Hyprland choices, kept in step with ~/.config/hypr/groma.lua.
+	// Named here because a singleton nobody mentions is never made, and the
+	// file should follow settings.json from the start, not from the first
+	// time Settings is opened.
+	readonly property var hyprConfig: HyprConfig
+
 	// The desktop background. Drawn, so the glass has something to tint.
 	Wallpaper {}
 
@@ -80,6 +86,11 @@ ShellRoot {
 
 	// Groma Store: installing and updating, from the official repositories and the AUR.
 	SoftwareWindow {}
+
+	// Settings: keyboard, display, idle, wallpaper and the rest, as a window.
+	SettingsWindow {
+		earbuds: nothingEar
+	}
 
 	// Feedback for the volume and brightness keys, and for things that
 	// happened to the sound.

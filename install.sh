@@ -135,7 +135,7 @@ say "Registering Groma's applications"
 # xdg-open on a folder - from a browser's downloads, from anywhere - lands in
 # Files.
 mkdir -p "$HOME/.local/share/applications"
-entries=(groma-files groma-software groma-snapshots)
+entries=(groma-files groma-software groma-settings groma-snapshots)
 # Fingerprint only where there is a reader: elsewhere it would be an entry
 # that opens to say there is nothing to set up.
 [ -z "$fingerprint" ] || entries+=(groma-fingerprint)

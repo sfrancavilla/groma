@@ -5,11 +5,13 @@ import ".."
 
 // The desktop background. Drawn rather than loaded, so there is something
 // behind the glass out of the box - glass over an empty dark desktop is grey,
-// whatever tint you give it. Point `source` at a file and that is used instead.
+// whatever tint you give it. A picture chosen in Settings is used instead,
+// unless it cannot be loaded - a moved or deleted file falls back to the
+// drawing, not to a bare colour.
 PanelWindow {
 	id: wallpaper
 
-	property string source: ""
+	property string source: Settings.wallpaper !== "" ? "file://" + Settings.wallpaper : ""
 
 	anchors {
 		top: true
@@ -27,10 +29,12 @@ PanelWindow {
 
 	DesktopBackdrop {
 		anchors.fill: parent
-		visible: wallpaper.source === ""
+		visible: wallpaper.source === "" || picture.status === Image.Error
 	}
 
 	Image {
+		id: picture
+
 		anchors.fill: parent
 		source: wallpaper.source
 		visible: wallpaper.source !== ""

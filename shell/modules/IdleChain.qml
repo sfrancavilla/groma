@@ -20,19 +20,14 @@ Scope {
 	// does not need to know how locking works.
 	required property var lock
 
-	// Timeouts are in seconds. Shorter on battery, where the screen is the
-	// expensive part.
+	// Timeouts are in seconds, chosen in Settings (where the defaults and the
+	// reasons for them live). Zero disables a stage.
 	readonly property bool onBattery: UPower.onBattery
 
-	readonly property int dimAfter: root.onBattery ? 120 : 300
-	readonly property int lockAfter: root.onBattery ? 240 : 600
-	readonly property int screenOffAfter: root.onBattery ? 300 : 660
-
-	// Blanking the screen is not sleeping: the machine stays fully awake with
-	// the display off, which on battery is most of the cost and none of the
-	// benefit. Zero disables the stage, which is what mains gets - a plugged
-	// in machine left alone should stay reachable.
-	readonly property int suspendAfter: root.onBattery ? 900 : 0
+	readonly property int dimAfter: Settings.idleAfter("dim", root.onBattery)
+	readonly property int lockAfter: Settings.idleAfter("lock", root.onBattery)
+	readonly property int screenOffAfter: Settings.idleAfter("screenOff", root.onBattery)
+	readonly property int suspendAfter: Settings.idleAfter("suspend", root.onBattery)
 
 	// The panel backlight, named explicitly: with no device brightnessctl walks
 	// everything it can find, which here includes two keyboard LEDs. Found at
@@ -42,7 +37,8 @@ Scope {
 	// brightnessctl keeps the pre-dim value itself, so there is no state here
 	// to get out of step with the hardware.
 	IdleMonitor {
-		timeout: root.dimAfter
+		enabled: root.dimAfter > 0
+		timeout: Math.max(1, root.dimAfter)
 		respectInhibitors: true
 
 		onIsIdleChanged: {
@@ -58,7 +54,8 @@ Scope {
 	}
 
 	IdleMonitor {
-		timeout: root.lockAfter
+		enabled: root.lockAfter > 0
+		timeout: Math.max(1, root.lockAfter)
 		respectInhibitors: true
 
 		// Locking is one-way: coming back from idle must not unlock anything.
@@ -66,7 +63,8 @@ Scope {
 	}
 
 	IdleMonitor {
-		timeout: root.screenOffAfter
+		enabled: root.screenOffAfter > 0
+		timeout: Math.max(1, root.screenOffAfter)
 		respectInhibitors: true
 
 		onIsIdleChanged: Quickshell.execDetached(

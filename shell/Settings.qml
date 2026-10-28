@@ -80,6 +80,108 @@ Singleton {
 		adapter.workspaceColors = next;
 	}
 
+	// The desktop picture, as an absolute path. Empty is Groma's own, drawn
+	// rather than loaded (DesktopBackdrop.qml).
+	readonly property alias wallpaper: adapter.wallpaper
+
+	function setWallpaper(path) {
+		adapter.wallpaper = path ?? "";
+	}
+
+	// --- Idle (modules/IdleChain.qml) --------------------------------------
+	// Seconds before each stage, plugged in and on battery; zero turns a stage
+	// off. Shorter on battery, where the screen is the expensive part.
+	//
+	// Blanking the screen is not sleeping: the machine stays fully awake with
+	// the display off, which on battery is most of the cost and none of the
+	// benefit - hence a suspend stage there. Mains gets none: a plugged in
+	// machine left alone should stay reachable.
+	readonly property var idleDefaults: ({
+		dim:       { mains: 300, battery: 120 },
+		lock:      { mains: 600, battery: 240 },
+		screenOff: { mains: 660, battery: 300 },
+		suspend:   { mains: 0,   battery: 900 },
+	})
+
+	// Only what was changed is stored, so a better default still reaches
+	// everyone who never touched theirs.
+	readonly property alias idleTimes: adapter.idleTimes
+
+	function idleAfter(stage, onBattery) {
+		const power = onBattery ? "battery" : "mains";
+		return (adapter.idleTimes ?? {})[stage]?.[power] ?? root.idleDefaults[stage][power];
+	}
+
+	// null puts the default back.
+	function setIdleAfter(stage, onBattery, seconds) {
+		const power = onBattery ? "battery" : "mains";
+		const next = Object.assign({}, adapter.idleTimes ?? {});
+		const entry = Object.assign({}, next[stage] ?? {});
+		if (seconds === null || seconds === undefined)
+			delete entry[power];
+		else
+			entry[power] = Math.max(0, Math.round(seconds));
+		if (Object.keys(entry).length === 0)
+			delete next[stage];
+		else
+			next[stage] = entry;
+		adapter.idleTimes = next;
+	}
+
+	// --- Hyprland (HyprConfig.qml) ----------------------------------------
+	// Choices that belong to the compositor rather than the shell. Kept here
+	// with the rest and written out as Lua by HyprConfig.qml. Unset - empty or
+	// null - means hyprland.lua's default, and only what is set is written, so
+	// a default changed in the repository still arrives.
+
+	// Keyboard layouts in switching order, as xkb pairs:
+	// [{ layout: "it", variant: "" }]. The first is the one a session starts in.
+	readonly property alias keyboardLayouts: adapter.keyboardLayouts
+
+	function setKeyboardLayouts(list) {
+		adapter.keyboardLayouts = (list ?? [])
+			.filter(entry => entry && entry.layout)
+			.map(entry => ({ layout: entry.layout, variant: entry.variant ?? "" }));
+	}
+
+	readonly property alias naturalScroll: adapter.naturalScroll
+	readonly property alias tapToClick: adapter.tapToClick
+	// -1 to 1, as Hyprland's input:sensitivity; 0 leaves libinput's speed alone.
+	readonly property alias pointerSpeed: adapter.pointerSpeed
+
+	function setNaturalScroll(value) {
+		adapter.naturalScroll = value ?? null;
+	}
+
+	function setTapToClick(value) {
+		adapter.tapToClick = value ?? null;
+	}
+
+	function setPointerSpeed(value) {
+		adapter.pointerSpeed = value === null || value === undefined
+			? null : Math.max(-1, Math.min(1, value));
+	}
+
+	// Scale per display, keyed by Hyprland's description of it - make, model
+	// and serial - rather than its connector, which is whichever port it went
+	// into today. Absent is "auto".
+	readonly property alias displayScales: adapter.displayScales
+
+	function displayScale(description) {
+		return (adapter.displayScales ?? {})[description] ?? null;
+	}
+
+	// Called once a scale has been kept, not while it is being tried:
+	// HyprConfig.previewScale() is the trying.
+	function setDisplayScale(description, scale) {
+		const next = Object.assign({}, adapter.displayScales ?? {});
+		if (scale === null || scale === undefined)
+			delete next[description];
+		else
+			next[description] = scale;
+		adapter.displayScales = next;
+	}
+
 	// --- Integration: Nothing earbuds (integrations/nothingear) ----------
 	// One settings file for everything, so these keep the baseline's store;
 	// the prefix in the comment is the only namespacing there is.
@@ -123,6 +225,13 @@ Singleton {
 			property var pinnedApps: []
 			property var workspaceNames: ({})
 			property var workspaceColors: ({})
+			property string wallpaper: ""
+			property var idleTimes: ({})
+			property var keyboardLayouts: []
+			property var naturalScroll: null
+			property var tapToClick: null
+			property var pointerSpeed: null
+			property var displayScales: ({})
 			property bool pauseOnBudRemoved: true
 			property bool resumeOnBudReplaced: true
 		}
