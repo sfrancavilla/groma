@@ -59,8 +59,12 @@ Item {
 	// positioned anything, and keeps that answer forever. Reading the geometry
 	// it depends on first registers those as dependencies.
 	readonly property rect triggerRect: {
+		// The row's y and height as well: it is centred in the bar, and
+		// settles there only once every child has its height. On a cold start
+		// the first answer came before that, and the trigger drawn on the tab
+		// sat too high, cut off at the tab's edge.
 		void [root.width, root.height, root.x, root.y, root.parent?.x, root.parent?.width,
-			root.barWidth];
+			root.parent?.y, root.parent?.height, root.barWidth];
 
 		const at = root.mapToItem(null, 0, 0);
 		return Qt.rect(at.x, at.y, root.width, root.height);

@@ -276,6 +276,19 @@ Singleton {
 		adapter.resumeOnBudReplaced = value;
 	}
 
+	// The power mode chosen on each source - "ac" and "battery" - as
+	// "power-saver", "balanced" or "performance". A source with no choice
+	// is left as power-profiles-daemon has it.
+	readonly property alias powerProfiles: adapter.powerProfiles
+
+	function powerProfile(source) {
+		return (adapter.powerProfiles ?? {})[source] ?? "";
+	}
+
+	function setPowerProfile(source, profile) {
+		adapter.powerProfiles = Object.assign({}, adapter.powerProfiles ?? {}, { [source]: profile });
+	}
+
 	// Do Not Disturb: notifications wait in the centre without a toast,
 	// except critical ones. Kept, so it survives a restart as it would a
 	// meeting that runs long.
@@ -350,6 +363,7 @@ Singleton {
 			property bool resumeOnBudReplaced: true
 			property var weekStart: null
 			property bool doNotDisturb: false
+			property var powerProfiles: ({})
 			property bool recordSound: true
 			property bool recordMicrophone: false
 		}

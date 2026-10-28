@@ -46,6 +46,62 @@ BarPopup {
 	title: "Battery"
 	trailing: root.summary
 
+	// --- power mode ----------------------------------------------------------
+	//
+	// power-profiles-daemon's three modes, through Quickshell's PowerProfiles.
+	// A choice is remembered for the source it was made on - plugged in or on
+	// battery - and put back when the machine next changes to that source, as
+	// Omarchy does: Performance at the desk, Power saver on the train, without
+	// choosing again each time.
+
+	// Whether the daemon is there to ask. PowerProfiles reads Balanced
+	// without one, which would be a control that does nothing.
+	property bool profilesAvailable: false
+
+	readonly property var profileNames: ["power-saver", "balanced", "performance"]
+	readonly property string source: UPower.onBattery ? "battery" : "ac"
+
+	function profileName(profile) {
+		return profile === PowerProfile.PowerSaver ? "power-saver"
+			: profile === PowerProfile.Performance ? "performance" : "balanced";
+	}
+
+	function profileValue(name) {
+		return name === "power-saver" ? PowerProfile.PowerSaver
+			: name === "performance" ? PowerProfile.Performance : PowerProfile.Balanced;
+	}
+
+	function chooseProfile(name) {
+		PowerProfiles.profile = root.profileValue(name);
+		Settings.setPowerProfile(root.source, name);
+	}
+
+	// What was chosen on this source, if anything was.
+	function restoreProfile() {
+		const name = Settings.powerProfile(root.source);
+		if (!root.profilesAvailable || name === "")
+			return;
+		if (name === "performance" && !PowerProfiles.hasPerformanceProfile)
+			return;
+		if (root.profileName(PowerProfiles.profile) !== name)
+			PowerProfiles.profile = root.profileValue(name);
+	}
+
+	onSourceChanged: root.restoreProfile()
+	onProfilesAvailableChanged: root.restoreProfile()
+	onOpenChanged: if (root.open) profileProbe.running = true
+
+	Process {
+		id: profileProbe
+
+		running: true
+		// Over D-Bus, not powerprofilesctl: that is Python, and needs
+		// python-gobject, which the daemon does not bring with it.
+		command: ["busctl", "--system", "get-property", "org.freedesktop.UPower.PowerProfiles",
+			"/org/freedesktop/UPower/PowerProfiles", "org.freedesktop.UPower.PowerProfiles", "ActiveProfile"]
+		onExited: code => root.profilesAvailable = code === 0
+	}
+
 	// UPower reports seconds; nobody reads a battery in seconds.
 	function humanDuration(seconds) {
 		if (!seconds || seconds <= 0)
@@ -132,6 +188,11 @@ BarPopup {
 		function closed(): void {
 			root.open = false;
 		}
+
+		// "power-saver" | "balanced" | "performance", as the chips choose it.
+		function profile(name: string): void {
+			root.chooseProfile(name);
+		}
 	}
 
 	Slider {
@@ -191,8 +252,8 @@ BarPopup {
 		}
 	}
 
-	// Status line. The design puts the power adapter and a profile here; there
-	// is no power-profiles-daemon on this machine, so the right-hand slot shows
+	// Status line. The design puts the power adapter and a profile here. The
+	// profile became a control of its own, below, so the right-hand slot shows
 	// battery health instead - real, and the thing actually worth knowing about
 	// a laptop battery.
 	Item {
@@ -243,5 +304,58 @@ BarPopup {
 			}
 		}
 	}
-}
 
+	// The power mode, while power-profiles-daemon is there to set it.
+	Column {
+		width: parent.width
+		spacing: Theme.spacingS
+		visible: root.profilesAvailable
+
+		Row {
+			id: modes
+
+			readonly property var shown: root.profileNames
+				.filter(name => name !== "performance" || PowerProfiles.hasPerformanceProfile)
+
+			width: parent.width
+			spacing: Theme.spacingXs
+
+			Repeater {
+				model: modes.shown
+
+				Chip {
+					required property string modelData
+
+					width: (modes.width - modes.spacing * (modes.shown.length - 1)) / modes.shown.length
+					text: modelData === "power-saver" ? "Power saver"
+						: modelData === "performance" ? "Performance" : "Balanced"
+					active: root.profileName(PowerProfiles.profile) === modelData
+					onClicked: root.chooseProfile(modelData)
+				}
+			}
+		}
+
+		// Why Performance is not all it says, when the firmware holds it back.
+		Text {
+			width: parent.width
+			visible: PowerProfiles.profile === PowerProfile.Performance
+				&& PowerProfiles.degradationReason !== PerformanceDegradationReason.None
+			text: PowerProfiles.degradationReason === PerformanceDegradationReason.HighTemperature
+				? "Held back while the processor is hot"
+				: "Held back while the laptop is on a lap"
+			wrapMode: Text.WordWrap
+			font.pixelSize: Theme.fontCaption
+			color: Theme.warning
+		}
+
+		// Kept for this source: say so, once there is something kept.
+		Text {
+			width: parent.width
+			visible: Settings.powerProfile(root.source) !== ""
+			text: UPower.onBattery ? "Kept for when on battery" : "Kept for when plugged in"
+			font.pixelSize: Theme.fontCaption
+			opacity: 0.7
+			color: Theme.glassTextPrimary
+		}
+	}
+}

@@ -78,6 +78,10 @@ PACKAGES=(
 	grim
 	satty
 	gpu-screen-recorder
+
+	# Power saver, balanced, performance - from the Battery card. Drives the
+	# firmware's platform profile and the processor's energy preference.
+	power-profiles-daemon
 )
 
 # --- hardware: detected, not listed ------------------------------------------
@@ -204,6 +208,9 @@ sudo rm -f /etc/systemd/system/groma-lock-on-sleep.service
 sudo install -Dm644 "$GROMA/system/groma-lock-on-sleep.service" /etc/systemd/system/groma-lock-on-sleep.service
 sudo systemctl daemon-reload
 sudo systemctl enable groma-lock-on-sleep.service
+
+say "Power modes"
+sudo systemctl enable --now power-profiles-daemon.service
 
 if [ -n "$fingerprint" ]; then
 	say "A fingerprint at polkit prompts"

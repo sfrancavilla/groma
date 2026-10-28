@@ -50,6 +50,12 @@
   crescent, and with a dot when something arrived quietly. Toasts pause while
   pointed at, open on a click and go on a right-click, and the centre keeps
   its notifications through a reload of the shell.
+- **Power mode** — Power saver, Balanced and Performance in the Battery
+  card, through power-profiles-daemon (now installed and enabled), which
+  sets the firmware's platform profile and the processor's energy
+  preference. The choice is kept for the source it was made on, plugged in
+  or on battery, and comes back when the machine next changes to it. When
+  the firmware holds Performance back, the card says why.
 - **Screenshots and recordings** — Print freezes the screen and lays a
   chooser over it: drag out an area, point at a window, or pick the whole
   screen, from the mouse or the keyboard (Tab walks the windows, Ctrl+Enter
