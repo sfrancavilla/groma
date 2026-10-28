@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Fingerprint
+GenericName=Fingerprint unlock
+Comment=Add a finger to unlock the lock screen with a touch
+Exec=qs -c groma ipc call fingerprint opened
+Icon=groma-fingerprint
+Terminal=false
+Categories=System;Settings;Security;
+Keywords=fprintd;finger;biometric;unlock;touch;reader;enrol;enroll;

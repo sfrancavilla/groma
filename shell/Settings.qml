@@ -21,6 +21,14 @@ Singleton {
 		adapter.publicAddressLookup = value;
 	}
 
+	// Whether the shell has already said there is a fingerprint reader with
+	// nothing enrolled. Once, ever: a nudge that comes back is a nag.
+	readonly property alias fingerprintNudged: adapter.fingerprintNudged
+
+	function setFingerprintNudged(value) {
+		adapter.fingerprintNudged = value;
+	}
+
 	// Applications pinned to the launcher, by desktop-entry id, in order.
 	readonly property alias pinnedApps: adapter.pinnedApps
 
@@ -111,6 +119,7 @@ Singleton {
 			id: adapter
 
 			property bool publicAddressLookup: false
+			property bool fingerprintNudged: false
 			property var pinnedApps: []
 			property var workspaceNames: ({})
 			property var workspaceColors: ({})

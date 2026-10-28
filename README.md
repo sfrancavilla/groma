@@ -217,7 +217,9 @@ A fingerprint is a second, separate conversation, on Groma's own stack
 beside the password, not before it, its misses are not faillock strikes, and
 nothing outside the lock screen changes. Any reader libfprint drives works;
 without one, or without an enrolled finger, the lock screen shows the password
-alone. Five misses and it stops until the next lock.
+alone. Five misses and it stops until the next lock. Fingers are added and
+removed in Fingerprint, from the launcher (`qs -c groma ipc call fingerprint
+opened`).
 
 ### Two things that will waste your time
 

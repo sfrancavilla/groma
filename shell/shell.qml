@@ -72,6 +72,9 @@ ShellRoot {
 	// What snapper has kept: system changes to undo, home snapshots to browse.
 	SnapshotsDialog {}
 
+	// The fingers that unlock the lock screen, and adding one.
+	FingerprintDialog {}
+
 	// The file manager: an ordinary window, opened from SUPER+E.
 	FilesWindow {}
 

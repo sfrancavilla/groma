@@ -15,9 +15,11 @@
   the same corners and edge. An app picks it up when it next starts.
 - **Fingerprint unlock** — on a laptop with a reader fprintd supports, touch it
   at the lock screen instead of typing; the password field works alongside
-  it. The installer adds fprintd when it finds a reader; enrol a finger with
-  `fprintd-enroll`. Off while the lid is shut, and after five misses until
-  the next lock.
+  it. The installer adds fprintd when it finds a reader. Off while the lid is
+  shut, and after five misses until the next lock.
+- **Fingerprint** — add and remove fingers from the launcher: pick the finger,
+  then touch the reader as the print fills in. On a laptop with a reader and
+  nothing enrolled, Groma says so once, shortly after login.
 
 ## v0.1.0-alpha — 2026-10-27
 

@@ -135,7 +135,11 @@ say "Registering Groma's applications"
 # xdg-open on a folder - from a browser's downloads, from anywhere - lands in
 # Files.
 mkdir -p "$HOME/.local/share/applications"
-for entry in groma-files groma-software groma-snapshots; do
+entries=(groma-files groma-software groma-snapshots)
+# Fingerprint only where there is a reader: elsewhere it would be an entry
+# that opens to say there is nothing to set up.
+[ -z "$fingerprint" ] || entries+=(groma-fingerprint)
+for entry in "${entries[@]}"; do
 	ln -sfn "$GROMA/system/$entry.desktop" "$HOME/.local/share/applications/$entry.desktop"
 done
 # Their icons, drawn for Groma (system/icons), in the user's hicolor theme so
@@ -246,9 +250,10 @@ fi
 if [ -n "$fingerprint" ]; then
 	cat <<'NOTE'
 
-There is a fingerprint reader. To unlock the lock screen with it, enrol a
-finger - fprintd-enroll, then touch the reader until it says it is done.
-Logging in after boot, sudo and polkit still ask for the password.
+There is a fingerprint reader. To unlock the lock screen with it, add a
+finger in Fingerprint - in the launcher, or from the notification Groma
+shows shortly after the first login. Logging in after boot, sudo and polkit
+still ask for the password.
 NOTE
 fi
 

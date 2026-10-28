@@ -123,6 +123,9 @@ Which puts every surface built so far in exactly one place:
 | Snapshots | X | `Snapshot now` · `Undo…` (destructive, system) / `Browse` (home) |
 | Workspace name | none - a tab card on its pill | none - `Enter` keeps it, `Escape` or a click away leaves |
 | Workspace preview | none - it goes when the pointer does | none - it takes no input |
+| Fingerprint | X | `Remove` (destructive) · `Add Finger…` |
+| Fingerprint: which finger | back | `Cancel` `Add right index finger` |
+| Fingerprint: the touches | none - a card in flight | `Cancel` alone; `Cancel` `Try again` when it fails |
 
 The picker is the one place this overrides the design, which draws a `Cancel`
 there as well as the X - two chips side by side doing one thing. Note that the
