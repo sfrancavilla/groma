@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Services.Pam
 import QtQuick
 import ".."
+import "../icons"
 import "../ui"
 
 // The unlock face: clock, prompt, and the PAM conversation behind it.
@@ -15,6 +16,10 @@ Item {
 	// Emitted once PAM says yes. The caller decides what that means - unlock
 	// the session, or just close a test window.
 	signal authenticated
+
+	// The lock's one Fingerprint, shared by every monitor's copy of this.
+	// Null in a test window, which then asks for the password alone.
+	property Fingerprint fingerprint: null
 
 	readonly property bool busy: pam.active && !pam.responseRequired
 
@@ -123,6 +128,32 @@ Item {
 
 			Behavior on opacity {
 				NumberAnimation { duration: 120 }
+			}
+		}
+
+		// While the reader waits, say so; when a finger fails, say that here
+		// too, apart from what the password line says.
+		Row {
+			readonly property Fingerprint fp: content.fingerprint
+			readonly property bool hasStatus: fp !== null && fp.status !== ""
+			readonly property color tone: hasStatus ? Theme.warning : Theme.glassTextMuted
+
+			anchors.horizontalCenter: parent.horizontalCenter
+			spacing: Theme.spacingS
+			visible: fp !== null && (fp.listening || hasStatus)
+
+			FingerprintIcon {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 13
+				height: 14
+				color: parent.tone
+			}
+
+			Text {
+				anchors.verticalCenter: parent.verticalCenter
+				text: parent.hasStatus ? parent.fp.status : parent.fp?.prompt ?? ""
+				font.pixelSize: Theme.fontCaption
+				color: parent.tone
 			}
 		}
 

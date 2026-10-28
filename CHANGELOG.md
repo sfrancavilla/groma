@@ -13,6 +13,11 @@
   Slack ask through GTK 3 is drawn as Groma's sheet: dense glass, the glass
   edge, chip buttons with the default one bright. Every floating window gets
   the same corners and edge. An app picks it up when it next starts.
+- **Fingerprint unlock** — on a laptop with a reader fprintd supports, touch it
+  at the lock screen instead of typing; the password field works alongside
+  it. The installer adds fprintd when it finds a reader; enrol a finger with
+  `fprintd-enroll`. Off while the lid is shut, and after five misses until
+  the next lock.
 
 ## v0.1.0-alpha — 2026-10-27
 

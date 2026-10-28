@@ -144,7 +144,8 @@ git clone https://github.com/sfrancavilla/groma.git ~/groma
 Then log out and log in again on the first console: the desktop starts.
 
 The installer is not tied to one machine. It detects the CPU and graphics and
-installs the matching microcode and Vulkan driver; it sets up snapshots only
+installs the matching microcode and Vulkan driver, and fprintd where there is
+a fingerprint reader; it sets up snapshots only
 where the disk has the Btrfs `@` / `@snapshots` layout, and says why when it
 skips; NVIDIA is detected but untested, and the installer says so. It links
 the shell and the compositor config into `~/.config`, registers Groma's own
@@ -210,6 +211,13 @@ password is rejected too. The installer sets `unlock_time = 120` in
 Authentication goes through PAM's `system-auth`. A service name with no file in
 `/etc/pam.d` falls through to `other`, which is `pam_deny` — every password
 would fail, inside something with no way out.
+
+A fingerprint is a second, separate conversation, on Groma's own stack
+(`shell/modules/fingerprint.pam`) rather than one in `/etc/pam.d`: it runs
+beside the password, not before it, its misses are not faillock strikes, and
+nothing outside the lock screen changes. Any reader libfprint drives works;
+without one, or without an enrolled finger, the lock screen shows the password
+alone. Five misses and it stops until the next lock.
 
 ### Two things that will waste your time
 

@@ -100,6 +100,23 @@ for dev in /sys/bus/pci/devices/*; do
 	esac
 done
 
+# Fingerprint: fprintd, when a USB device from a maker libfprint has drivers
+# for is present. Which chips it supports is libfprint's business, not this
+# script's: a reader it turns out not to drive costs an idle daemon, and the
+# lock screen asks for the password alone, as it does with no reader at all.
+fingerprint=""
+for dev in /sys/bus/usb/devices/*; do
+	[ -f "$dev/idVendor" ] || continue
+	case "$(cat "$dev/idVendor")" in
+		# Goodix, Synaptics, Validity, Elan, FPC, Egis, Focal, Next, AuthenTec, UPEK
+		27c6|06cb|138a|04f3|10a5|1c7a|2808|298d|08ff|147e)
+			fingerprint=yes
+			PACKAGES+=(fprintd)
+			break
+			;;
+	esac
+done
+
 say "Installing packages"
 sudo pacman -S --needed "${PACKAGES[@]}"
 
@@ -223,6 +240,15 @@ them - a separate step, because it changes the boot loader and stops before
 rebooting for you to check: system/setup-limine-snapshots.sh, then
 system/theme-limine.sh for Groma's colours. Read system/BOOT-RECOVERY.md
 first.
+NOTE
+fi
+
+if [ -n "$fingerprint" ]; then
+	cat <<'NOTE'
+
+There is a fingerprint reader. To unlock the lock screen with it, enrol a
+finger - fprintd-enroll, then touch the reader until it says it is done.
+Logging in after boot, sudo and polkit still ask for the password.
 NOTE
 fi
 

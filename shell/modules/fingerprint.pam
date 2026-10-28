@@ -1,0 +1,18 @@
+#%PAM-1.0
+#
+# The fingerprint half of unlocking, for Fingerprint.qml. Fingerprint only: the
+# password goes through system-auth in a conversation of its own, so typing
+# never waits on the reader, and a finger that does not match is not a strike
+# for pam_faillock.
+#
+# Read from here rather than /etc/pam.d, so nothing system-wide changes - sudo,
+# login and the first sign-in after boot stay password only. That the file is
+# yours to edit gives nothing away: anyone who can write it can already run
+# `qs -c groma ipc call lock unlock`.
+#
+# timeout=-1 waits for a finger for as long as the session is locked, the way
+# a phone does. max-tries ends it after five that do not match, and from then
+# until the next lock only the password opens it.
+
+auth     required  pam_fprintd.so  max-tries=5 timeout=-1
+account  required  pam_unix.so

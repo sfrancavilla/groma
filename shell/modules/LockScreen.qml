@@ -40,6 +40,15 @@ Scope {
 	// Restore across a config reload, since the binding is gone.
 	Component.onCompleted: sessionLock.locked = state.locked
 
+	// Here, not on each surface: one reader, however many monitors.
+	Fingerprint {
+		id: reader
+
+		active: state.locked
+
+		onAuthenticated: root.setLocked(false)
+	}
+
 	WlSessionLock {
 		id: sessionLock
 
@@ -60,6 +69,7 @@ Scope {
 			LockContent {
 				anchors.fill: parent
 				focus: true
+				fingerprint: reader
 
 				// No Escape. There is deliberately no way out of here except
 				// authenticating.
