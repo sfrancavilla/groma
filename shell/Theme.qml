@@ -358,6 +358,11 @@ Singleton {
 	readonly property int settingsHeight: 640
 	// Wider than Files' sidebar: "Keyboard & Touchpad" is its longest name.
 	readonly property int settingsSidebarWidth: 220
+	// The clock's card: what arrived on the left, the month on the right, as
+	// GNOME lays it out. The list grows with what is in it, to a point.
+	readonly property int clockCardWidth: 700
+	readonly property int clockCalendarWidth: 280
+	readonly property int clockListMaxHeight: 440
 	// Capture: the overlay over a frozen screen, and the card a capture
 	// leaves in the corner. The scrim is darker than a sheet's, because what
 	// it dims is the thing being chosen from, not a backdrop to ignore.

@@ -276,6 +276,15 @@ Singleton {
 		adapter.resumeOnBudReplaced = value;
 	}
 
+	// Do Not Disturb: notifications wait in the centre without a toast,
+	// except critical ones. Kept, so it survives a restart as it would a
+	// meeting that runs long.
+	readonly property alias doNotDisturb: adapter.doNotDisturb
+
+	function setDoNotDisturb(value) {
+		adapter.doNotDisturb = value;
+	}
+
 	// The day a week starts on in the calendar: 1 for Monday, 0 for Sunday,
 	// or null for the locale's. Not the locale's alone, because a machine
 	// set to en_US outside the US is the usual case, not the odd one.
@@ -340,6 +349,7 @@ Singleton {
 			property bool pauseOnBudRemoved: true
 			property bool resumeOnBudReplaced: true
 			property var weekStart: null
+			property bool doNotDisturb: false
 			property bool recordSound: true
 			property bool recordMicrophone: false
 		}

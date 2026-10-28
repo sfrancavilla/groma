@@ -21,7 +21,7 @@ ShellRoot {
 	PolkitDialog {}
 
 	// The notification daemon and its toast stack.
-	Notifications {}
+	Notifications { id: notifications }
 
 	// Not a lock screen yet - a harness for proving the PAM conversation.
 	LockScreen { id: lockScreen }
@@ -206,6 +206,7 @@ ShellRoot {
 		// CENTER: the clock, and the month it opens.
 		ClockControl {
 			anchors.centerIn: parent
+			notifications: notifications
 		}
  
 	}

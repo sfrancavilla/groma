@@ -39,10 +39,17 @@
   they are made. Hyprland's share is
   written to `~/.config/hypr/groma.lua`, loaded before `machine.lua`, so a
   hand-written override still wins.
-- **Calendar** — the clock in the bar opens a month, hung centred under it:
-  today lit, the ISO week number, arrows or a scroll to turn the page and
-  Today to come back. Settings → Date & Time chooses whether the week starts
-  on Monday or Sunday, since an en_US machine outside the US is common.
+- **Calendar and notification centre** — the clock in the bar opens a card
+  hung centred under it. On the right, a month: today lit, the ISO week
+  number, arrows or a scroll to turn the page and Today to come back
+  (Settings → Date & Time chooses whether the week starts on Monday or
+  Sunday). On the left, every notification not yet dealt with, newest first,
+  with its buttons and how long ago it came: a toast going away no longer
+  ends a notification, it moves here. Clear all, and Do Not Disturb, which
+  keeps every toast but a critical one away and marks the clock with a
+  crescent, and with a dot when something arrived quietly. Toasts pause while
+  pointed at, open on a click and go on a right-click, and the centre keeps
+  its notifications through a reload of the shell.
 - **Screenshots and recordings** — Print freezes the screen and lays a
   chooser over it: drag out an area, point at a window, or pick the whole
   screen, from the mouse or the keyboard (Tab walks the windows, Ctrl+Enter

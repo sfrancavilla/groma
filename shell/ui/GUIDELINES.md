@@ -126,6 +126,8 @@ Which puts every surface built so far in exactly one place:
 | Fingerprint | X | `Remove` (destructive) · `Add Finger…` |
 | Fingerprint: which finger | back | `Cancel` `Add right index finger` |
 | Fingerprint: the touches | none - a card in flight | `Cancel` alone; `Cancel` `Try again` when it fails |
+| Notification toast | none | none - its X dismisses, a click opens, a right-click dismisses |
+| Clock: notifications and month | none - a bar popup | the centre's own: `Do not disturb` · `Clear all` |
 | Capture overlay | X, top right - it covers the screen | the toolbar: what to capture, and `Capture` / `Record`; a picture's area once drawn, or a window or screen clicked, captures at once |
 | Capture card | none - it goes by itself | none - a click opens, a drag shares, a right-click shows the folder |
 

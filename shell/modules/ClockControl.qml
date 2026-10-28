@@ -2,16 +2,37 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 import ".."
+import "../icons"
 import "../ui"
 
-// The bar's clock, and the card it opens: today, and a month to look across.
+// The bar's clock, and the card it opens: what has arrived, and a month to
+// look across.
 //
 // The card hangs centred under the clock, the one thing in the middle of the
-// bar. The month starts on the locale's first day of the week, and always
-// shows six weeks, so stepping from a month that needs five to one that
-// needs six does not resize the card under the pointer.
+// bar. On the left, the notification centre: everything not yet dealt with,
+// newest first, and Do Not Disturb. On the right, the month, which starts on
+// the chosen first day of the week and always shows six weeks, so stepping
+// from a month that needs five to one that needs six does not resize the
+// card under the pointer.
+//
+// In the bar, a crescent before the time says Do Not Disturb is on, and a
+// dot after it that something arrived quietly and has not been looked at.
 BarPopup {
 	id: root
+
+	// The daemon (Notifications.qml): its list, its toasts, its quiet count.
+	property var notifications: null
+	readonly property var list: root.notifications?.list ?? []
+
+	// For "5 min ago" to move on while the card is open.
+	property real now: Date.now()
+
+	Timer {
+		interval: 30000
+		repeat: true
+		running: root.open
+		onTriggered: root.now = Date.now()
+	}
 
 	SystemClock {
 		id: clock
@@ -77,15 +98,47 @@ BarPopup {
 	title: Qt.formatDateTime(clock.date, "dddd d MMMM")
 	trailing: "Week " + root.isoWeek(clock.date)
 
-	onOpenChanged: if (root.open) root.today()
+	cardWidth: Theme.clockCardWidth
 
-	// As chosen in Settings: the date or not, 24 hours or 12.
-	trigger: Text {
-		text: Qt.formatDateTime(clock.date,
-			(Settings.clockDate ? "ddd d MMM " : "") + (Settings.clock24 ? "HH:mm" : "h:mm AP"))
-		color: Theme.glass ? Theme.glassTextPrimary : Theme.textPrimary
-		style: Theme.glass ? Text.Raised : Text.Normal
-		styleColor: Theme.glassTextShadow
+	onOpenChanged: {
+		if (!root.open)
+			return;
+		root.today();
+		root.now = Date.now();
+		if (root.notifications !== null)
+			root.notifications.missed = 0;
+	}
+
+	trigger: Row {
+		spacing: 6
+
+		PowerIcon {
+			anchors.verticalCenter: parent.verticalCenter
+			visible: Settings.doNotDisturb
+			width: 12
+			height: 12
+			kind: "moon"
+			color: Theme.glassTextPrimary
+		}
+
+		// As chosen in Settings: the date or not, 24 hours or 12.
+		Text {
+			anchors.verticalCenter: parent.verticalCenter
+			text: Qt.formatDateTime(clock.date,
+				(Settings.clockDate ? "ddd d MMM " : "") + (Settings.clock24 ? "HH:mm" : "h:mm AP"))
+			color: Theme.glass ? Theme.glassTextPrimary : Theme.textPrimary
+			style: Theme.glass ? Text.Raised : Text.Normal
+			styleColor: Theme.glassTextShadow
+		}
+
+		Rectangle {
+			anchors.verticalCenter: parent.verticalCenter
+			visible: (root.notifications?.missed ?? 0) > 0
+			width: 6
+			height: 6
+			radius: 3
+			color: Theme.glassTextPrimary
+		}
 	}
 
 	IpcHandler {
@@ -109,129 +162,274 @@ BarPopup {
 		}
 	}
 
-	Column {
-		id: calendar
-
-		readonly property real cell: width / 7
-
+	Row {
 		width: parent.width
-		spacing: Theme.spacingS
+		spacing: Theme.spacingL
 
-		// The month, and the way to the next and the last.
-		Item {
-			width: parent.width
-			height: 26
+		// --- what has arrived ---
 
-			Text {
-				anchors.left: parent.left
-				anchors.verticalCenter: parent.verticalCenter
-				text: Qt.locale().standaloneMonthName(root.month, Locale.LongFormat) + " " + root.year
-				font.pixelSize: Theme.fontLead
-				font.weight: Font.DemiBold
-				color: Theme.glassTextPrimary
-			}
+		Column {
+			id: centre
 
-			Row {
-				anchors.right: parent.right
-				anchors.verticalCenter: parent.verticalCenter
-				spacing: Theme.spacingXs
+			width: parent.width - calendar.width - divider.width - parent.spacing * 2
+			spacing: Theme.spacingS
 
-				Chip {
-					anchors.verticalCenter: parent.verticalCenter
-					visible: !root.onToday
-					height: 26
-					text: "Today"
-					onClicked: root.today()
+			Flickable {
+				id: scroller
+
+				width: parent.width
+				// As tall as the month at least, so the card keeps its shape
+				// when there is little or nothing; taller as the list grows,
+				// to a point, then it scrolls.
+				height: Math.max(calendar.height - footer.height - centre.spacing,
+					Math.min(stack.implicitHeight, Theme.clockListMaxHeight))
+				contentHeight: stack.implicitHeight
+				clip: true
+				boundsBehavior: Flickable.StopAtBounds
+
+				Column {
+					id: stack
+
+					width: scroller.width
+					spacing: Theme.spacingS
+
+					Repeater {
+						model: root.list
+
+						Rectangle {
+							id: row
+
+							required property var modelData
+
+							width: stack.width
+							height: rowContent.implicitHeight + Theme.spacingM * 2
+							radius: Theme.radiusLarge
+							color: rowClick.containsMouse ? Theme.glassControlHover : Theme.glassControl
+
+							Behavior on color {
+								ColorAnimation { duration: 120 }
+							}
+
+							// As on the toast: a click does what it is for, a
+							// right-click puts it away.
+							MouseArea {
+								id: rowClick
+
+								anchors.fill: parent
+								hoverEnabled: true
+								acceptedButtons: Qt.LeftButton | Qt.RightButton
+								onClicked: mouse => {
+									const open = row.modelData.actions.find(a => a.identifier === "default");
+									if (mouse.button === Qt.RightButton) {
+										row.modelData.dismiss();
+									} else if (open) {
+										open.invoke();
+										root.open = false;
+									}
+								}
+							}
+
+							NotificationContent {
+								id: rowContent
+
+								anchors {
+									left: parent.left
+									right: parent.right
+									verticalCenter: parent.verticalCenter
+									leftMargin: Theme.spacingM
+									rightMargin: Theme.spacingM
+								}
+
+								notification: row.modelData
+								arrived: root.notifications?.arrived[row.modelData.id] ?? 0
+								now: root.now
+								onCloseClicked: row.modelData.dismiss()
+							}
+						}
+					}
 				}
 
-				DiscButton {
-					width: 26
-					height: 26
-					glyph: "back"
-					onClicked: root.step(-1)
-				}
-
-				DiscButton {
-					width: 26
-					height: 26
-					glyph: "back"
-					rotation: 180
-					onClicked: root.step(1)
-				}
-			}
-		}
-
-		// The days of the week, by their initials.
-		Row {
-			Repeater {
-				model: 7
-
+				// Placed by hand: a Flickable's children are its content, which
+				// has no height while there is nothing in it.
 				Text {
-					required property int index
-
-					width: calendar.cell
-					horizontalAlignment: Text.AlignHCenter
-					text: Qt.locale().dayName((root.firstDay + index) % 7, Locale.NarrowFormat)
-					font.pixelSize: Theme.fontCaption
-					font.weight: Font.DemiBold
+					x: (scroller.width - width) / 2
+					y: (scroller.height - height) / 2
+					visible: root.list.length === 0
+					text: "No notifications"
+					font.pixelSize: Theme.fontBody
 					color: Theme.glassTextMuted
 				}
 			}
-		}
 
-		Grid {
-			columns: 7
+			Item {
+				id: footer
 
-			Repeater {
-				model: root.days
+				width: parent.width
+				height: Theme.chipHeight
 
-				Item {
-					required property var modelData
+				Row {
+					anchors.left: parent.left
+					anchors.verticalCenter: parent.verticalCenter
+					spacing: Theme.spacingS
 
-					width: calendar.cell
-					height: 32
-
-					// Today is the one lit lens on the page.
-					Lens {
-						anchors.centerIn: parent
-						width: 28
-						height: 28
-						sheen: false
-						visible: modelData.today
+					Switch {
+						anchors.verticalCenter: parent.verticalCenter
+						checked: Settings.doNotDisturb
+						onToggled: Settings.setDoNotDisturb(!checked)
 					}
 
 					Text {
-						anchors.centerIn: parent
-						text: modelData.day
+						anchors.verticalCenter: parent.verticalCenter
+						text: "Do not disturb"
 						font.pixelSize: Theme.fontBody
-						font.weight: modelData.today ? Font.Bold : Font.Normal
-						font.features: { "tnum": 1 }
-						color: modelData.today ? Theme.glassTextOnLens
-							: modelData.weekend ? Theme.glassTextSecondary
-							: Theme.glassTextPrimary
-						opacity: modelData.inMonth ? 1 : 0.35
+						color: Theme.glassTextPrimary
 					}
 				}
-			}
 
-			// A scroll over the month turns it.
-			WheelHandler {
-				acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-				onWheel: event => {
-					wheel.travel += event.angleDelta.y;
-					if (Math.abs(wheel.travel) >= 120) {
-						root.step(wheel.travel > 0 ? -1 : 1);
-						wheel.travel = 0;
-					}
+				Chip {
+					anchors.right: parent.right
+					anchors.verticalCenter: parent.verticalCenter
+					visible: root.list.length > 0
+					text: "Clear all"
+					onClicked: root.notifications?.clear()
 				}
 			}
 		}
 
-		// What a touchpad's small scrolls add up to before they turn a page.
-		QtObject {
-			id: wheel
+		Rectangle {
+			id: divider
 
-			property real travel: 0
+			width: 1
+			height: centre.height
+			color: Theme.glassControlBorder
+		}
+
+		// --- the month ---
+
+		Column {
+			id: calendar
+
+			readonly property real cell: width / 7
+
+			width: Theme.clockCalendarWidth
+			spacing: Theme.spacingS
+
+			// The month, and the way to the next and the last.
+			Item {
+				width: parent.width
+				height: 26
+
+				Text {
+					anchors.left: parent.left
+					anchors.verticalCenter: parent.verticalCenter
+					text: Qt.locale().standaloneMonthName(root.month, Locale.LongFormat) + " " + root.year
+					font.pixelSize: Theme.fontLead
+					font.weight: Font.DemiBold
+					color: Theme.glassTextPrimary
+				}
+
+				Row {
+					anchors.right: parent.right
+					anchors.verticalCenter: parent.verticalCenter
+					spacing: Theme.spacingXs
+
+					Chip {
+						anchors.verticalCenter: parent.verticalCenter
+						visible: !root.onToday
+						height: 26
+						text: "Today"
+						onClicked: root.today()
+					}
+
+					DiscButton {
+						width: 26
+						height: 26
+						glyph: "back"
+						onClicked: root.step(-1)
+					}
+
+					DiscButton {
+						width: 26
+						height: 26
+						glyph: "back"
+						rotation: 180
+						onClicked: root.step(1)
+					}
+				}
+			}
+
+			// The days of the week, by their initials.
+			Row {
+				Repeater {
+					model: 7
+
+					Text {
+						required property int index
+
+						width: calendar.cell
+						horizontalAlignment: Text.AlignHCenter
+						text: Qt.locale().dayName((root.firstDay + index) % 7, Locale.NarrowFormat)
+						font.pixelSize: Theme.fontCaption
+						font.weight: Font.DemiBold
+						color: Theme.glassTextMuted
+					}
+				}
+			}
+
+			Grid {
+				columns: 7
+
+				Repeater {
+					model: root.days
+
+					Item {
+						required property var modelData
+
+						width: calendar.cell
+						height: 32
+
+						// Today is the one lit lens on the page.
+						Lens {
+							anchors.centerIn: parent
+							width: 28
+							height: 28
+							sheen: false
+							visible: modelData.today
+						}
+
+						Text {
+							anchors.centerIn: parent
+							text: modelData.day
+							font.pixelSize: Theme.fontBody
+							font.weight: modelData.today ? Font.Bold : Font.Normal
+							font.features: { "tnum": 1 }
+							color: modelData.today ? Theme.glassTextOnLens
+								: modelData.weekend ? Theme.glassTextSecondary
+								: Theme.glassTextPrimary
+							opacity: modelData.inMonth ? 1 : 0.35
+						}
+					}
+				}
+
+				// A scroll over the month turns it.
+				WheelHandler {
+					acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+					onWheel: event => {
+						wheel.travel += event.angleDelta.y;
+						if (Math.abs(wheel.travel) >= 120) {
+							root.step(wheel.travel > 0 ? -1 : 1);
+							wheel.travel = 0;
+						}
+					}
+				}
+			}
+
+			// What a touchpad's small scrolls add up to before they turn a page.
+			QtObject {
+				id: wheel
+
+				property real travel: 0
+			}
 		}
 	}
 }
