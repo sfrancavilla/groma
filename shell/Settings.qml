@@ -182,6 +182,79 @@ Singleton {
 		adapter.displayScales = next;
 	}
 
+	// Refresh rate per display, as the mode Hyprland is given -
+	// "2880x1920@60" - keyed like displayScales. Absent is "preferred".
+	readonly property alias displayModes: adapter.displayModes
+
+	function displayMode(description) {
+		return (adapter.displayModes ?? {})[description] ?? null;
+	}
+
+	// Kept, as with setDisplayScale: HyprConfig.previewDisplay() tries it.
+	function setDisplayMode(description, mode) {
+		const next = Object.assign({}, adapter.displayModes ?? {});
+		if (mode === null || mode === undefined)
+			delete next[description];
+		else
+			next[description] = mode;
+		adapter.displayModes = next;
+	}
+
+	// How long a held key waits before repeating, in milliseconds, and how
+	// many times a second it then repeats.
+	readonly property alias repeatDelay: adapter.repeatDelay
+	readonly property alias repeatRate: adapter.repeatRate
+
+	function setRepeatDelay(value) {
+		adapter.repeatDelay = value === null || value === undefined
+			? null : Math.max(150, Math.min(1000, Math.round(value)));
+	}
+
+	function setRepeatRate(value) {
+		adapter.repeatRate = value === null || value === undefined
+			? null : Math.max(10, Math.min(60, Math.round(value)));
+	}
+
+	// What Caps Lock does: "" for Caps Lock, "escape", "ctrl" or "none".
+	readonly property alias capsLock: adapter.capsLock
+
+	function setCapsLock(value) {
+		adapter.capsLock = ["escape", "ctrl", "none"].includes(value) ? value : "";
+	}
+
+	readonly property alias disableWhileTyping: adapter.disableWhileTyping
+	// 0.2 to 2, as Hyprland's touchpad scroll_factor; 1 leaves it alone.
+	readonly property alias scrollFactor: adapter.scrollFactor
+	// Three fingers across the touchpad to change workspace.
+	readonly property alias workspaceSwipe: adapter.workspaceSwipe
+
+	function setDisableWhileTyping(value) {
+		adapter.disableWhileTyping = value ?? null;
+	}
+
+	function setScrollFactor(value) {
+		adapter.scrollFactor = value === null || value === undefined
+			? null : Math.max(0.2, Math.min(2, value));
+	}
+
+	function setWorkspaceSwipe(value) {
+		adapter.workspaceSwipe = value ?? null;
+	}
+
+	// --- Clock (shell.qml, modules/LockContent.qml) ------------------------
+
+	readonly property alias clock24: adapter.clock24
+	// The bar's "Wed 28 Oct" before the time.
+	readonly property alias clockDate: adapter.clockDate
+
+	function setClock24(value) {
+		adapter.clock24 = value;
+	}
+
+	function setClockDate(value) {
+		adapter.clockDate = value;
+	}
+
 	// --- Integration: Nothing earbuds (integrations/nothingear) ----------
 	// One settings file for everything, so these keep the baseline's store;
 	// the prefix in the comment is the only namespacing there is.
@@ -232,6 +305,15 @@ Singleton {
 			property var tapToClick: null
 			property var pointerSpeed: null
 			property var displayScales: ({})
+			property var displayModes: ({})
+			property var repeatDelay: null
+			property var repeatRate: null
+			property string capsLock: ""
+			property var disableWhileTyping: null
+			property var scrollFactor: null
+			property var workspaceSwipe: null
+			property bool clock24: true
+			property bool clockDate: true
 			property bool pauseOnBudRemoved: true
 			property bool resumeOnBudReplaced: true
 		}

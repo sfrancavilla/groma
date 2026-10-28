@@ -271,11 +271,8 @@ hl.config({
     },
 })
 
-hl.gesture({
-    fingers = 3,
-    direction = "horizontal",
-    action = "workspace"
-})
+-- The three-finger swipe between workspaces is under GROMA SETTINGS below,
+-- since Settings can turn it off.
 
 -- Example per-device config
 -- See https://wiki.hypr.land/Configuring/Advanced-and-Cool/Devices/ for more
@@ -464,6 +461,17 @@ hl.window_rule({
 -- rewritten on every change. pcall, since it does not exist until something
 -- is changed.
 pcall(require, "groma")
+
+-- Three fingers across the touchpad change workspace, unless Settings said
+-- no. After groma.lua rather than with the input block above, because
+-- hl.gesture() returns nothing that could be switched off later.
+if GROMA_WORKSPACE_SWIPE ~= false then
+    hl.gesture({
+        fingers = 3,
+        direction = "horizontal",
+        action = "workspace"
+    })
+end
 
 
 ---------------------------------

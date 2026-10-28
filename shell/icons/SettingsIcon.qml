@@ -4,12 +4,14 @@ import ".."
 
 // The sections of the Settings window, each by the one thing that names it:
 // a keyboard's keys and space bar, a display on its stand, a crescent for
-// idle, a picture's sun and hill, a pair of earbuds, a shield, an i.
+// idle, a clock's hands, a picture's sun and hill, a pair of earbuds, a
+// shield, an i.
 //
 // Built like HardwareIcon: the shared 24-unit grid, marks spanning 3..21, at
 // markLine, in the file ink a lens disc takes.
 //
-// `kind`: keyboard · display · idle · wallpaper · earbuds · privacy · about
+// `kind`: keyboard · display · idle · datetime · wallpaper · earbuds ·
+//         privacy · about
 Item {
 	id: icon
 
@@ -33,6 +35,8 @@ Item {
 		earbuds: "M8 4H7A3 3 0 0 0 4 7V8A3 3 0 0 0 7 11H8ZM8 11V19"
 			+ "M16 4H17A3 3 0 0 1 20 7V8A3 3 0 0 1 17 11H16ZM16 11V19",
 		privacy: "M12 3L19 6V11C19 15.5 16 19 12 21C8 19 5 15.5 5 11V6Z",
+		datetime: "M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12Z"
+			+ "M12 7V12L15.5 14",
 		about: "M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12Z"
 			+ "M12 11V16.5M12 7.75V8.25",
 	})

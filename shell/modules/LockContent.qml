@@ -95,7 +95,8 @@ Item {
 
 		Text {
 			anchors.horizontalCenter: parent.horizontalCenter
-			text: Qt.formatDateTime(clock.date, "HH:mm")
+			// 12 hours without AM or PM: at this size the hour says enough.
+			text: Qt.formatDateTime(clock.date, Settings.clock24 ? "HH:mm" : "h:mm")
 			font.pixelSize: 96
 			font.weight: Font.Light
 			color: Theme.glassTextPrimary

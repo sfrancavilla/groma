@@ -204,7 +204,9 @@ ShellRoot {
 			color: bar.barText
 			style: Theme.glass ? Text.Raised : Text.Normal
 			styleColor: Theme.glassTextShadow
-			text: Qt.formatDateTime(clock.date, "ddd d MMM hh:mm")
+			// As chosen in Settings: the date or not, 24 hours or 12.
+			text: Qt.formatDateTime(clock.date,
+				(Settings.clockDate ? "ddd d MMM " : "") + (Settings.clock24 ? "HH:mm" : "h:mm AP"))
 		}
  
 	}

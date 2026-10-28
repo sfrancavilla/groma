@@ -28,12 +28,15 @@
   memory, swap when there is any, and disk free space. A cell turns amber
   when memory or a disk passes 90% or the processor runs hot.
 - **Settings** — a window, from the launcher, for what used to mean editing a
-  file: keyboard layouts (SUPER+SPACE switches once there are two), natural
-  scrolling, tap to click and pointer speed; display scale, offering only the
-  scales a display shows sharply and trying a new one for 15 seconds before
-  it is kept; when the screen dims, locks, turns off and suspends, plugged in
-  and on battery; a picture for the desktop; the earbuds' pause and resume;
-  and the public address. Changes apply as they are made. Hyprland's share is
+  file: keyboard layouts (SUPER+SPACE switches once there are two), what Caps
+  Lock does, key repeat, natural scrolling, tap to click, ignoring the
+  touchpad while typing, the three-finger workspace swipe, scroll and pointer
+  speed; display scale and refresh rate, offering only the scales a display
+  shows sharply and trying a new one for 15 seconds before it is kept; when
+  the screen dims, locks, turns off and suspends, plugged in and on battery;
+  a 12- or 24-hour clock and the date in the bar; a picture for the desktop;
+  the earbuds' pause and resume; and the public address. Changes apply as
+  they are made. Hyprland's share is
   written to `~/.config/hypr/groma.lua`, loaded before `machine.lua`, so a
   hand-written override still wins.
 

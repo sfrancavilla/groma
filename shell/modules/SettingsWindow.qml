@@ -29,11 +29,13 @@ Scope {
 
 	readonly property var sections: [
 		{ id: "keyboard", title: "Keyboard & Touchpad",
-			words: "keyboard layout language typing touchpad trackpad scroll natural tap click pointer mouse speed" },
+			words: "keyboard layout language typing caps lock escape ctrl repeat delay touchpad trackpad scroll natural tap click swipe gesture palm pointer mouse speed" },
 		{ id: "display", title: "Display",
-			words: "display screen monitor scale size resolution hidpi zoom" },
+			words: "display screen monitor scale size resolution hidpi zoom refresh rate hz battery" },
 		{ id: "idle", title: "Idle & Sleep",
 			words: "idle sleep suspend lock dim screen off timeout battery power" },
+		{ id: "datetime", title: "Date & Time",
+			words: "date time clock 24-hour 12-hour hours am pm bar time zone timezone" },
 		{ id: "wallpaper", title: "Wallpaper",
 			words: "wallpaper background picture desktop image photo" },
 		{ id: "earbuds", title: "Earbuds",
@@ -82,7 +84,7 @@ Scope {
 			about.running = true;
 			return;
 		}
-		HyprConfig.revertScale();
+		HyprConfig.revertDisplay();
 		root.sheet = "";
 		root.menu = null;
 		searchField.clear();
@@ -197,7 +199,29 @@ Scope {
 	function tryScale(monitor, scale) {
 		if (root.scaleLabel(scale) === root.scaleLabel(root.chosenScale(monitor)))
 			return;
-		HyprConfig.previewScale(monitor.description, scale);
+		HyprConfig.previewDisplay(monitor.description, "scale", scale);
+	}
+
+	// The mode the rate chips show as chosen: the one being tried, else the
+	// kept one, else whatever the display is running at.
+	function chosenRate(monitor) {
+		const trying = HyprConfig.preview;
+		const mode = trying && trying.description === monitor.description
+			? trying.mode : Settings.displayMode(monitor.description);
+		return mode ? Math.round(parseFloat(mode.split("@")[1])) : Math.round(monitor.refreshRate);
+	}
+
+	function tryRate(monitor, entry) {
+		if (Math.round(entry.rate) === root.chosenRate(monitor))
+			return;
+		HyprConfig.previewDisplay(monitor.description, "mode", entry.mode);
+	}
+
+	// A mode's rate; without one, the rate it was running at, if known.
+	function rateLabel(mode, rate) {
+		if (mode)
+			return `${Math.round(parseFloat(mode.split("@")[1]))} Hz`;
+		return rate ? `${rate} Hz` : "its usual rate";
 	}
 
 	// --- Idle ------------------------------------------------------------------
@@ -305,6 +329,10 @@ Scope {
 
 	property var versions: []
 
+	// The sliders' width: as wide as a row leaves room for, within reason.
+	readonly property real trackWidth: Math.max(160, Math.min(360, page.width - 380))
+	property string timeZone: ""
+
 	Process {
 		id: about
 
@@ -312,7 +340,8 @@ Scope {
 			"git -C \"$1\" describe --tags --always 2>/dev/null || echo unknown; "
 			+ "hyprctl -j version 2>/dev/null | sed -n 's/.*\"tag\": *\"v\\{0,1\\}\\([^\"]*\\)\".*/\\1/p' | head -1; "
 			+ "qs --version 2>/dev/null | head -1 | cut -d' ' -f2; "
-			+ "uname -r",
+			+ "uname -r; "
+			+ "timedatectl show -p Timezone --value 2>/dev/null",
 			"sh", Quickshell.shellDir]
 
 		stdout: StdioCollector {
@@ -324,6 +353,7 @@ Scope {
 					{ title: "Quickshell", value: lines[2] ?? "" },
 					{ title: "Linux", value: lines[3] ?? "" },
 				];
+				root.timeZone = lines[4] ?? "";
 			}
 		}
 	}
@@ -632,9 +662,9 @@ Scope {
 					const ctrl = event.modifiers & Qt.ControlModifier;
 					if (HyprConfig.preview !== null) {
 						if (event.key === Qt.Key_Escape)
-							HyprConfig.revertScale();
+							HyprConfig.revertDisplay();
 						else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
-							HyprConfig.keepScale();
+							HyprConfig.keepDisplay();
 						event.accepted = true;
 						return;
 					}
@@ -932,6 +962,104 @@ Scope {
 								}
 							}
 
+							Heading { text: "KEYS" }
+
+							Group {
+								// Four answers; they wrap under the label in a
+								// window tiled to half the screen.
+								Item {
+									width: parent.width
+									height: capsColumn.implicitHeight + 24
+
+									Column {
+										id: capsColumn
+
+										x: 14
+										y: 12
+										width: parent.width - 28
+										spacing: 10
+
+										Column {
+											width: parent.width
+											spacing: 3
+
+											Text {
+												text: "Caps Lock key"
+												font.pixelSize: Theme.fontTitle
+												font.bold: true
+												color: Theme.glassTextPrimary
+											}
+
+											Text {
+												width: parent.width
+												wrapMode: Text.WordWrap
+												text: "What it does when pressed"
+												font.pixelSize: Theme.fontCaption
+												opacity: 0.8
+												color: Theme.glassTextPrimary
+											}
+										}
+
+										Flow {
+											width: parent.width
+											spacing: 4
+
+											Repeater {
+												model: [["", "Caps Lock"], ["escape", "Escape"], ["ctrl", "Ctrl"], ["none", "Nothing"]]
+
+												Chip {
+													required property var modelData
+
+													width: 84
+													text: modelData[1]
+													active: Settings.capsLock === modelData[0]
+													onClicked: Settings.setCapsLock(modelData[0])
+												}
+											}
+										}
+									}
+								}
+
+								SettingRow {
+									title: "Delay before repeating"
+									caption: "How long a held key waits"
+
+									// 150 to 1000 ms.
+									WordSlider {
+										trackWidth: root.trackWidth
+										low: "Short"
+										high: "Long"
+										value: ((Settings.repeatDelay ?? HyprConfig.input.repeat_delay ?? 600) - 150) / 850
+										onMoved: v => Settings.setRepeatDelay(150 + Math.round(v * 850 / 25) * 25)
+									}
+								}
+
+								SettingRow {
+									title: "Repeat speed"
+									caption: "Then how fast it repeats"
+
+									// 10 to 60 a second.
+									WordSlider {
+										trackWidth: root.trackWidth
+										low: "Slow"
+										high: "Fast"
+										value: ((Settings.repeatRate ?? HyprConfig.input.repeat_rate ?? 25) - 10) / 50
+										onMoved: v => Settings.setRepeatRate(10 + Math.round(v * 50))
+									}
+								}
+
+								SettingRow {
+									title: "Try it"
+
+									GlassField {
+										width: root.trackWidth + 90
+										height: 34
+										fontSize: Theme.fontBody
+										placeholder: "Hold a key down here"
+									}
+								}
+							}
+
 							Heading { text: "TOUCHPAD" }
 
 							Group {
@@ -955,6 +1083,43 @@ Scope {
 										onToggled: Settings.setTapToClick(!checked)
 									}
 								}
+
+								SettingRow {
+									title: "Ignore while typing"
+									caption: "So a palm on the touchpad does not move the pointer"
+
+									Switch {
+										checked: Settings.disableWhileTyping ?? HyprConfig.input.disable_while_typing ?? true
+										onToggled: Settings.setDisableWhileTyping(!checked)
+									}
+								}
+
+								SettingRow {
+									title: "Swipe between workspaces"
+									caption: "Three fingers across the touchpad"
+
+									Switch {
+										checked: Settings.workspaceSwipe ?? true
+										onToggled: Settings.setWorkspaceSwipe(!checked)
+									}
+								}
+
+								SettingRow {
+									title: "Scroll speed"
+
+									// 0.2 to 2, with 1 - Hyprland's own - in the middle.
+									WordSlider {
+										trackWidth: root.trackWidth
+										low: "Slower"
+										high: "Faster"
+										value: {
+											const f = Settings.scrollFactor ?? HyprConfig.input.scroll_factor ?? 1;
+											return f <= 1 ? (f - 0.2) / 1.6 : 0.5 + (f - 1) / 2;
+										}
+										onMoved: v => Settings.setScrollFactor(Math.round(
+											(v <= 0.5 ? 0.2 + v * 1.6 : 1 + (v - 0.5) * 2) * 20) / 20)
+									}
+								}
 							}
 
 							Heading { text: "POINTER" }
@@ -965,31 +1130,12 @@ Scope {
 									title: "Pointer speed"
 									caption: "Mouse and touchpad"
 
-									Row {
-										spacing: 12
-
-										Text {
-											anchors.verticalCenter: parent.verticalCenter
-											text: "Slower"
-											font.pixelSize: Theme.fontCaption
-											opacity: 0.8
-											color: Theme.glassTextPrimary
-										}
-
-										Slider {
-											anchors.verticalCenter: parent.verticalCenter
-											width: Math.max(160, Math.min(360, page.width - 380))
-											value: ((Settings.pointerSpeed ?? HyprConfig.input.sensitivity ?? 0) + 1) / 2
-											onMoved: v => Settings.setPointerSpeed(Math.round((v * 2 - 1) * 20) / 20)
-										}
-
-										Text {
-											anchors.verticalCenter: parent.verticalCenter
-											text: "Faster"
-											font.pixelSize: Theme.fontCaption
-											opacity: 0.8
-											color: Theme.glassTextPrimary
-										}
+									WordSlider {
+										trackWidth: root.trackWidth
+										low: "Slower"
+										high: "Faster"
+										value: ((Settings.pointerSpeed ?? HyprConfig.input.sensitivity ?? 0) + 1) / 2
+										onMoved: v => Settings.setPointerSpeed(Math.round((v * 2 - 1) * 20) / 20)
 									}
 								}
 							}
@@ -1086,6 +1232,31 @@ Scope {
 												}
 											}
 										}
+
+										// Only where there is a choice: most external
+										// displays offer one rate at their full size.
+										SettingRow {
+											visible: (display.modelData.rates ?? []).length > 1
+											title: "Refresh rate"
+											caption: "Lower lasts longer on battery"
+
+											Row {
+												spacing: 4
+
+												Repeater {
+													model: display.modelData.rates ?? []
+
+													Chip {
+														required property var modelData
+
+														width: 64
+														text: `${Math.round(modelData.rate)} Hz`
+														active: Math.round(modelData.rate) === root.chosenRate(display.modelData)
+														onClicked: root.tryRate(display.modelData, modelData)
+													}
+												}
+											}
+										}
 									}
 								}
 							}
@@ -1095,7 +1266,7 @@ Scope {
 								leftPadding: 4
 								topPadding: 4
 								wrapMode: Text.WordWrap
-								text: "Only the scales each display can show sharply. A new one is tried before it is kept."
+								text: "Only the scales each display can show sharply. A new scale or rate is tried before it is kept."
 								font.pixelSize: Theme.fontCaption
 								opacity: 0.8
 								color: Theme.glassTextPrimary
@@ -1166,6 +1337,49 @@ Scope {
 								visible: root.idleCustomised()
 								text: "Use Groma's times"
 								onClicked: root.resetIdle()
+							}
+						}
+
+						// --- Date & Time ---
+
+						Column {
+							width: parent.width
+							spacing: 6
+							visible: root.section === "datetime"
+
+							Heading { text: "CLOCK" }
+
+							Group {
+								SettingRow {
+									divider: false
+									title: "24-hour clock"
+									caption: Settings.clock24 ? "15:30" : "3:30 PM"
+
+									Switch {
+										checked: Settings.clock24
+										onToggled: Settings.setClock24(!checked)
+									}
+								}
+
+								SettingRow {
+									title: "Date in the bar"
+									caption: "Before the time, as in Wed 28 Oct"
+
+									Switch {
+										checked: Settings.clockDate
+										onToggled: Settings.setClockDate(!checked)
+									}
+								}
+							}
+
+							Heading { text: "TIME ZONE" }
+
+							Group {
+								SettingRow {
+									divider: false
+									title: root.timeZone || "Not set"
+									caption: "Set with timedatectl set-timezone, which asks for your password"
+								}
 							}
 						}
 
@@ -1652,17 +1866,21 @@ Scope {
 					}
 				}
 
-				// Keep This Scale: a question, so no header mark, and the
-				// footer answers it. Escape is Cancel and Enter is Keep.
+				// Keep This Scale, or Refresh Rate: a question, so no header
+				// mark, and the footer answers it. Escape is Cancel and Enter
+				// is Keep.
 				GlassDialog {
 					anchors.fill: parent
 					dense: true
 					open: HyprConfig.preview !== null
 					visible: open || sheet.opacity > 0.01
 					sheetWidth: Theme.dialogWidthPrompt
-					title: "Keep This Scale?"
+					readonly property var trying: HyprConfig.preview
+					readonly property bool rate: trying?.kind === "mode"
+
+					title: rate ? "Keep This Refresh Rate?" : "Keep This Scale?"
 					body: HyprConfig.preview === null ? ""
-						: `Going back to ${root.scaleLabel(HyprConfig.preview.previous)} in ${HyprConfig.previewLeft} seconds.`
+						: `Going back to ${rate ? root.rateLabel(trying.previous.mode, trying.previous.rate) : root.scaleLabel(trying.previous.scale)} in ${HyprConfig.previewLeft} seconds.`
 
 					Rectangle {
 						width: parent.width
@@ -1686,13 +1904,14 @@ Scope {
 
 						DialogButton {
 							text: "Cancel"
-							onClicked: HyprConfig.revertScale()
+							onClicked: HyprConfig.revertDisplay()
 						}
 
 						DialogButton {
 							variant: "primary"
-							text: HyprConfig.preview === null ? "Keep" : `Keep ${root.scaleLabel(HyprConfig.preview.scale)}`
-							onClicked: HyprConfig.keepScale()
+							text: HyprConfig.preview === null ? "Keep"
+								: `Keep ${HyprConfig.preview.kind === "mode" ? root.rateLabel(HyprConfig.preview.mode) : root.scaleLabel(HyprConfig.preview.scale)}`
+							onClicked: HyprConfig.keepDisplay()
 						}
 					}
 				}
