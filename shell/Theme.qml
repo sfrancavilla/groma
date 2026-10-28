@@ -241,6 +241,9 @@ Singleton {
 	// here moves everything together instead of leaving one widget behind.
 	readonly property int tilePadding: 14
 	readonly property int tileWidth: 300
+	// A tile that reads out several things side by side - a part, what it
+	// is doing, how much of it - and would elide them at 300.
+	readonly property int tileWidthWide: 380
 
 	readonly property int spacingXs: 4
 	readonly property int spacingS: 8

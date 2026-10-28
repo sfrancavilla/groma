@@ -175,6 +175,11 @@ ShellRoot {
 				anchors.verticalCenter: parent.verticalCenter
 			}
 
+			// Processor, memory and disk, filled by how much is in use.
+			SystemControl {
+				anchors.verticalCenter: parent.verticalCenter
+			}
+
 			// Lock, suspend, log out, restart, power off.
 			PowerControl {
 				anchors.verticalCenter: parent.verticalCenter

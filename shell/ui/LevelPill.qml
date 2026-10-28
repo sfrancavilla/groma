@@ -17,6 +17,9 @@ Item {
 	implicitWidth: 44
 	implicitHeight: 14
 
+	// Between the bead and the track's edge, all round.
+	readonly property real inset: (pill.height - bead.height) / 2
+
 	Rectangle {
 		anchors.fill: parent
 		radius: height / 2
@@ -32,7 +35,10 @@ Item {
 				bottom: parent.bottom
 			}
 
-			width: parent.width * Math.max(0, Math.min(1, pill.value))
+			// Ends round the bead rather than at the value: its cap is then
+			// concentric with the bead, and a low value is never a sliver
+			// narrower than its own corners.
+			width: bead.x + bead.width + pill.inset
 			radius: height / 2
 			color: pill.fillColor
 
@@ -44,14 +50,19 @@ Item {
 
 	// The bead rides the end of the fill, and is the one part allowed outside
 	// the clipped track so it reads as sitting on top of it.
+	//
+	// Its centre travels between the centres of the track's two round ends,
+	// so at 0 and 1 it sits in the middle of the curve rather than against it.
 	Rectangle {
+		id: bead
+
 		width: 10
 		height: 10
 		radius: 5
 
 		anchors.verticalCenter: parent.verticalCenter
-		x: Math.max(1, Math.min(pill.width - width - 1,
-			pill.width * Math.max(0, Math.min(1, pill.value)) - width / 2))
+		x: pill.inset + (pill.width - pill.height)
+			* Math.max(0, Math.min(1, pill.value))
 
 		color: Theme.glassKnobCore
 		border.width: 1

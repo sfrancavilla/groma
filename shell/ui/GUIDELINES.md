@@ -101,7 +101,7 @@ Which puts every surface built so far in exactly one place:
 
 | | Header | Footer |
 | --- | --- | --- |
-| Volume, battery, Wi-Fi tiles | none | none |
+| Volume, battery, Wi-Fi, System tiles | none | none |
 | Network picker | X | `Join Hidden Network…` · `Join` |
 | Its join page | back | `Cancel` `Join` |
 | Bluetooth tile | none | none |
@@ -173,8 +173,8 @@ The panel is 2880×1920 at scale 2, so one logical pixel is two physical ones.
 
 ## What the bar opens
 
-Everything the bar opens - the sound, battery, Wi-Fi, Bluetooth and power
-tiles, and a workspace's preview and name field - is a **tab card**
+Everything the bar opens - the sound, battery, Wi-Fi, Bluetooth, system and
+power tiles, and a workspace's preview and name field - is a **tab card**
 (`ui/TabCard.qml`). Not a tile floating under the bar.
 
 - **It hangs from what opened it.** A tab stands round the glyph or pill and

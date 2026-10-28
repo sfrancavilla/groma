@@ -21,6 +21,8 @@ Item {
 	property Component trigger
 
 	property string title: ""
+	// The card's width. A tile's unless what it holds wants more room.
+	property real cardWidth: Theme.tileWidth
 	property string trailing: ""
 	property color trailingColor: Theme.glassTextPrimary
 
@@ -151,6 +153,7 @@ Item {
 			// Opened from the right half of the bar, it opens leftward.
 			alignRight: root.triggerRect.x + root.triggerRect.width / 2 > root.barWidth / 2
 			open: root.open
+			bodyWidth: root.cardWidth
 			contentHeight: tile.implicitHeight
 
 			// The trigger again, on the tab: the glass hides the real one.
@@ -172,7 +175,7 @@ Item {
 			GlassTile {
 				id: tile
 
-				width: Theme.tileWidth
+				width: root.cardWidth
 				color: "transparent"
 				border.width: 0
 				shadowLayers: 0

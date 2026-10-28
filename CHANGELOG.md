@@ -22,6 +22,11 @@
 - **Fingerprint** — add and remove fingers from the launcher: pick the finger,
   then touch the reader as the print fills in. On a laptop with a reader and
   nothing enrolled, Groma says so once, shortly after login.
+- **System** — a glyph in the bar, before the power button, whose three cells
+  fill with how much processor, memory and disk is in use. Its card lists
+  each with a figure: processor load and temperature, graphics (on AMD),
+  memory, swap when there is any, and disk free space. A cell turns amber
+  when memory or a disk passes 90% or the processor runs hot.
 
 ## v0.1.0-alpha — 2026-10-27
 
