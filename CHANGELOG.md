@@ -79,8 +79,8 @@ screen.
 ### Tested
 
 - **Daily use:** the same Framework Laptop 13 (AMD Ryzen AI 7 350), with a
-  Dell P2421D (2560 × 1440) as a second screen through a USB-C to HDMI
-  adapter.
+  Dell P2421D (2560 × 1440) as a second screen, through the Framework HDMI
+  Expansion Card and through a USB-C to HDMI adapter.
 - **Checked by hand on it:** the capture overlay's keys and dragging a
   picture out of its card; clicking a notification to open its app; the
   idle chain after changing its times; the three-finger swipe turned off;
@@ -103,8 +103,6 @@ screen.
   where it chooses.
 - **Notifications** do not survive a restart of the shell, and a reload
   forgets how long ago each arrived.
-- **The Framework HDMI Expansion Card** did not work on this laptop in any
-  slot; a USB-C to HDMI adapter did, so the card itself is the likely fault.
 - **Disk encryption on a fresh install, NVIDIA and Secure Boot** are as they
   were in v0.1.0-alpha: untried.
 
