@@ -50,12 +50,17 @@ Scope {
 	// Whether this conversation got as far as asking for a finger.
 	property bool prompted: false
 
+	// How long until the next try after one that failed. Doubles while the
+	// reader stays busy - waking from sleep can take it a while.
+	property int backoff: 1000
+
 	onActiveChanged: {
 		if (!root.active)
 			return;
 
 		root.unavailable = false;
 		root.exhausted = false;
+		root.backoff = 1000;
 		root.status = "";
 	}
 
@@ -71,6 +76,13 @@ Scope {
 	Component.onCompleted: {
 		if (root.wanted)
 			root.listen();
+	}
+
+	// Ask again, less often each time the reader stays busy.
+	function retryLater() {
+		retry.interval = root.backoff;
+		root.backoff = Math.min(root.backoff * 2, 30000);
+		retry.restart();
 	}
 
 	function listen() {
@@ -97,6 +109,7 @@ Scope {
 			if (!pam.messageIsError) {
 				root.prompt = pam.message;
 				root.prompted = true;
+				root.backoff = 1000;
 				return;
 			}
 
@@ -124,17 +137,20 @@ Scope {
 				return;
 			}
 
+			// No prompt means nothing to ask for - or a reader too busy to
+			// claim, when the lock came up as the machine went to sleep and
+			// the reader is still waking. Only fprintd can tell which. Either
+			// way PAM ends with PamResult.Error, after an error signal that is
+			// deliberately not handled: deciding there would come first.
 			if (!root.prompted) {
-				root.unavailable = true;
+				probe.running = true;
 				return;
 			}
 
-			// The reader went away mid-try, or fprintd restarted. Ask again;
-			// if it is gone for good, the next try never prompts and stops.
-			retry.restart();
+			// The reader went away mid-try, fprintd restarted, or the machine
+			// slept while this was listening.
+			root.retryLater();
 		}
-
-		onError: root.unavailable = true
 	}
 
 	Timer {
@@ -144,10 +160,29 @@ Scope {
 		onTriggered: root.status = ""
 	}
 
+	// Whether fprintd has a reader with a finger enrolled, asked without
+	// claiming the reader - so it answers while the reader is busy too.
+	Process {
+		id: probe
+
+		command: ["sh", `${Quickshell.shellDir}/modules/fingerprint-probe.sh`]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				if (!root.wanted)
+					return;
+
+				if (/^finger /m.test(text))
+					root.retryLater();
+				else
+					root.unavailable = true;
+			}
+		}
+	}
+
 	Timer {
 		id: retry
 
-		interval: 1000
 		onTriggered: {
 			if (root.wanted)
 				root.listen();
