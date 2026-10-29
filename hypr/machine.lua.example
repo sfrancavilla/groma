@@ -3,7 +3,9 @@
 -- Copy to ~/.config/hypr/machine.lua (NOT into this repository) and edit.
 -- It is loaded last, so anything here wins over the Groma defaults.
 
--- A specific monitor layout, rather than the default "preferred/auto":
+-- A specific monitor layout, rather than the default "preferred/auto".
+-- Settings then shows that display as "Set in machine.lua" and offers no
+-- scale or rate for it, since this file would undo them at the next reload:
 -- hl.monitor({
 --     output   = "eDP-1",
 --     mode     = "2256x1504@60",

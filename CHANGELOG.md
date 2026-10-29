@@ -38,7 +38,8 @@
   the earbuds' pause and resume; and the public address. Changes apply as
   they are made. Hyprland's share is
   written to `~/.config/hypr/groma.lua`, loaded before `machine.lua`, so a
-  hand-written override still wins.
+  hand-written override still wins; a display `machine.lua` sets says so in
+  Settings rather than offering a choice it would undo.
 - **Calendar and notification centre** — the clock in the bar opens a card
   hung centred under it. On the right, a month: today lit, the ISO week
   number, arrows or a scroll to turn the page and Today to come back

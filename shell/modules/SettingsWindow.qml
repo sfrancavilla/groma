@@ -1163,6 +1163,10 @@ Scope {
 									id: display
 
 									required property var modelData
+									// A rule in machine.lua has the last word on
+									// this display, so offering a choice here
+									// would only be undone at the next reload.
+									readonly property bool handWritten: HyprConfig.machineSets(display.modelData)
 
 									width: parent.width
 									spacing: 6
@@ -1185,6 +1189,7 @@ Scope {
 										// it: nine of them do not fit beside it in a
 										// window tiled to half the screen, and wrap.
 										Item {
+											visible: !display.handWritten
 											width: parent.width
 											height: scaleColumn.implicitHeight + 24
 
@@ -1244,7 +1249,7 @@ Scope {
 										// Only where there is a choice: most external
 										// displays offer one rate at their full size.
 										SettingRow {
-											visible: (display.modelData.rates ?? []).length > 1
+											visible: !display.handWritten && (display.modelData.rates ?? []).length > 1
 											title: "Refresh rate"
 											caption: "Lower lasts longer on battery"
 
@@ -1264,6 +1269,12 @@ Scope {
 													}
 												}
 											}
+										}
+
+										SettingRow {
+											visible: display.handWritten
+											title: "Set in machine.lua"
+											caption: "Its scale and refresh rate come from ~/.config/hypr/machine.lua, which has the last word. Change them there."
 										}
 									}
 								}

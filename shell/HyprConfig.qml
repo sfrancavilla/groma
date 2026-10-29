@@ -323,7 +323,56 @@ Singleton {
 					|| event.name.startsWith("monitoradded")
 					|| event.name.startsWith("monitorremoved"))
 				reader.running = true;
+			if (event.name === "configreloaded")
+				machineFile.reload();
 		}
+	}
+
+	// --- machine.lua -----------------------------------------------------
+
+	// Hand-written overrides, loaded after groma.lua, have the last word. A
+	// monitor rule there would quietly undo a scale or rate kept here at the
+	// next reload, so Settings asks before offering one. Only its monitor
+	// rules are read, and only what they name.
+	readonly property string machinePath: root.path.replace(/groma\.lua$/, "machine.lua")
+
+	// What each uncommented hl.monitor() there names as its output: a
+	// connector, "desc:" and the start of a description, or "" for every
+	// display.
+	property var machineOutputs: []
+
+	function machineSets(monitor) {
+		return root.machineOutputs.some(output => output === ""
+			|| output === monitor.name
+			|| (output.startsWith("desc:") && monitor.description.startsWith(output.slice(5))));
+	}
+
+	function readMachine(text) {
+		const code = text
+			.replace(/--\[(=*)\[[\s\S]*?\]\1\]/g, "")
+			.replace(/--[^\n]*/g, "");
+		const outputs = [];
+		// exec in a loop: Qt's JavaScript has no matchAll.
+		const calls = /hl\.monitor\s*\(\s*\{([^}]*)\}/g;
+		let call;
+		while ((call = calls.exec(code)) !== null) {
+			const output = call[1].match(/output\s*=\s*(["'])(.*?)\1/);
+			if (output)
+				outputs.push(output[2]);
+		}
+		root.machineOutputs = outputs;
+	}
+
+	// Read again whenever Hyprland reloads, which it does by itself when
+	// machine.lua is saved.
+	FileView {
+		id: machineFile
+
+		path: root.machinePath
+		printErrors: false
+
+		onLoaded: root.readMachine(machineFile.text())
+		onLoadFailed: root.machineOutputs = []
 	}
 
 	// One process for all of it, the answers separated by a record separator.
