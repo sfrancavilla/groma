@@ -65,6 +65,9 @@
   same way - an area that can be adjusted before it starts, or a screen -
   with the computer's sound and, if asked, the microphone; a red dot in the
   bar counts the time and stops it. Both are in the launcher as well.
+- **More than one screen** — every screen has the wallpaper and a bar of its
+  own. Each bar shows the workspaces on its screen and opens its cards under
+  itself, and keys such as SUPER+N act on the screen you are using.
 
 ## v0.1.0-alpha — 2026-10-27
 

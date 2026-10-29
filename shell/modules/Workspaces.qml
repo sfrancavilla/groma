@@ -22,12 +22,31 @@ Row {
 
 	spacing: Theme.spacingS
 
-	// Every workspace Hyprland has, and every named one it does not have yet.
-	// The name is what holds the place: a colour alone is remembered for when
-	// the workspace comes back, but does not keep an empty one in the bar.
+	// There is a bar on every screen. Each shows the workspaces on its own
+	// screen, as Waybar does; the one on the screen in use is the one IPC
+	// reaches, so SUPER+N names the workspace you are looking at.
+	readonly property string screenName: root.QsWindow.window?.screen?.name ?? ""
+	readonly property bool lead: root.screenName !== ""
+		&& root.screenName === (Hyprland.focusedMonitor?.name ?? "")
+
+	// A moment behind `lead`, as in BarPopup.qml: the bar losing it lets go
+	// first, so Quickshell never sees two handlers for one target.
+	property bool hasIpc: false
+	onLeadChanged: {
+		if (!root.lead)
+			root.hasIpc = false;
+		else
+			Qt.callLater(() => root.hasIpc = root.lead);
+	}
+
+	// Every workspace Hyprland has on this screen, and every named one it
+	// does not have yet - on every screen, since it is not on any. The name
+	// is what holds the place: a colour alone is remembered for when the
+	// workspace comes back, but does not keep an empty one in the bar.
 	readonly property var slots: {
-		const live = Hyprland.workspaces.values;
-		const liveIds = live.map(ws => ws.id);
+		const all = Hyprland.workspaces.values;
+		const live = all.filter(ws => root.screenName === "" || ws.monitor?.name === root.screenName);
+		const liveIds = all.map(ws => ws.id);
 		const waiting = Object.keys(Settings.workspaceNames ?? {}).map(Number)
 			.filter(id => id > 0 && !liveIds.includes(id));
 
@@ -178,6 +197,7 @@ Row {
 
 	IpcHandler {
 		target: "workspaces"
+		enabled: root.hasIpc
 
 		// Name the workspace you are on: what SUPER+N does.
 		function edit(): void {
@@ -271,6 +291,8 @@ Row {
 
 		readonly property var workspace: root.slotFor(root.shownId)?.workspace ?? null
 		readonly property var windows: preview.workspace?.toplevels?.values ?? []
+
+		screen: root.QsWindow.window?.screen ?? null
 
 		// Up while the card is out of its tab at all. Not tied to the body's
 		// height: showing the surface lays the card out, which can change
@@ -488,6 +510,7 @@ Row {
 	// a client only receives input on its own surfaces.
 	PanelWindow {
 		visible: root.editing || nameTab.out
+		screen: root.QsWindow.window?.screen ?? null
 
 		anchors {
 			top: true

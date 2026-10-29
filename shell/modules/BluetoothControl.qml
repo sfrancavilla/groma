@@ -79,6 +79,7 @@ BarPopup {
 
 	IpcHandler {
 		target: "bluetooth"
+		enabled: root.hasIpc
 
 		function toggle(): void {
 			root.open = !root.open;

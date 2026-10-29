@@ -8,9 +8,7 @@ import "../ui"
 // The bar's load readout, and the tile it opens: processor, graphics,
 // memory and disk, each as how much is in use.
 //
-// The figures come from system-worker.py, kept alive for as long as the
-// shell runs, because the glyph in the bar shows them too. It reads every
-// three seconds, and every second while the tile is open.
+// The figures come from SystemStats.qml, one worker shared by every bar.
 BarPopup {
 	id: root
 
@@ -22,7 +20,7 @@ BarPopup {
 	readonly property real hotCelsius: 90
 
 	// The last reading, or null until the first one arrives.
-	property var reading: null
+	readonly property var reading: SystemStats.reading
 	readonly property bool ready: root.reading !== null
 
 	readonly property real cpu: root.reading?.cpu ?? 0
@@ -135,44 +133,12 @@ BarPopup {
 	}
 
 	// Looked at, it reads faster; the next reading comes at once.
-	onOpenChanged: if (worker.running) worker.write((root.open ? "1" : "3") + "\n")
-
-	Process {
-		id: worker
-
-		command: ["python3", `${Quickshell.shellDir}/modules/system-worker.py`]
-		stdinEnabled: true
-
-		// Started here rather than bound: a binding on `running` is broken
-		// the first time the process exits on its own, and then it never
-		// comes back.
-		Component.onCompleted: worker.running = true
-		onExited: reviveWorker.start()
-
-		stdout: SplitParser {
-			onRead: line => {
-				try {
-					root.reading = JSON.parse(line);
-				} catch (e) {
-					console.warn("System worker:", line);
-				}
-			}
-		}
-
-		stderr: SplitParser {
-			onRead: line => console.warn("System worker:", line)
-		}
-	}
-
-	Timer {
-		id: reviveWorker
-
-		interval: 2000
-		onTriggered: if (!worker.running) worker.running = true
-	}
+	onOpenChanged: SystemStats.looking += root.open ? 1 : -1
+	Component.onDestruction: if (root.open) SystemStats.looking -= 1
 
 	IpcHandler {
 		target: "system"
+		enabled: root.hasIpc
 
 		function toggle(): void {
 			root.open = !root.open;

@@ -102,6 +102,7 @@ BarPopup {
 
 	IpcHandler {
 		target: "power"
+		enabled: root.hasIpc
 
 		function toggle(): void {
 			root.open = !root.open;
@@ -236,6 +237,7 @@ BarPopup {
 		id: sheetWindow
 
 		visible: root.asking !== null || dialog.sheet.opacity > 0.01
+		screen: root.QsWindow.window?.screen ?? null
 
 		anchors {
 			top: true

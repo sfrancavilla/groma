@@ -1,5 +1,6 @@
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import QtQuick
 import ".."
 
@@ -35,6 +36,27 @@ Item {
 	property string name: ""
 
 	property bool open: false
+
+	// There is a bar on every screen, and so one of each control. The one
+	// on the screen you are using is the one IPC reaches - a keybind opens
+	// the card where you are looking - and does whatever must happen once,
+	// not once per screen. Callers gate their IpcHandler on hasIpc, below.
+	readonly property string screenName: root.QsWindow.window?.screen?.name ?? ""
+	readonly property bool lead: root.screenName !== ""
+		&& root.screenName === (Hyprland.focusedMonitor?.name ?? "")
+
+	// IPC follows `lead` a moment behind. The bar losing it lets go at once,
+	// and the one gaining it takes it on the next turn of the event loop:
+	// changing together, the new handler could register while the old one
+	// still held the target, and Quickshell warns about that on every move
+	// between screens.
+	property bool hasIpc: false
+	onLeadChanged: {
+		if (!root.lead)
+			root.hasIpc = false;
+		else
+			Qt.callLater(() => root.hasIpc = root.lead);
+	}
 
 	// For the caller's trigger: dim it until pointed at.
 	readonly property bool active: mouse.containsMouse || root.open
@@ -101,6 +123,7 @@ Item {
 	// to be a surface. This one exists purely to catch that click.
 	PanelWindow {
 		visible: root.open
+		screen: root.QsWindow.window?.screen ?? null
 
 		anchors {
 			top: true
@@ -128,6 +151,9 @@ Item {
 		id: panel
 
 		visible: tabCard.out
+		// Under the bar it hangs from, not wherever the compositor puts a
+		// surface that names no screen.
+		screen: root.QsWindow.window?.screen ?? null
 
 		anchors {
 			top: true

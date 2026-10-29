@@ -87,8 +87,9 @@ BarPopup {
 			PowerProfiles.profile = root.profileValue(name);
 	}
 
-	onSourceChanged: root.restoreProfile()
-	onProfilesAvailableChanged: root.restoreProfile()
+	// Once, by the lead bar, not once per screen.
+	onSourceChanged: if (root.lead) root.restoreProfile()
+	onProfilesAvailableChanged: if (root.lead) root.restoreProfile()
 	onOpenChanged: if (root.open) profileProbe.running = true
 
 	Process {
@@ -174,6 +175,7 @@ BarPopup {
 
 	IpcHandler {
 		target: "battery"
+		enabled: root.hasIpc
 
 		function toggle(): void {
 			root.open = !root.open;

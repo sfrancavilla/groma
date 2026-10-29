@@ -27,7 +27,9 @@ Rectangle {
 	readonly property string name: Settings.workspaceNames?.[String(workspaceId)] ?? ""
 	readonly property color tint: Theme.tagColor(Settings.workspaceColors?.[String(workspaceId)] ?? "")
 	readonly property bool tinted: tint.a > 0
-	readonly property bool isFocused: workspace?.focused ?? false
+	// The one showing on its screen, focused or not: each screen's bar lights
+	// its own. With one screen that is the focused workspace.
+	readonly property bool isFocused: workspace?.active ?? false
 	// Tagged, but nothing on it and Hyprland has not made it yet.
 	readonly property bool waiting: workspace === null
 	readonly property bool solid: tinted && !waiting

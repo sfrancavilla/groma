@@ -143,6 +143,7 @@ BarPopup {
 
 	IpcHandler {
 		target: "clock"
+		enabled: root.hasIpc
 
 		function toggle(): void {
 			root.open = !root.open;

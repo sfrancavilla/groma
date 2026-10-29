@@ -14,8 +14,17 @@ ShellRoot {
 	// time Settings is opened.
 	readonly property var hyprConfig: HyprConfig
 
-	// The desktop background. Drawn, so the glass has something to tint.
-	Wallpaper {}
+	// The desktop background, on every screen. Drawn, so the glass has
+	// something to tint.
+	Variants {
+		model: Quickshell.screens
+
+		Wallpaper {
+			required property var modelData
+
+			screen: modelData
+		}
+	}
 
 	// The polkit password prompt, defined in PolkitDialog.qml.
 	PolkitDialog {}
@@ -47,11 +56,10 @@ ShellRoot {
 	}
 
 	// Every network in range, and the form for joining one: two pages of the
-	// same sheet.
+	// same sheet. Its controller is the lead bar's NetworkControl, set from
+	// the bar below.
 	NetworkDialog {
 		id: networkDialog
-
-		controller: networkControl
 	}
 
 	// Keeps what passes through the clipboard, for the launcher's ":" mode.
@@ -114,100 +122,120 @@ ShellRoot {
 		objects: [Pipewire.defaultAudioSink]
 	}
 
-	PanelWindow {
-		id: bar
+	// The bar, on every screen. Each is whole - its own cards, opening under
+	// it - and the one on the screen in use is the one keybinds reach.
+	Variants {
+		model: Quickshell.screens
 
-		anchors {
-			top: true
-			left: true
-			right: true
-		}
+		PanelWindow {
+			id: bar
 
-		WlrLayershell.namespace: "groma:bar"
+			required property var modelData
 
-		implicitHeight: Theme.barHeight
+			screen: modelData
 
-		// The bar has no surface of its own: the widgets float directly over
-		// the desktop. It still reserves its 32px, so nothing is ever behind
-		// it except the background - which is what makes this readable rather
-		// than a gamble on whatever window happens to be underneath.
-		//
-		// No blur either. Blurring behind a surface that draws nothing would
-		// just smear a band across the top of the wallpaper.
-		color: Theme.glass ? "transparent" : Theme.surface
-
-		// LEFT: workspaces, by number or by what they are for.
-		Workspaces {
 			anchors {
-				left: parent.left
-				leftMargin: Theme.spacingM
-				verticalCenter: parent.verticalCenter
+				top: true
+				left: true
+				right: true
+			}
+
+			WlrLayershell.namespace: "groma:bar"
+
+			implicitHeight: Theme.barHeight
+
+			// The bar has no surface of its own: the widgets float directly over
+			// the desktop. It still reserves its 32px, so nothing is ever behind
+			// it except the background - which is what makes this readable rather
+			// than a gamble on whatever window happens to be underneath.
+			//
+			// No blur either. Blurring behind a surface that draws nothing would
+			// just smear a band across the top of the wallpaper.
+			color: Theme.glass ? "transparent" : Theme.surface
+
+			// LEFT: workspaces, by number or by what they are for.
+			Workspaces {
+				anchors {
+					left: parent.left
+					leftMargin: Theme.spacingM
+					verticalCenter: parent.verticalCenter
+				}
+			}
+
+			// RIGHT: volume and battery
+			Row {
+				anchors {
+					right: parent.right
+					rightMargin: Theme.spacingM
+					verticalCenter: parent.verticalCenter
+				}
+				spacing: Theme.spacingL
+
+				// Only while recording the screen: how long, and a click stops it.
+				RecordingControl {
+					anchors.verticalCenter: parent.verticalCenter
+					capture: capture
+				}
+
+				// Only while running a snapshot: amber, because nothing done in
+				// this session survives a restart.
+				Chip {
+					anchors.verticalCenter: parent.verticalCenter
+					visible: snapshotBoot.active
+					text: "Snapshot " + snapshotBoot.number
+					accent: Theme.warning
+					onClicked: snapshotBoot.open = true
+				}
+
+				BluetoothControl {
+					anchors.verticalCenter: parent.verticalCenter
+					dialog: bluetoothDialog
+					batteryDetail: nothingEar
+				}
+
+				NetworkControl {
+					id: networkControl
+
+					anchors.verticalCenter: parent.verticalCenter
+					dialog: networkDialog
+				}
+
+				VolumeControl {
+					anchors.verticalCenter: parent.verticalCenter
+				}
+
+				BatteryControl {
+					anchors.verticalCenter: parent.verticalCenter
+				}
+
+				// Processor, memory and disk, filled by how much is in use.
+				SystemControl {
+					anchors.verticalCenter: parent.verticalCenter
+				}
+
+				// Lock, suspend, log out, restart, power off.
+				PowerControl {
+					anchors.verticalCenter: parent.verticalCenter
+				}
+
+			}
+
+			// CENTER: the clock, and the month it opens.
+			ClockControl {
+				anchors.centerIn: parent
+				notifications: notifications
+			}
+
+			// The network sheet reads the lead bar's list. RestoreNone, so the
+			// controller passes from one bar to the next rather than through
+			// null on the way.
+			Binding {
+				target: networkDialog
+				property: "controller"
+				value: networkControl
+				when: networkControl.lead
+				restoreMode: Binding.RestoreNone
 			}
 		}
-
-		// RIGHT: volume and battery
-		Row {
-			anchors {
-				right: parent.right
-				rightMargin: Theme.spacingM
-				verticalCenter: parent.verticalCenter
-			}
-			spacing: Theme.spacingL
-
-			// Only while recording the screen: how long, and a click stops it.
-			RecordingControl {
-				anchors.verticalCenter: parent.verticalCenter
-				capture: capture
-			}
-
-			// Only while running a snapshot: amber, because nothing done in
-			// this session survives a restart.
-			Chip {
-				anchors.verticalCenter: parent.verticalCenter
-				visible: snapshotBoot.active
-				text: "Snapshot " + snapshotBoot.number
-				accent: Theme.warning
-				onClicked: snapshotBoot.open = true
-			}
-
-			BluetoothControl {
-				anchors.verticalCenter: parent.verticalCenter
-				dialog: bluetoothDialog
-				batteryDetail: nothingEar
-			}
-
-			NetworkControl {
-				id: networkControl
-
-				anchors.verticalCenter: parent.verticalCenter
-				dialog: networkDialog
-			}
-
-			VolumeControl {
-				anchors.verticalCenter: parent.verticalCenter
-			}
-
-			BatteryControl {
-				anchors.verticalCenter: parent.verticalCenter
-			}
-
-			// Processor, memory and disk, filled by how much is in use.
-			SystemControl {
-				anchors.verticalCenter: parent.verticalCenter
-			}
-
-			// Lock, suspend, log out, restart, power off.
-			PowerControl {
-				anchors.verticalCenter: parent.verticalCenter
-			}
-
-		}
-
-		// CENTER: the clock, and the month it opens.
-		ClockControl {
-			anchors.centerIn: parent
-			notifications: notifications
-		}
- 
 	}
 }

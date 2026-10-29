@@ -295,8 +295,11 @@ BarPopup {
 	// there empties the model, and the list page is still on screen at the time
 	// - sliding out, visibly losing its contents as it goes. It also means a
 	// failed join comes back to a list that is already populated.
+	//
+	// The sheet is one, and the bars are one per screen: only the lead bar
+	// scans for it, and it is the one the sheet reads (shell.qml).
 	readonly property bool scanning: root.enabled
-		&& (root.open || (root.dialog?.open ?? false))
+		&& (root.open || (root.lead && (root.dialog?.open ?? false)))
 
 	Binding {
 		target: root.wifi
@@ -354,6 +357,7 @@ BarPopup {
 
 	IpcHandler {
 		target: "network"
+		enabled: root.hasIpc
 
 		function toggle(): void {
 			root.open = !root.open;
