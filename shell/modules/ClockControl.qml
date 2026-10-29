@@ -212,6 +212,10 @@ BarPopup {
 
 							// As on the toast: a click does what it is for, a
 							// right-click puts it away.
+							//
+							// The card closes before the action runs: invoking
+							// dismisses the notification, which takes this row
+							// away mid-handler, and nothing after it would run.
 							MouseArea {
 								id: rowClick
 
@@ -223,8 +227,8 @@ BarPopup {
 									if (mouse.button === Qt.RightButton) {
 										row.modelData.dismiss();
 									} else if (open) {
-										open.invoke();
 										root.open = false;
+										open.invoke();
 									}
 								}
 							}

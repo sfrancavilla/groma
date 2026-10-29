@@ -259,6 +259,14 @@ Scope {
 		});
 	}
 
+	// Here rather than in the option's click: saving can rebuild the menu's
+	// list, which destroys the option mid-handler, and nothing after it would run.
+	function chooseDuration(seconds) {
+		const menu = root.menu;
+		root.menu = null;
+		Settings.setIdleAfter(menu.stage, menu.battery, seconds);
+	}
+
 	function idleCustomised() {
 		return Object.keys(Settings.idleTimes ?? {}).length > 0;
 	}
@@ -1623,10 +1631,7 @@ Scope {
 									hoverEnabled: true
 									enabled: option.allowed
 									cursorShape: Qt.PointingHandCursor
-									onClicked: {
-										Settings.setIdleAfter(root.menu.stage, root.menu.battery, option.modelData);
-										root.menu = null;
-									}
+									onClicked: root.chooseDuration(option.modelData)
 								}
 							}
 						}

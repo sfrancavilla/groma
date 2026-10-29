@@ -34,51 +34,79 @@ Scope {
 	// start (Backlight.qml); without one there is nothing to dim.
 	readonly property string backlight: Backlight.device
 
-	// brightnessctl keeps the pre-dim value itself, so there is no state here
-	// to get out of step with the hardware.
-	IdleMonitor {
-		enabled: root.dimAfter > 0
-		timeout: Math.max(1, root.dimAfter)
-		respectInhibitors: true
+	// Each stage is a monitor made for one timeout, and a new one is made when
+	// the timeout changes. Quickshell 0.3.2's IdleMonitor goes silent for good
+	// once its timeout is changed in place - which is what choosing a new time
+	// in Settings did - so it is never changed, only replaced.
 
-		onIsIdleChanged: {
-			if (root.backlight === "")
-				return;
-			if (isIdle)
-				Quickshell.execDetached(["brightnessctl", "-d", root.backlight,
-					"-s", "set", "20%"]);
-			else
-				Quickshell.execDetached(["brightnessctl", "-d", root.backlight,
-					"-r"]);
+	// Half of whatever the brightness is, so the dim shows at any level; a fixed
+	// level did nothing to a screen already at or below it. brightnessctl keeps
+	// the pre-dim value itself, so there is no state here to get out of step
+	// with the hardware.
+	Variants {
+		model: root.dimAfter > 0 ? [root.dimAfter] : []
+
+		IdleMonitor {
+			required property int modelData
+
+			timeout: modelData
+			respectInhibitors: true
+
+			onIsIdleChanged: {
+				if (root.backlight === "")
+					return;
+				if (isIdle)
+					Quickshell.execDetached(["sh", "-c",
+						'now=$(brightnessctl -d "$1" g) && brightnessctl -d "$1" -s set $(( now > 1 ? now / 2 : 1 ))',
+						"sh", root.backlight]);
+				else
+					Quickshell.execDetached(["brightnessctl", "-d", root.backlight,
+						"-r"]);
+			}
 		}
 	}
 
-	IdleMonitor {
-		enabled: root.lockAfter > 0
-		timeout: Math.max(1, root.lockAfter)
-		respectInhibitors: true
+	Variants {
+		model: root.lockAfter > 0 ? [root.lockAfter] : []
 
-		// Locking is one-way: coming back from idle must not unlock anything.
-		onIsIdleChanged: if (isIdle) root.lock.setLocked(true)
+		IdleMonitor {
+			required property int modelData
+
+			timeout: modelData
+			respectInhibitors: true
+
+			// Locking is one-way: coming back from idle must not unlock anything.
+			onIsIdleChanged: if (isIdle) root.lock.setLocked(true)
+		}
 	}
 
-	IdleMonitor {
-		enabled: root.screenOffAfter > 0
-		timeout: Math.max(1, root.screenOffAfter)
-		respectInhibitors: true
+	Variants {
+		model: root.screenOffAfter > 0 ? [root.screenOffAfter] : []
 
-		onIsIdleChanged: Quickshell.execDetached(
-			["hyprctl", "dispatch", "dpms", isIdle ? "off" : "on"])
+		IdleMonitor {
+			required property int modelData
+
+			timeout: modelData
+			respectInhibitors: true
+
+			onIsIdleChanged: Quickshell.execDetached(
+				["hyprctl", "dispatch", "dpms", isIdle ? "off" : "on"])
+		}
 	}
 
 	// logind allows the active session to suspend itself without asking, so
 	// this needs no privileges. The sleep hook locks on the way down, and this
 	// is already past the lock stage anyway.
-	IdleMonitor {
-		enabled: root.suspendAfter > 0
-		timeout: Math.max(1, root.suspendAfter)
-		respectInhibitors: true
+	Variants {
+		model: root.suspendAfter > 0 ? [root.suspendAfter] : []
 
-		onIsIdleChanged: if (isIdle) Quickshell.execDetached(["systemctl", "suspend"])
+		IdleMonitor {
+			required property int modelData
+
+			timeout: modelData
+			respectInhibitors: true
+
+			onIsIdleChanged: if (isIdle) Quickshell.execDetached(["systemctl", "suspend"])
+		}
 	}
 }
