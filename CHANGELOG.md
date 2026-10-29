@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## v0.2.0-alpha — 2026-10-29
+
+The second alpha. A settings window, screenshots and recordings, a calendar
+and notification centre under the clock, power modes, and a bar on every
+screen.
+
+### What is new
 
 - **Named workspaces** — right-click a workspace in the bar, or SUPER+N, to
   name it for what it holds and give it a colour, as with Chrome's tab
@@ -69,6 +75,38 @@
 - **More than one screen** — every screen has the wallpaper and a bar of its
   own. Each bar shows the workspaces on its screen and opens its cards under
   itself, and keys such as SUPER+N act on the screen you are using.
+
+### Tested
+
+- **Daily use:** the same Framework Laptop 13 (AMD Ryzen AI 7 350), with a
+  Dell P2421D (2560 × 1440) as a second screen through a USB-C to HDMI
+  adapter.
+- **Checked by hand on it:** the capture overlay's keys and dragging a
+  picture out of its card; clicking a notification to open its app; the
+  idle chain after changing its times; the three-finger swipe turned off;
+  the power mode following the charger in and out; a `machine.lua` monitor
+  rule against Settings.
+- **Not run again:** the fresh install in the virtual machine. The installer
+  now adds grim, Satty, gpu-screen-recorder and power-profiles-daemon, and
+  has not been through a fresh install since.
+- **Versions:** Hyprland 0.56.2, Quickshell 0.3.2, Linux 7.2.11, Satty 0.22.0,
+  gpu-screen-recorder 6.1.6, power-profiles-daemon 0.30.
+
+### Known gaps
+
+- **One real machine,** as before; the second screen is the only new
+  hardware.
+- **Laptop screen alone** has not been looked at again since the bar went to
+  every screen.
+- **Not placed per screen:** the volume and brightness display, notification
+  toasts, the launcher and sheets name no screen, and Hyprland puts them
+  where it chooses.
+- **Notifications** do not survive a restart of the shell, and a reload
+  forgets how long ago each arrived.
+- **The Framework HDMI Expansion Card** did not work on this laptop in any
+  slot; a USB-C to HDMI adapter did, so the card itself is the likely fault.
+- **Disk encryption on a fresh install, NVIDIA and Secure Boot** are as they
+  were in v0.1.0-alpha: untried.
 
 ## v0.1.0-alpha — 2026-10-27
 

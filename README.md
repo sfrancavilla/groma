@@ -8,7 +8,7 @@ everything else is built from — and every camp in the empire was laid out
 identically with one. That is the goal here: a desktop you can reproduce
 exactly, on any machine, from this repository.
 
-> **Status:** v0.1.0-alpha. In daily use on one laptop, and installed from
+> **Status:** v0.2.0-alpha. In daily use on one laptop, and installed from
 > scratch on a second machine; see [CHANGELOG.md](CHANGELOG.md) for what was
 > tested where and what was not.
 
