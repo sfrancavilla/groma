@@ -16,6 +16,11 @@
 
 ### Fixed
 
+- **The notification centre was empty** — since the bar went to every
+  screen, the clock's card was handed nothing, so notifications stopped
+  appearing under the clock once their toast went, though they were still
+  kept. The recording timer in the bar was wired the same way and is fixed
+  with it.
 - **Fingerprint after a wake** — a suspend in the middle of a fingerprint
   check left fprintd refusing the reader, and the lock screen went
   password-only until the next lock. The lock now keeps trying, and

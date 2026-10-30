@@ -30,7 +30,7 @@ ShellRoot {
 	PolkitDialog {}
 
 	// The notification daemon and its toast stack.
-	Notifications { id: notifications }
+	Notifications { id: notificationDaemon }
 
 	// Not a lock screen yet - a harness for proving the PAM conversation.
 	LockScreen { id: lockScreen }
@@ -97,7 +97,7 @@ ShellRoot {
 
 	// Screenshots and screen recordings: Print, Shift+Print, Alt+Print.
 	Capture {
-		id: capture
+		id: captureService
 
 		files: files
 	}
@@ -174,7 +174,7 @@ ShellRoot {
 				// Only while recording the screen: how long, and a click stops it.
 				RecordingControl {
 					anchors.verticalCenter: parent.verticalCenter
-					capture: capture
+					capture: captureService
 				}
 
 				// Only while running a snapshot: amber, because nothing done in
@@ -223,7 +223,7 @@ ShellRoot {
 			// CENTER: the clock, and the month it opens.
 			ClockControl {
 				anchors.centerIn: parent
-				notifications: notifications
+				notifications: notificationDaemon
 			}
 
 			// The network sheet reads the lead bar's list. RestoreNone, so the
