@@ -50,9 +50,29 @@ Scope {
 	// Whether this conversation got as far as asking for a finger.
 	property bool prompted: false
 
+	// Whether any conversation has, since the session locked. From then on
+	// the reader is known to be there, and a try that fails is a reader
+	// that is busy or wedged - never a reason to stop asking.
+	//
+	// Asking fprintd whether there is a reader is not good enough once it
+	// has gone wrong: a verify cut off by the machine sleeping left it
+	// refusing claims after the wake, its answer to the probe read as "no
+	// reader", and the lock went password-only - though fprintd quit idle
+	// half a minute later and a fresh one would have worked.
+	property bool seen: false
+
 	// How long until the next try after one that failed. Doubles while the
-	// reader stays busy - waking from sleep can take it a while.
+	// reader stays busy - waking from sleep can take it a while - up to
+	// longer than fprintd's 30s idle timeout: a wedged fprintd only recovers
+	// by quitting, and a try every 30s could keep it alive forever.
 	property int backoff: 1000
+	readonly property int backoffMax: 45000
+
+	// When this conversation started. One that listened for a while before
+	// it ended - the machine slept under it - earns a quick retry. A prompt
+	// alone does not: after a wake, fprintd can prompt and fail at once, try
+	// after try, and resetting on the prompt kept it from ever going quiet.
+	property double startedAt: 0
 
 	onActiveChanged: {
 		if (!root.active)
@@ -60,6 +80,7 @@ Scope {
 
 		root.unavailable = false;
 		root.exhausted = false;
+		root.seen = false;
 		root.backoff = 1000;
 		root.status = "";
 	}
@@ -81,7 +102,7 @@ Scope {
 	// Ask again, less often each time the reader stays busy.
 	function retryLater() {
 		retry.interval = root.backoff;
-		root.backoff = Math.min(root.backoff * 2, 30000);
+		root.backoff = Math.min(root.backoff * 2, root.backoffMax);
 		retry.restart();
 	}
 
@@ -91,8 +112,14 @@ Scope {
 
 		root.prompt = "";
 		root.prompted = false;
+		root.startedAt = Date.now();
 
-		if (!pam.start())
+		if (pam.start())
+			return;
+
+		if (root.seen)
+			root.retryLater();
+		else
 			root.unavailable = true;
 	}
 
@@ -109,7 +136,7 @@ Scope {
 			if (!pam.messageIsError) {
 				root.prompt = pam.message;
 				root.prompted = true;
-				root.backoff = 1000;
+				root.seen = true;
 				return;
 			}
 
@@ -139,16 +166,19 @@ Scope {
 
 			// No prompt means nothing to ask for - or a reader too busy to
 			// claim, when the lock came up as the machine went to sleep and
-			// the reader is still waking. Only fprintd can tell which. Either
-			// way PAM ends with PamResult.Error, after an error signal that is
-			// deliberately not handled: deciding there would come first.
-			if (!root.prompted) {
+			// the reader is still waking. Only fprintd can tell which, and
+			// only until it has been seen this lock. Either way PAM ends with
+			// PamResult.Error, after an error signal that is deliberately not
+			// handled: deciding there would come first.
+			if (!root.prompted && !root.seen) {
 				probe.running = true;
 				return;
 			}
 
-			// The reader went away mid-try, fprintd restarted, or the machine
-			// slept while this was listening.
+			// The reader went away mid-try, fprintd restarted or is wedged, or
+			// the machine slept while this was listening.
+			if (Date.now() - root.startedAt > 60000)
+				root.backoff = 1000;
 			root.retryLater();
 		}
 	}
@@ -172,10 +202,12 @@ Scope {
 				if (!root.wanted)
 					return;
 
-				if (/^finger /m.test(text))
+				if (/^finger /m.test(text)) {
+					root.seen = true;
 					root.retryLater();
-				else
+				} else {
 					root.unavailable = true;
+				}
 			}
 		}
 	}
