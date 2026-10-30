@@ -1,0 +1,26 @@
+# Give fprintd a fresh start when the machine wakes.
+#
+# A sleep that cuts off a verify - the lock screen listening when the idle
+# chain suspends - leaves fprintd holding the reader as "still busy with
+# another operation". Every claim after the wake fails until that fprintd
+# quits, which it only does after 30s with nobody asking, and the lock
+# screen is asking. So the reader is restarted here instead, and the lock's
+# next try finds a fresh one.
+#
+# try-restart: only if it is running. Nothing listening, nothing to fix -
+# D-Bus starts it when it is next wanted.
+#
+# After a sleep target, not before sleep.target: those are reached once the
+# machine is back. install.sh copies this into place, owned by root, where
+# there is a reader.
+
+[Unit]
+Description=Restart fprintd when the machine wakes
+After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl try-restart fprintd.service
+
+[Install]
+WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target

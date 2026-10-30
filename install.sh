@@ -222,6 +222,13 @@ if [ -n "$fingerprint" ]; then
 	else
 		note "/etc/pam.d/polkit-1 is not Groma's; left as it is."
 	fi
+
+	say "A fresh fprintd after every wake"
+	# A sleep in the middle of a verify leaves fprintd refusing the reader
+	# until it restarts (system/groma-fprintd-on-wake.service).
+	sudo install -Dm644 "$GROMA/system/groma-fprintd-on-wake.service" /etc/systemd/system/groma-fprintd-on-wake.service
+	sudo systemctl daemon-reload
+	sudo systemctl enable groma-fprintd-on-wake.service
 fi
 
 say "Shortening the lockout after mistyped passwords"
