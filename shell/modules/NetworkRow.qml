@@ -3,12 +3,8 @@ import ".."
 import "../icons"
 import "../ui"
 
-// One network in a list: name, a lock if it is secured, and its strength.
-//
-// Wanted in the tile and in the full picker, and the two would have drifted.
-// They are not identical - the picker is 520 wide and has room for the
-// security type and for a selected state, the tile at 300 has room for
-// neither - so the differences are properties rather than a second file.
+// One network in the picker: name, a lock if it is secured, its security
+// and its strength. The bar card draws its own rows (ui/CardRow.qml).
 Rectangle {
 	id: row
 
@@ -18,9 +14,6 @@ Rectangle {
 	property var detail: null
 	property int bars: 0
 
-	// The tile's row. Off, it is the picker's: taller, larger type, and the
-	// security label on the right.
-	property bool compact: true
 	property bool selected: false
 
 	// Shown, but dimmed: nmcli's `device wifi connect` can only build open,
@@ -65,8 +58,8 @@ Rectangle {
 			+ escape(row.name.slice(at + term.length));
 	}
 
-	height: row.compact ? 32 : 42
-	radius: row.compact ? 14 : Theme.radiusRow
+	height: 42
+	radius: Theme.radiusRow
 
 	opacity: row.unsupported ? 0.55 : 1.0
 
@@ -104,7 +97,7 @@ Rectangle {
 		anchors {
 			left: parent.left
 			right: trailing.left
-			leftMargin: row.compact ? Theme.spacingM : Theme.spacingL - 2
+			leftMargin: Theme.spacingL - 2
 			rightMargin: Theme.spacingS
 			verticalCenter: parent.verticalCenter
 		}
@@ -117,7 +110,7 @@ Rectangle {
 			textFormat: row.highlight !== "" ? Text.RichText : Text.PlainText
 			elide: Text.ElideRight
 			width: Math.min(implicitWidth, parent.width - 16)
-			font.pixelSize: row.compact ? Theme.fontCaption : Theme.fontLead
+			font.pixelSize: Theme.fontLead
 			font.weight: row.selected ? Font.Bold : Font.DemiBold
 			color: Theme.glassTextPrimary
 		}
@@ -135,16 +128,15 @@ Rectangle {
 
 		anchors {
 			right: parent.right
-			rightMargin: row.compact ? Theme.spacingM : Theme.spacingL - 2
+			rightMargin: Theme.spacingL - 2
 			verticalCenter: parent.verticalCenter
 		}
 
 		spacing: Theme.spacingM
 
-		// Only the picker has room to spell out what "locked" means.
 		Text {
 			anchors.verticalCenter: parent.verticalCenter
-			visible: !row.compact && text !== ""
+			visible: text !== ""
 			text: row.detail?.security ?? ""
 			font.pixelSize: Theme.fontBody
 			font.weight: Font.DemiBold
@@ -166,11 +158,10 @@ Rectangle {
 		hoverEnabled: true
 		cursorShape: Qt.PointingHandCursor
 
-		// In the tile a click is the whole interaction. In the picker it picks
-		// the row and Join commits, so that a scroll through twenty networks
-		// cannot join one by accident - but a double click still means "this
-		// one, now", which is what a list of things invites.
-		onClicked: row.compact ? row.activated() : row.chosen()
+		// A click picks the row and Join commits, so that a scroll through
+		// twenty networks cannot join one by accident - but a double click
+		// still means "this one, now", which is what a list of things invites.
+		onClicked: row.chosen()
 		onDoubleClicked: row.activated()
 	}
 }

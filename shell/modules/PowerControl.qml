@@ -136,97 +136,36 @@ BarPopup {
 		Repeater {
 			model: root.actions
 
-			Rectangle {
+			CardRow {
 				id: row
 
 				required property var modelData
 				required property int index
 
 				// A rule between what is harmless and what closes things.
-				readonly property bool firstOfLeaving: index === 2
+				rule: row.index === 2 ? "solid" : "none"
+				interactive: true
+				title: row.modelData.label
 
-				width: parent.width
-				height: 38 + (firstOfLeaving ? 9 : 0)
-				color: "transparent"
-
-				Rectangle {
-					visible: row.firstOfLeaving
-					y: 4
-					x: 8
-					width: parent.width - 16
-					height: 1
-					color: Theme.glassControlBorder
+				// Straight on the card, as the system card draws its parts:
+				// the row lights when pointed at, which says it is a button.
+				mark: PowerIcon {
+					width: Theme.rowMark
+					height: Theme.rowMark
+					kind: row.modelData.glyph
+					lineWidth: Theme.markLine
+					color: Theme.glassTextPrimary
 				}
 
-				Rectangle {
-					anchors.bottom: parent.bottom
-					width: parent.width
-					height: 38
-					radius: Theme.radiusPill
-					color: rowMouse.containsMouse ? Theme.glassControlHover : "transparent"
+				onClicked: root.perform(row.modelData.key)
 
-					Behavior on color {
-						ColorAnimation { duration: 120 }
-					}
-
-					Row {
-						anchors {
-							left: parent.left
-							right: parent.right
-							leftMargin: 6
-							rightMargin: 10
-							verticalCenter: parent.verticalCenter
-						}
-
-						spacing: 10
-
-						Lens {
-							id: disc
-
-							anchors.verticalCenter: parent.verticalCenter
-							width: 26
-							height: 26
-							sheen: false
-
-							PowerIcon {
-								anchors.centerIn: parent
-								width: 16
-								height: 16
-								kind: row.modelData.glyph
-								lineWidth: Theme.markLine
-								color: Theme.fileInk
-							}
-						}
-
-						Text {
-							anchors.verticalCenter: parent.verticalCenter
-							width: parent.width - disc.width - 10 - hint.width
-							text: row.modelData.label
-							font.pixelSize: Theme.fontTitle
-							font.weight: Font.DemiBold
-							color: Theme.glassTextPrimary
-						}
-
-						Text {
-							id: hint
-
-							anchors.verticalCenter: parent.verticalCenter
-							text: row.modelData.hint
-							font.pixelSize: Theme.fontCaption
-							font.weight: Font.DemiBold
-							opacity: 0.6
-							color: Theme.glassTextPrimary
-						}
-					}
-
-					MouseArea {
-						id: rowMouse
-
-						anchors.fill: parent
-						hoverEnabled: true
-						cursorShape: Qt.PointingHandCursor
-						onClicked: root.perform(row.modelData.key)
-					}
+				Text {
+					anchors.verticalCenter: parent.verticalCenter
+					text: row.modelData.hint
+					font.pixelSize: Theme.fontCaption
+					font.weight: Font.DemiBold
+					opacity: 0.6
+					color: Theme.glassTextPrimary
 				}
 			}
 		}

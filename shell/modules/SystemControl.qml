@@ -169,119 +169,44 @@ BarPopup {
 		Repeater {
 			model: root.rows
 
-			Item {
+			// The part, drawn straight on the card: a disc round each one
+			// was four buttons that did nothing.
+			CardRow {
 				id: row
 
 				required property var modelData
 				required property int index
 
-				// A rule above every part but the first, drawn as the power
-				// card draws the one between its two groups.
-				readonly property real ruleSpace: row.index > 0 ? 9 : 0
-				readonly property real rowHeight: 48
+				rule: row.index > 0 ? "dashed" : "none"
+				rowHeight: 48
+				title: row.modelData.label
+				detail: row.modelData.detail
 
-				width: parent.width
-				height: row.rowHeight + row.ruleSpace
-
-				// Dashed: it separates readings rather than groups, and a
-				// solid rule under every row read as a table's grid.
-				Row {
-					visible: row.index > 0
-					y: 4
-					x: 8
-					width: parent.width - 16
-					spacing: 3
-
-					Repeater {
-						model: Math.floor((parent.width + 3) / 7)
-
-						Rectangle {
-							width: 4
-							height: 1
-							color: Theme.glassControlBorder
-						}
-					}
+				mark: HardwareIcon {
+					width: Theme.rowMark
+					height: Theme.rowMark
+					kind: row.modelData.icon
+					color: Theme.glassTextPrimary
 				}
 
-				// The part, drawn straight on the card: a disc round each one
-				// was four buttons that did nothing.
-				Item {
-					id: mark
-
-					// The mark starts 3 units into its 24, so this puts its
-					// left edge where the rules start.
-					x: 5
-					y: row.ruleSpace + (row.rowHeight - height) / 2
-					width: 24
-					height: 24
-
-					HardwareIcon {
-						anchors.fill: parent
-						kind: row.modelData.icon
-						color: Theme.glassTextPrimary
-						opacity: 0.4
-					}
+				// Wide enough for "100%", so the tracks line up whatever
+				// the figures beside them.
+				Text {
+					anchors.verticalCenter: parent.verticalCenter
+					width: 40
+					horizontalAlignment: Text.AlignRight
+					text: Math.round(row.modelData.value * 100) + "%"
+					font.pixelSize: Theme.fontTitle
+					font.features: { "tnum": 1 }
+					color: row.modelData.alert ? Theme.warning : Theme.glassTextPrimary
 				}
 
-				Column {
-					anchors {
-						left: mark.right
-						leftMargin: Theme.spacingM
-						right: meter.left
-						rightMargin: Theme.spacingS
-						verticalCenter: mark.verticalCenter
-					}
-
-					spacing: 2
-
-					Text {
-						text: row.modelData.label
-						font.pixelSize: Theme.fontTitle
-						font.weight: Font.DemiBold
-						color: Theme.glassTextPrimary
-					}
-
-					Text {
-						width: parent.width
-						visible: text !== ""
-						elide: Text.ElideRight
-						text: row.modelData.detail
-						font.pixelSize: Theme.fontBody
-						opacity: 0.75
-						color: Theme.glassTextPrimary
-					}
-				}
-
-				Row {
-					id: meter
-
-					anchors {
-						right: parent.right
-						rightMargin: 4
-						verticalCenter: mark.verticalCenter
-					}
-
-					spacing: Theme.spacingS
-
-					// Wide enough for "100%", so the tracks line up whatever
-					// the figures beside them.
-					Text {
-						anchors.verticalCenter: parent.verticalCenter
-						width: 40
-						horizontalAlignment: Text.AlignRight
-						text: Math.round(row.modelData.value * 100) + "%"
-						font.pixelSize: Theme.fontTitle
-						font.features: { "tnum": 1 }
-						color: row.modelData.alert ? Theme.warning : Theme.glassTextPrimary
-					}
-
-					LevelPill {
-						anchors.verticalCenter: parent.verticalCenter
-						width: 104
-						value: row.modelData.value
-						fillColor: row.modelData.alert
-							? Theme.glassFillWarning : Theme.glassTrackFill
-					}
+				LevelPill {
+					anchors.verticalCenter: parent.verticalCenter
+					width: 104
+					value: row.modelData.value
+					fillColor: row.modelData.alert
+						? Theme.glassFillWarning : Theme.glassTrackFill
 				}
 			}
 		}

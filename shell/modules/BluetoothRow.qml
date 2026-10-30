@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Bluetooth
 import ".."
 import "../icons"
+import "../icons/devices.js" as Devices
 import "../ui"
 
 // One device in a list: its name, and what it is currently doing.
@@ -13,8 +14,6 @@ Rectangle {
 
 	property var device: null
 
-	// The tile's row. Off, it is the sheet's: taller, larger type, selectable.
-	property bool compact: true
 	property bool selected: false
 
 	signal activated
@@ -48,22 +47,7 @@ Rectangle {
 		return row.known ? "Not connected" : "Ready to pair";
 	}
 
-	// Bluez reports a freedesktop icon name. Only the family matters here.
-	readonly property string kind: {
-		const name = row.device?.icon ?? "";
-
-		if (name.includes("headset") || name.includes("headphone"))
-			return "headphones";
-		if (name.startsWith("audio") || name.includes("speaker"))
-			return "speaker";
-		if (name.startsWith("input") || name.includes("mouse")
-				|| name.includes("keyboard"))
-			return "input";
-		if (name.includes("phone") || name.includes("watch"))
-			return "phone";
-
-		return "unknown";
-	}
+	readonly property string kind: Devices.kindFor(row.device?.icon)
 
 	readonly property string kindLabel: {
 		switch (row.kind) {
@@ -81,8 +65,8 @@ Rectangle {
 	readonly property string batteryText: (row.device?.batteryAvailable ?? false)
 		? `${Math.round((row.device?.battery ?? 0) * 100)}%` : ""
 
-	height: row.compact ? 32 : 60
-	radius: row.compact ? 14 : Theme.radiusRow
+	height: 60
+	radius: Theme.radiusRow
 
 	color: row.selected ? Theme.glassChipSelected
 		: row.connected ? Theme.glassChipActive
@@ -107,25 +91,7 @@ Rectangle {
 		visible: row.selected
 	}
 
-	// The tile's row: one line, no disc.
-	Text {
-		anchors {
-			left: parent.left
-			right: trailing.left
-			leftMargin: Theme.spacingM
-			rightMargin: Theme.spacingS
-			verticalCenter: parent.verticalCenter
-		}
-
-		visible: row.compact
-		text: row.label
-		elide: Text.ElideRight
-		font.pixelSize: Theme.fontCaption
-		font.weight: Font.DemiBold
-		color: Theme.glassTextPrimary
-	}
-
-	// The sheet's row: what it is, then its name over what it is and what it
+	// What it is, then its name over what it is and what it
 	// is doing.
 	Row {
 		anchors {
@@ -136,7 +102,6 @@ Rectangle {
 			verticalCenter: parent.verticalCenter
 		}
 
-		visible: !row.compact
 		spacing: Theme.spacingM
 
 		Lens {
@@ -191,21 +156,11 @@ Rectangle {
 
 		anchors {
 			right: parent.right
-			rightMargin: row.compact ? Theme.spacingM : Theme.spacingL - 2
+			rightMargin: Theme.spacingL - 2
 			verticalCenter: parent.verticalCenter
 		}
 
 		spacing: Theme.spacingS
-
-		Text {
-			anchors.verticalCenter: parent.verticalCenter
-			text: row.status
-			visible: row.compact && text !== ""
-			font.pixelSize: Theme.fontCaption
-			font.weight: Font.DemiBold
-			opacity: 0.7
-			color: Theme.glassTextPrimary
-		}
 
 		Rectangle {
 			anchors.verticalCenter: parent.verticalCenter
@@ -224,10 +179,10 @@ Rectangle {
 		hoverEnabled: true
 		cursorShape: Qt.PointingHandCursor
 
-		// In the tile a click is the whole interaction. In the sheet it picks
-		// the row and the footer commits, for the same reason the network
-		// picker does: a list you scroll is a list you can hit the wrong row of.
-		onClicked: row.compact ? row.activated() : row.chosen()
+		// A click picks the row and the footer commits, for the same reason
+		// the network picker does: a list you scroll is a list you can hit
+		// the wrong row of.
+		onClicked: row.chosen()
 		onDoubleClicked: row.activated()
 	}
 }

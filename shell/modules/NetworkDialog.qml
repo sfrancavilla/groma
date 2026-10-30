@@ -547,7 +547,6 @@ Scope {
 												required property var modelData
 
 												width: rows.width
-												compact: false
 												network: modelData
 												highlight: root.search.trim()
 												selected:

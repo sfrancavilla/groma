@@ -4,6 +4,7 @@ import Quickshell.Services.Pipewire
 import QtQuick
 import ".."
 import "../icons"
+import "../icons/devices.js" as Devices
 import "../ui"
 
 // The bar's volume readout, and the control-center tile it opens.
@@ -27,7 +28,22 @@ BarPopup {
 
 	name: "volume"
 	title: "Sound"
-	trailing: root.sink?.description ?? ""
+	trailing: root.muted ? "Muted" : Audio.sinkLabel(root.sink)
+
+	// Where an output is, said in a word: its name already says what it is.
+	function sinkPlace(node) {
+		const props = node?.properties || {};
+		const profile = props["device.profile.name"] || "";
+
+		if (props["device.api"] === "bluez5")
+			return "Bluetooth";
+		if (profile.includes("HDMI") || profile.includes("hdmi"))
+			return "Display";
+		if (props["device.bus"] === "usb")
+			return "USB";
+
+		return "Built in";
+	}
 
 	function setVolume(v) {
 		if (root.ready)
@@ -131,32 +147,50 @@ BarPopup {
 		}
 	}
 
-	// Output devices. Chips wrap rather than shrink, so the tile grows downward
-	// instead of squeezing names to nothing.
-	Flow {
-		id: chips
-
-		readonly property int perRow: Math.min(2, root.sinks.length)
-		readonly property real chipWidth:
-			(width - (chips.perRow - 1) * Theme.spacingS)
-			/ Math.max(1, chips.perRow)
-
+	// Where the sound goes. A list rather than chips: a name is wanted
+	// in full, and a row has room for where the thing is as well.
+	Column {
 		width: parent.width
-		spacing: Theme.spacingS
+		spacing: 2
 		visible: root.sinks.length > 0
+
+		SectionLabel {
+			text: "OUTPUT"
+			bottomPadding: Theme.spacingXs
+		}
 
 		Repeater {
 			model: root.sinks
 
-			Chip {
+			CardRow {
+				id: output
+
 				required property var modelData
 
-				width: chips.chipWidth
-				active: modelData === Pipewire.defaultAudioSink
+				readonly property bool current: output.modelData === Pipewire.defaultAudioSink
 
-				text: Audio.sinkLabel(modelData)
+				interactive: true
+				title: Audio.sinkLabel(output.modelData)
+				detail: root.sinkPlace(output.modelData)
+				markOpacity: output.current ? 1 : 0.4
 
-				onClicked: Pipewire.preferredDefaultAudioSink = modelData
+				mark: DeviceIcon {
+					width: Theme.rowMark
+					height: Theme.rowMark
+					kind: Devices.kindFor((output.modelData.properties || {})["device.icon_name"])
+					color: Theme.glassTextPrimary
+				}
+
+				onClicked: Pipewire.preferredDefaultAudioSink = output.modelData
+
+				Rectangle {
+					anchors.verticalCenter: parent.verticalCenter
+					visible: output.current
+					width: 6
+					height: 6
+					radius: 3
+					color: Theme.success
+				}
 			}
 		}
 	}

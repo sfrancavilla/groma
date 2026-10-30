@@ -8,8 +8,8 @@ import "../ui"
 
 // The bar's network readout, and the tile it opens.
 //
-// Follows the design's network list: the connected network as a card of its
-// own with a subtitle, then the rest as rows with strength and a lock.
+// The connected network first, with its address and band, then the rest with
+// strength and a lock - rows drawn as the system card draws its parts.
 BarPopup {
 	id: root
 
@@ -424,178 +424,148 @@ BarPopup {
 
 		Text {
 			anchors.left: parent.left
+			anchors.leftMargin: 8
 			anchors.verticalCenter: parent.verticalCenter
 			text: "Wi-Fi radio"
 			font.pixelSize: Theme.fontBody
 			color: Theme.glassTextPrimary
 		}
 
+		// In line with the switches in the rows below.
 		Switch {
 			id: radioSwitch
 
 			anchors.right: parent.right
+			anchors.rightMargin: 4
 			checked: root.enabled
 			onToggled: Networking.wifiEnabled = !Networking.wifiEnabled
 		}
 	}
 
-	// The connected network, given a card of its own: it is the answer to the
-	// question the tile was opened to ask.
-	Rectangle {
+	// The connected network first: it is the answer to the question the tile
+	// was opened to ask. Then what the internet sees of it.
+	Column {
 		width: parent.width
-		height: 46
-		radius: 14
+		spacing: 0
 		visible: root.enabled && root.current !== null
 
-		color: root.online ? Theme.glassChipActive : Theme.glassFillWarning
-		border.width: 1
-		border.color: root.online
-			? Theme.glassTrackBorderFocus
-			: Qt.rgba(Theme.warning.r, Theme.warning.g, Theme.warning.b, 0.5)
+		CardRow {
+			id: currentRow
 
-		Column {
-			anchors {
-				left: parent.left
-				leftMargin: Theme.spacingM
-				verticalCenter: parent.verticalCenter
+			// Pointing at it is how anyone finds out what it does, so
+			// pointing at it is when it says.
+			readonly property bool offering: currentRow.hovered
+				&& !(root.current?.stateChanging ?? false)
+
+			interactive: true
+			rowHeight: 48
+			markOpacity: 1
+			title: root.current?.name ?? ""
+			detailColor: root.online ? Theme.glassTextPrimary : Theme.warning
+			detail: {
+				if (root.current?.stateChanging)
+					return "Connecting…";
+				if (!root.online)
+					return "Connected · no route out";
+
+				// The green dot already says "connected", so the line is
+				// better spent on the address and the band.
+				const band = root.detail[root.current?.name ?? ""]?.band;
+				const parts = [root.ipAddress, band].filter(part => part);
+
+				return parts.length > 0 ? parts.join(" · ") : "Connected";
 			}
 
-			spacing: 2
-
-			Text {
-				text: root.current?.name ?? ""
-				font.pixelSize: Theme.fontBody
-				font.bold: true
-				color: Theme.glassTextPrimary
+			mark: WifiIcon {
+				width: Theme.rowMark
+				height: Theme.rowMark
+				lineWidth: Theme.markLine
+				level: Math.max(1, root.barsFor(root.current?.name ?? "") - 1)
+				color: root.online ? Theme.glassTextPrimary : Theme.warning
 			}
 
-			Text {
-				text: {
-					if (root.current?.stateChanging)
-						return "Connecting…";
-					if (!root.online)
-						return "Connected · no route out";
+			onClicked: root.wifi.requestDisconnect()
 
-					// The green dot already says "connected", so the line is
-					// better spent on the address and the band.
-					const band = root.detail[root.current?.name ?? ""]?.band;
-					const parts = [root.ipAddress, band].filter(part => part);
+			Chip {
+				anchors.verticalCenter: parent.verticalCenter
+				visible: currentRow.offering
+				text: "Disconnect"
 
-					return parts.length > 0 ? parts.join(" · ") : "Connected";
-				}
-
-				font.pixelSize: Theme.fontCaption
-				opacity: 0.75
-				color: Theme.glassTextPrimary
+				// Takes the click itself as well as the row beneath it. Two
+				// targets for one action is fine when missing the small one
+				// still hits the large one.
+				onClicked: root.wifi.requestDisconnect()
 			}
-		}
-
-		Row {
-			anchors {
-				right: parent.right
-				rightMargin: Theme.spacingM
-				verticalCenter: parent.verticalCenter
-			}
-
-			spacing: Theme.spacingS
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
+				visible: root.online && !currentRow.offering
 				width: 6
 				height: 6
 				radius: 3
-				visible: root.online
 				color: Theme.success
 			}
+		}
 
-			SignalBars {
+		// The switch stays visible whether or not the lookup is on, or there
+		// would be no way to turn it back on. No mark: it is a fact about the
+		// row above, so it sits under that row's name.
+		CardRow {
+			visible: root.online
+			rule: "dashed"
+			rowHeight: 48
+			title: "Public address"
+			detail: Settings.publicAddressLookup
+				? (root.publicIp !== "" ? root.publicIp : "Asking…")
+				: "Not checked"
+
+			Switch {
 				anchors.verticalCenter: parent.verticalCenter
-				level: root.barsFor(root.current?.name ?? "")
-				color: Theme.glassTextPrimary
+				checked: Settings.publicAddressLookup
+				onToggled: Settings.setPublicAddressLookup(
+					!Settings.publicAddressLookup)
 			}
 		}
-
-		MouseArea {
-			anchors.fill: parent
-			cursorShape: Qt.PointingHandCursor
-			onClicked: root.wifi.requestDisconnect()
-		}
-	}
-
-	// The switch stays visible whether or not the lookup is on, or there would
-	// be no way to turn it back on.
-	Item {
-		width: parent.width
-		height: publicSwitch.height
-		visible: root.enabled && root.online
-
-		Text {
-			id: publicLabel
-
-			anchors.left: parent.left
-			anchors.verticalCenter: parent.verticalCenter
-			text: "Public address"
-			font.pixelSize: Theme.fontCaption
-			opacity: 0.6
-			color: Theme.glassTextPrimary
-		}
-
-		Text {
-			anchors {
-				right: publicSwitch.left
-				rightMargin: Theme.spacingS
-				verticalCenter: parent.verticalCenter
-			}
-
-			text: Settings.publicAddressLookup
-				? (root.publicIp !== "" ? root.publicIp : "asking…")
-				: "not checked"
-
-			font.pixelSize: Theme.fontCaption
-			opacity: Settings.publicAddressLookup ? 0.85 : 0.5
-			color: Theme.glassTextPrimary
-		}
-
-		Switch {
-			id: publicSwitch
-
-			anchors.right: parent.right
-			anchors.verticalCenter: parent.verticalCenter
-			checked: Settings.publicAddressLookup
-			onToggled: Settings.setPublicAddressLookup(
-				!Settings.publicAddressLookup)
-		}
-	}
-
-	Text {
-		width: parent.width
-		visible: root.enabled && root.others.length > 0
-		text: "OTHER NETWORKS"
-		font.pixelSize: 10
-		font.bold: true
-		font.letterSpacing: 0.6
-		opacity: 0.6
-		color: Theme.glassTextPrimary
 	}
 
 	Column {
 		width: parent.width
-		spacing: Theme.spacingXs + 2
+		spacing: 2
 		visible: root.enabled && root.others.length > 0
+
+		SectionLabel {
+			text: "OTHER NETWORKS"
+			bottomPadding: Theme.spacingXs
+		}
 
 		Repeater {
 			model: Math.min(root.listLimit, root.others.length)
 
-			NetworkRow {
+			CardRow {
+				id: other
+
 				required property int index
 				readonly property var entry: root.others[index]
 
-				width: parent.width
-				network: entry
-				detail: root.detail[entry.name] ?? null
-				bars: root.barsFor(entry.name)
+				interactive: true
+				title: other.entry?.name ?? ""
 
-				onActivated: root.activate(entry)
+				mark: WifiIcon {
+					width: Theme.rowMark
+					height: Theme.rowMark
+					lineWidth: Theme.markLine
+					level: Math.max(1, root.barsFor(other.entry?.name ?? "") - 1)
+					color: Theme.glassTextPrimary
+				}
+
+				onClicked: root.activate(other.entry)
+
+				LockIcon {
+					anchors.verticalCenter: parent.verticalCenter
+					visible: root.detail[other.entry?.name ?? ""]?.secured ?? false
+					opacity: 0.6
+					color: Theme.glassTextPrimary
+				}
 			}
 		}
 	}

@@ -198,6 +198,13 @@ system and power tiles, and a workspace's preview and name field - is a **tab ca
   pills again - never a picture of it.
 - **Its own surface, never the bar's.** Growing the bar's surface to hold a
   card redraws the whole bar, visibly, every time one opens.
+- **Its lines are `ui/CardRow.qml`.** A mark, a title over a detail, and
+  what goes on the right - the system card's reading, the power card's
+  action, a network, a device. The mark is dim, at 0.4, unless the row is
+  the one in use; a green dot on the right says which that is. Dashed rules
+  between readings, solid between groups, and `ui/SectionLabel.qml` over a
+  list. A card whose rows carry a figure and a meter is
+  `Theme.tileWidthWide`.
 - **The blur region is null when there is nothing to blur.** An empty
   region makes Hyprland blur the entire surface. `TabCard.blurRegion`
   already does this; a caller passes it on unchanged.

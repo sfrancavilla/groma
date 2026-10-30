@@ -303,7 +303,6 @@ Scope {
 										required property var modelData
 
 										width: rows.width
-										compact: false
 										device: modelData
 										selected: root.picked
 											=== modelData.address

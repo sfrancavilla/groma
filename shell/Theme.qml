@@ -270,6 +270,9 @@ Singleton {
 	// bright glass and carries a little more, markLine.
 	readonly property real barIconLine: 1.1
 	readonly property real markLine: 1.5
+	// A glyph in a bar card's row (ui/CardRow.qml): the size the power card's
+	// marks had in their discs, small beside a 13px title.
+	readonly property int rowMark: 16
 	// A workspace in the bar: a square-ish key with its number, or wider to
 	// carry a name, capped so one long name cannot push the rest off.
 	readonly property int workspacePillWidth: 26

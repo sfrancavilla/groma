@@ -4,12 +4,14 @@ import Quickshell.Bluetooth
 import QtQuick
 import ".."
 import "../icons"
+import "../icons/devices.js" as Devices
 import "../ui"
 
 // The bar's Bluetooth readout, and the tile it opens.
 //
 // Built on the same shapes as the Wi-Fi tile: a radio switch, what you are
-// connected to given a card of its own, then what else is known.
+// connected to first, then what else is known - rows drawn as the system
+// card draws its parts.
 BarPopup {
 	id: root
 
@@ -45,17 +47,11 @@ BarPopup {
 		return device.name !== "" ? device.name : device.address;
 	}
 
-	// The battery of a connected device, where it reports one. Headphones and
-	// mice usually do; a speaker usually does not.
-	function batteryText(device) {
-		if (!device.batteryAvailable)
-			return "";
-
-		return `${Math.round(device.battery * 100)}%`;
-	}
-
 	name: "bluetooth"
 	title: "Bluetooth"
+	// The system card's width: a connected device carries a figure and a
+	// meter.
+	cardWidth: Theme.tileWidthWide
 
 	trailing: !root.enabled ? "Off"
 		: root.connected.length === 1 ? root.label(root.connected[0])
@@ -116,207 +112,179 @@ BarPopup {
 
 		Text {
 			anchors.left: parent.left
+			anchors.leftMargin: 8
 			anchors.verticalCenter: parent.verticalCenter
 			text: "Bluetooth radio"
 			font.pixelSize: Theme.fontBody
 			color: Theme.glassTextPrimary
 		}
 
+		// In line with the figures and switches in the rows below.
 		Switch {
 			id: radioSwitch
 
 			anchors.right: parent.right
+			anchors.rightMargin: 4
 			checked: root.enabled
 			onToggled: if (root.adapter)
 				root.adapter.enabled = !root.adapter.enabled
 		}
 	}
 
-	Text {
-		width: parent.width
-		visible: root.enabled && root.connected.length > 0
-		text: "CONNECTED"
-		font.pixelSize: 10
-		font.bold: true
-		font.letterSpacing: 0.6
-		opacity: 0.6
-		color: Theme.glassTextPrimary
-	}
-
-	// Whatever is connected, given a card each: it is the answer to the
-	// question the tile was opened to ask.
+	// Whatever is connected, first: it is the answer to the question the
+	// tile was opened to ask. Its battery reads as the system card's
+	// figures do.
 	Column {
 		width: parent.width
-		spacing: Theme.spacingXs + 2
+		spacing: 0
 		visible: root.enabled && root.connected.length > 0
 
 		Repeater {
 			model: root.connected
 
-			Rectangle {
+			CardRow {
 				id: card
 
 				required property var modelData
-
-				width: parent.width
-				height: 46
-				radius: 14
+				required property int index
 
 				readonly property bool busy: card.modelData.state
 					=== BluetoothDeviceState.Disconnecting
 
 				// Pointing at it is how anyone finds out what it does, so
 				// pointing at it is when it says.
-				readonly property bool offering:
-					cardMouse.containsMouse && !card.busy
+				readonly property bool offering: card.hovered && !card.busy
 
-				color: card.offering
-					? Theme.glassControlStrongHover : Theme.glassChipActive
-				border.width: 1
-				border.color: Theme.glassTrackBorderFocus
+				// The lower of the two buds: the one that decides how long
+				// the pair lasts. Otherwise what bluez has, if anything - a
+				// speaker usually reports nothing, and an empty track would
+				// read as a flat battery.
+				readonly property var buds: root.budBattery(card.modelData)
+				readonly property real level: {
+					const levels = [];
+					if (card.buds?.left !== undefined) levels.push(card.buds.left);
+					if (card.buds?.right !== undefined) levels.push(card.buds.right);
+					return levels.length > 0
+						? Math.min(...levels) / 100 : card.modelData.battery;
+				}
+				readonly property bool hasLevel: card.buds !== null
+					|| card.modelData.batteryAvailable
 
-				Behavior on color {
-					ColorAnimation { duration: 120 }
+				rule: card.index > 0 ? "dashed" : "none"
+				interactive: true
+				rowHeight: 48
+				markOpacity: 1
+				title: root.label(card.modelData)
+				detail: {
+					if (card.busy)
+						return "Disconnecting…";
+
+					// The buds' own figures, whichever of them are talking:
+					// a docked bud drops out of reports until it is taken out
+					// again.
+					const parts = [];
+					if (card.buds) {
+						if (card.buds.left !== undefined) parts.push(`L ${card.buds.left}%`);
+						if (card.buds.right !== undefined) parts.push(`R ${card.buds.right}%`);
+						if (card.buds.case !== undefined) parts.push(`Case ${card.buds.case}%`);
+					}
+
+					return parts.length > 0 ? parts.join(" · ") : "Connected";
 				}
 
-				Column {
-					anchors {
-						left: parent.left
-						leftMargin: Theme.spacingM
-						verticalCenter: parent.verticalCenter
-					}
-
-					spacing: 2
-
-					Text {
-						text: root.label(card.modelData)
-						font.pixelSize: Theme.fontBody
-						font.bold: true
-						color: Theme.glassTextPrimary
-					}
-
-					Text {
-						text: {
-							if (card.busy)
-								return "Disconnecting…";
-
-							// The buds' own figures, whichever of them are talking:
-							// a docked bud drops out of reports until it is
-							// taken out again.
-							const buds = root.budBattery(card.modelData);
-							const parts = [];
-							if (buds) {
-								if (buds.left !== undefined) parts.push(`L ${buds.left}%`);
-								if (buds.right !== undefined) parts.push(`R ${buds.right}%`);
-								if (buds.case !== undefined) parts.push(`Case ${buds.case}%`);
-							}
-							if (parts.length > 0)
-								return parts.join(" · ");
-
-							const battery = root.batteryText(card.modelData);
-
-							return battery !== ""
-								? `Connected · ${battery}` : "Connected";
-						}
-
-						font.pixelSize: Theme.fontCaption
-						opacity: 0.75
-						color: Theme.glassTextPrimary
-					}
+				mark: DeviceIcon {
+					width: Theme.rowMark
+					height: Theme.rowMark
+					kind: Devices.kindFor(card.modelData.icon)
+					color: Theme.glassTextPrimary
 				}
 
-				Row {
-					anchors {
-						right: parent.right
-						rightMargin: Theme.spacingM
-						verticalCenter: parent.verticalCenter
-					}
+				onClicked: card.modelData.connected = false
 
-					spacing: Theme.spacingS
+				Chip {
+					anchors.verticalCenter: parent.verticalCenter
+					visible: card.offering
+					text: "Disconnect"
 
-					Chip {
-						anchors.verticalCenter: parent.verticalCenter
-						visible: card.offering
-						text: "Disconnect"
-
-						// Takes the click itself as well as the card beneath
-						// it. Two targets for one action is fine when missing
-						// the small one still hits the large one.
-						onClicked: card.modelData.connected = false
-					}
-
-					// Only for devices that report one. A speaker usually does
-					// not, and an empty track would read as a flat battery.
-					LevelPill {
-						id: pill
-
-						// The lower of the two buds: the one that decides how
-						// long the pair lasts.
-						readonly property var buds: root.budBattery(card.modelData)
-						readonly property real level: {
-							const levels = [];
-							if (pill.buds?.left !== undefined) levels.push(pill.buds.left);
-							if (pill.buds?.right !== undefined) levels.push(pill.buds.right);
-							return levels.length > 0
-								? Math.min(...levels) / 100 : card.modelData.battery;
-						}
-
-						anchors.verticalCenter: parent.verticalCenter
-						visible: !card.offering
-							&& (pill.buds !== null || card.modelData.batteryAvailable)
-						value: pill.level
-						fillColor: pill.level <= 0.2
-							? Theme.glassFillWarning : Theme.glassTrackFill
-					}
-
-					Rectangle {
-						anchors.verticalCenter: parent.verticalCenter
-						visible: !card.offering
-						width: 6
-						height: 6
-						radius: 3
-						color: Theme.success
-					}
-				}
-
-				MouseArea {
-					id: cardMouse
-
-					anchors.fill: parent
-					hoverEnabled: true
-					cursorShape: Qt.PointingHandCursor
+					// Takes the click itself as well as the row beneath it.
+					// Two targets for one action is fine when missing the
+					// small one still hits the large one.
 					onClicked: card.modelData.connected = false
+				}
+
+				Text {
+					anchors.verticalCenter: parent.verticalCenter
+					visible: !card.offering && card.hasLevel
+					width: 40
+					horizontalAlignment: Text.AlignRight
+					text: Math.round(card.level * 100) + "%"
+					font.pixelSize: Theme.fontTitle
+					font.features: { "tnum": 1 }
+					color: card.level <= 0.2 ? Theme.warning : Theme.glassTextPrimary
+				}
+
+				LevelPill {
+					anchors.verticalCenter: parent.verticalCenter
+					visible: !card.offering && card.hasLevel
+					width: 104
+					value: card.level
+					fillColor: card.level <= 0.2
+						? Theme.glassFillWarning : Theme.glassTrackFill
+				}
+
+				Rectangle {
+					anchors.verticalCenter: parent.verticalCenter
+					visible: !card.offering
+					width: 6
+					height: 6
+					radius: 3
+					color: Theme.success
 				}
 			}
 		}
 	}
 
-	Text {
-		width: parent.width
-		visible: root.enabled && root.known.length > 0
-		text: "MY DEVICES"
-		font.pixelSize: 10
-		font.bold: true
-		font.letterSpacing: 0.6
-		opacity: 0.6
-		color: Theme.glassTextPrimary
-	}
-
 	Column {
 		width: parent.width
-		spacing: Theme.spacingXs + 2
+		spacing: 2
 		visible: root.enabled && root.known.length > 0
+
+		SectionLabel {
+			text: "MY DEVICES"
+			bottomPadding: Theme.spacingXs
+		}
 
 		Repeater {
 			model: root.known
 
-			BluetoothRow {
+			CardRow {
+				id: known
+
 				required property var modelData
 
-				width: parent.width
-				device: modelData
+				readonly property bool connecting: known.modelData.state
+					=== BluetoothDeviceState.Connecting
 
-				onActivated: modelData.connected = true
+				interactive: true
+				title: root.label(known.modelData)
+
+				mark: DeviceIcon {
+					width: Theme.rowMark
+					height: Theme.rowMark
+					kind: Devices.kindFor(known.modelData.icon)
+					color: Theme.glassTextPrimary
+				}
+
+				onClicked: known.modelData.connected = true
+
+				Text {
+					anchors.verticalCenter: parent.verticalCenter
+					text: known.connecting ? "Connecting…" : "Not connected"
+					font.pixelSize: Theme.fontCaption
+					font.weight: Font.DemiBold
+					opacity: 0.6
+					color: Theme.glassTextPrimary
+				}
 			}
 		}
 	}

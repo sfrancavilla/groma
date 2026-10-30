@@ -18,6 +18,11 @@ Item {
 	readonly property real baseHeight: 18
 	readonly property real aspect: 1
 
+	// The stroke in pixels as drawn, at whatever size: the sheet draws these
+	// at 18, a bar card's row smaller.
+	property real lineWidth: Theme.markLine
+	readonly property real units: icon.lineWidth * icon.baseWidth / Math.max(1, icon.width)
+
 	implicitWidth: icon.baseWidth
 	implicitHeight: icon.baseHeight
 
@@ -38,7 +43,7 @@ Item {
 
 			ShapePath {
 				strokeColor: icon.color
-				strokeWidth: Theme.markLine
+				strokeWidth: icon.units
 				fillColor: "transparent"
 				capStyle: ShapePath.RoundCap
 
@@ -72,7 +77,7 @@ Item {
 			width: 10; height: 15
 			radius: 2.5
 			color: "transparent"
-			border.width: Theme.markLine
+			border.width: icon.units
 			border.color: icon.color
 
 			Rectangle {
@@ -80,7 +85,7 @@ Item {
 				width: 5.8; height: 5.8
 				radius: 2.9
 				color: "transparent"
-				border.width: Theme.markLine * 0.9
+				border.width: icon.units * 0.9
 				border.color: icon.color
 			}
 		}
@@ -92,7 +97,7 @@ Item {
 			width: 15; height: 10
 			radius: 2.5
 			color: "transparent"
-			border.width: Theme.markLine
+			border.width: icon.units
 			border.color: icon.color
 		}
 
@@ -102,7 +107,7 @@ Item {
 			width: 8; height: 15
 			radius: 2
 			color: "transparent"
-			border.width: Theme.markLine
+			border.width: icon.units
 			border.color: icon.color
 		}
 
@@ -113,7 +118,7 @@ Item {
 			width: 10; height: 10
 			radius: 5
 			color: "transparent"
-			border.width: Theme.markLine
+			border.width: icon.units
 			border.color: icon.color
 		}
 	}

@@ -8,8 +8,9 @@ import "../ui"
 
 // The bar's battery readout, and the tile it opens.
 //
-// Same grammar as the volume tile - title row, glass track, status line - but
+// Same grammar as the volume tile - title row, glass track, then rows - but
 // the track is a readout rather than a control: you cannot drag a battery.
+// The rows under it are readings, drawn as the system card draws its parts.
 BarPopup {
 	id: root
 
@@ -45,6 +46,8 @@ BarPopup {
 	name: "battery"
 	title: "Battery"
 	trailing: root.summary
+	// The system card's width: its rows carry a figure and a meter.
+	cardWidth: Theme.tileWidthWide
 
 	// --- power mode ----------------------------------------------------------
 	//
@@ -254,55 +257,83 @@ BarPopup {
 		}
 	}
 
-	// Status line. The design puts the power adapter and a profile here. The
-	// profile became a control of its own, below, so the right-hand slot shows
-	// battery health instead - real, and the thing actually worth knowing about
-	// a laptop battery.
-	Item {
+	// Where the power comes from, and how fast it moves, then what the cell
+	// is still worth: readings, drawn as the system card draws its parts.
+	// The design puts the adapter and a profile on one caption line; the
+	// profile became a control of its own, below, so health took its slot.
+	Column {
 		width: parent.width
-		height: source.implicitHeight
+		spacing: 0
+		visible: root.ready
 
-		Text {
-			id: source
+		CardRow {
+			id: sourceRow
 
-			anchors.left: parent.left
-			font.pixelSize: Theme.fontCaption
-			opacity: 0.85
-			color: Theme.glassTextPrimary
+			// Watts either way; the sign is in the words.
+			readonly property real watts: Math.abs(root.device?.changeRate ?? 0)
 
-			text: {
-				if (!root.ready)
-					return "No battery";
+			rowHeight: 48
+			title: root.onPower ? "Power adapter" : "On battery"
+			detail: root.charging ? "Charging"
+				: root.onPower ? "Not charging"
+				: "Discharging"
 
-				const w = Math.abs(root.device.changeRate);
-				const rate = w > 0.1 ? " · " + w.toFixed(1) + " W" : "";
-
-				return (root.onPower ? "Power adapter" : "On battery") + rate;
-			}
-		}
-
-		Row {
-			anchors.right: parent.right
-			spacing: Theme.spacingS / 2 + 3
-			visible: root.health > 0
-
-			Text {
-				anchors.verticalCenter: parent.verticalCenter
-				text: "Health " + Math.round(root.health) + "%"
-				font.pixelSize: Theme.fontCaption
-				opacity: 0.85
+			mark: BoltIcon {
+				width: 8
+				height: 13
 				color: Theme.glassTextPrimary
 			}
 
-			Rectangle {
+			Text {
 				anchors.verticalCenter: parent.verticalCenter
-				width: 6
-				height: 6
-				radius: 3
+				visible: sourceRow.watts > 0.1
+				text: sourceRow.watts.toFixed(1) + " W"
+				font.pixelSize: Theme.fontTitle
+				font.features: { "tnum": 1 }
+				color: Theme.glassTextPrimary
+			}
+		}
 
-				color: root.health >= 80 ? Theme.success
-					: root.health >= 60 ? Theme.warning
-					: Theme.danger
+		// What a full charge holds now against what it held new. The firmware
+		// can report a little over 100 on a young battery; the meter stops
+		// at full, the figure says what was reported.
+		CardRow {
+			id: healthRow
+
+			readonly property bool worn: root.health < 80
+
+			visible: root.health > 0
+			rule: "dashed"
+			rowHeight: 48
+			title: "Health"
+			detail: (root.physical?.energyCapacity ?? 0) > 0
+				? root.physical.energyCapacity.toFixed(1) + " Wh when full" : ""
+
+			// Its size is the width: the cell is wider than it is tall.
+			mark: BatteryIcon {
+				width: Theme.rowMark + 2
+				height: width / aspect
+				level: Math.min(1, root.health / 100)
+				lineWidth: Theme.markLine
+				color: Theme.glassTextPrimary
+			}
+
+			Text {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 40
+				horizontalAlignment: Text.AlignRight
+				text: Math.round(root.health) + "%"
+				font.pixelSize: Theme.fontTitle
+				font.features: { "tnum": 1 }
+				color: healthRow.worn ? Theme.warning : Theme.glassTextPrimary
+			}
+
+			LevelPill {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 104
+				value: Math.min(1, root.health / 100)
+				fillColor: healthRow.worn
+					? Theme.glassFillWarning : Theme.glassTrackFill
 			}
 		}
 	}
@@ -312,6 +343,10 @@ BarPopup {
 		width: parent.width
 		spacing: Theme.spacingS
 		visible: root.profilesAvailable
+
+		SectionLabel {
+			text: "POWER MODE"
+		}
 
 		Row {
 			id: modes
@@ -345,6 +380,7 @@ BarPopup {
 			text: PowerProfiles.degradationReason === PerformanceDegradationReason.HighTemperature
 				? "Held back while the processor is hot"
 				: "Held back while the laptop is on a lap"
+			leftPadding: 8
 			wrapMode: Text.WordWrap
 			font.pixelSize: Theme.fontCaption
 			color: Theme.warning
@@ -355,6 +391,7 @@ BarPopup {
 			width: parent.width
 			visible: Settings.powerProfile(root.source) !== ""
 			text: UPower.onBattery ? "Kept for when on battery" : "Kept for when plugged in"
+			leftPadding: 8
 			font.pixelSize: Theme.fontCaption
 			opacity: 0.7
 			color: Theme.glassTextPrimary
