@@ -91,7 +91,9 @@ Item {
 			anchors.fill: parent
 			enabled: row.interactive
 			hoverEnabled: true
-			cursorShape: Qt.PointingHandCursor
+			// A disabled MouseArea still shows its cursor: a hand over a
+			// reading promised a click that did nothing.
+			cursorShape: row.interactive ? Qt.PointingHandCursor : Qt.ArrowCursor
 			onClicked: row.clicked()
 		}
 

@@ -56,6 +56,8 @@ PACKAGES=(
 	glib2               # gio launch, behind Files' "Open with"
 
 	foot                # the terminal the keybinding opens, and "run in terminal"
+	btop                # what the system card opens for the processor, memory and disks
+	nvtop               # and for the graphics
 	wl-clipboard        # wl-copy and wl-paste: copying from the launcher, and feeding cliphist
 	cliphist            # clipboard history, kept by the shell for the launcher's ":" mode
 	libqalculate        # qalc: units and conversions in the launcher; arithmetic works without it

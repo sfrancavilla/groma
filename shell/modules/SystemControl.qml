@@ -9,6 +9,10 @@ import "../ui"
 // memory and disk, each as how much is in use.
 //
 // The figures come from SystemStats.qml, one worker shared by every bar.
+//
+// A part opens the terminal monitor that says more about it - btop for the
+// processor, memory and disks, nvtop for the graphics - or brings forward
+// the one already open. Without the tool installed, the row is a reading.
 BarPopup {
 	id: root
 
@@ -43,6 +47,66 @@ BarPopup {
 		return gb >= 100 ? String(Math.round(gb)) : gb.toFixed(1);
 	}
 
+	// Which monitors are installed: { btop: true, nvtop: false }. Asked
+	// again each time the card opens, so installing one needs no restart.
+	property var tools: ({})
+
+	Process {
+		id: toolProbe
+
+		running: true
+		command: ["sh", "-c", "for t in btop nvtop; do command -v $t >/dev/null && echo $t; done"]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				const found = {};
+				for (const t of text.split("\n"))
+					if (t !== "")
+						found[t] = true;
+				root.tools = found;
+			}
+		}
+	}
+
+	// The monitor asked for, while looking for a window it already has.
+	property string opening: ""
+
+	function monitor(tool) {
+		root.open = false;
+		root.opening = tool;
+		windows.running = true;
+	}
+
+	// Each monitor has an app id of its own, so a second click finds the
+	// first window rather than opening another.
+	Process {
+		id: windows
+
+		command: ["hyprctl", "clients", "-j"]
+
+		stdout: StdioCollector {
+			onStreamFinished: {
+				const tool = root.opening;
+				root.opening = "";
+				if (tool === "")
+					return;
+
+				let open = [];
+				try {
+					open = JSON.parse(text);
+				} catch (err) {
+				}
+
+				const win = open.find(w => w.class === `groma-${tool}`);
+				if (win)
+					Quickshell.execDetached(["hyprctl", "dispatch",
+						`hl.dsp.focus({ window = "address:${win.address}" })`]);
+				else
+					Quickshell.execDetached(["foot", `--app-id=groma-${tool}`, tool]);
+			}
+		}
+	}
+
 	function celsius(value) {
 		return value === null || value === undefined ? "" : Math.round(value) + " °C";
 	}
@@ -55,6 +119,7 @@ BarPopup {
 		const rows = [{
 			label: "Processor",
 			icon: "cpu",
+			tool: "btop",
 			detail: [root.celsius(r.temperature), r.threads + " threads"]
 				.filter(s => s !== "").join(" · "),
 			value: root.cpu,
@@ -67,6 +132,7 @@ BarPopup {
 			rows.push({
 				label: "Graphics",
 				icon: "gpu",
+				tool: "nvtop",
 				detail: root.celsius(r.gpuTemperature),
 				value: r.gpu,
 				alert: false
@@ -75,6 +141,7 @@ BarPopup {
 		rows.push({
 			label: "Memory",
 			icon: "memory",
+			tool: "btop",
 			detail: root.gb(r.memUsed) + " of " + root.gb(r.memTotal) + " GB",
 			value: root.memory,
 			alert: root.memoryFull
@@ -84,6 +151,7 @@ BarPopup {
 			rows.push({
 				label: "Swap",
 				icon: "swap",
+				tool: "btop",
 				detail: root.gb(r.swapUsed) + " of " + root.gb(r.swapTotal) + " GB",
 				value: r.swapUsed / r.swapTotal,
 				alert: false
@@ -96,6 +164,7 @@ BarPopup {
 				label: root.disks.length === 1 ? "Disk"
 					: d.mount === "/" ? "System disk" : "Home disk",
 				icon: "disk",
+				tool: "btop",
 				detail: root.gb(d.free) + " of " + root.gb(d.size) + " GB free",
 				value: d.used,
 				alert: d.used >= root.diskHigh
@@ -133,7 +202,11 @@ BarPopup {
 	}
 
 	// Looked at, it reads faster; the next reading comes at once.
-	onOpenChanged: SystemStats.looking += root.open ? 1 : -1
+	onOpenChanged: {
+		SystemStats.looking += root.open ? 1 : -1;
+		if (root.open)
+			toolProbe.running = true;
+	}
 	Component.onDestruction: if (root.open) SystemStats.looking -= 1
 
 	IpcHandler {
@@ -151,6 +224,11 @@ BarPopup {
 		function closed(): void {
 			root.open = false;
 		}
+
+		// What a row opens: "btop" or "nvtop".
+		function monitor(tool: string): void {
+			root.monitor(tool);
+		}
 	}
 
 	Column {
@@ -167,25 +245,34 @@ BarPopup {
 		}
 
 		Repeater {
-			model: root.rows
+			// A count, not the array: each reading builds a new one, and a
+			// new array is a new model - every row torn down and rebuilt,
+			// the one under the pointer dropping its highlight and getting
+			// it back each time. With a count, the rows stay and their
+			// figures change.
+			model: root.rows.length
 
 			// The part, drawn straight on the card: a disc round each one
-			// was four buttons that did nothing.
+			// was four buttons that did nothing. A row that opens its
+			// monitor lights when pointed at instead, as the power card's
+			// rows do.
 			CardRow {
 				id: row
 
-				required property var modelData
 				required property int index
+				readonly property var part: root.rows[row.index] ?? {}
 
 				rule: row.index > 0 ? "dashed" : "none"
+				interactive: root.tools[row.part.tool] === true
+				onClicked: root.monitor(row.part.tool)
 				rowHeight: 48
-				title: row.modelData.label
-				detail: row.modelData.detail
+				title: row.part.label
+				detail: row.part.detail
 
 				mark: HardwareIcon {
 					width: Theme.rowMark
 					height: Theme.rowMark
-					kind: row.modelData.icon
+					kind: row.part.icon
 					color: Theme.glassTextPrimary
 				}
 
@@ -195,17 +282,17 @@ BarPopup {
 					anchors.verticalCenter: parent.verticalCenter
 					width: 40
 					horizontalAlignment: Text.AlignRight
-					text: Math.round(row.modelData.value * 100) + "%"
+					text: Math.round(row.part.value * 100) + "%"
 					font.pixelSize: Theme.fontTitle
 					font.features: { "tnum": 1 }
-					color: row.modelData.alert ? Theme.warning : Theme.glassTextPrimary
+					color: row.part.alert ? Theme.warning : Theme.glassTextPrimary
 				}
 
 				LevelPill {
 					anchors.verticalCenter: parent.verticalCenter
 					width: 104
-					value: row.modelData.value
-					fillColor: row.modelData.alert
+					value: row.part.value
+					fillColor: row.part.alert
 						? Theme.glassFillWarning : Theme.glassTrackFill
 				}
 			}
