@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: A security problem
+    url: https://github.com/sfrancavilla/groma/security/advisories/new
+    about: Report it privately rather than in an issue.

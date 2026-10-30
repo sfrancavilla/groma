@@ -23,7 +23,7 @@ One long-running process provides the whole desktop shell:
 | `shell/Theme.qml` | Every colour, radius, spacing and type size |
 | `shell/ui/` | Generic pieces with no domain knowledge: glass, slider, chip, button |
 | `shell/icons/` | Drawn glyphs, as paths rather than an icon font |
-| `shell/modules/` | The features: volume, battery, network, notifications, polkit, lock, idle, OSD, wallpaper |
+| `shell/modules/` | The features: the bar and its cards (sound, battery and power mode, Wi-Fi, Bluetooth, system, power, calendar and notification centre), the launcher, notifications, the polkit agent, lock screen and fingerprint, idle, on-screen display, capture, wallpaper, and the Files, Store, Settings, Snapshots and Fingerprint windows |
 
 The network tile can show a public address — the one thing in this shell that
 contacts a third party, since nothing local knows it: the router translates on
@@ -66,8 +66,8 @@ readout are one action. The shell does not have to discover what a keybind just
 did. The cost is that those keys need the shell running.
 
 Being one process rather than a collection of daemons means components share
-live state directly — the bar and a future volume popup read the same PipeWire
-object, not two independent queries that can disagree. The trade is a shared
+live state directly — the bar's speaker glyph and the Sound card read the same
+PipeWire object, not two independent queries that can disagree. The trade is a shared
 fate: if the process dies, all of it dies at once.
 
 There is no Waybar, Mako, Dunst or polkit-gnome. Those roles are claimed at
@@ -76,20 +76,25 @@ claims them itself.
 
 ## UI conventions
 
-The volume tile is the reference. Anything new should be built from these
-rather than deciding its own numbers, so that changing one value moves the
-whole shell instead of leaving one widget behind.
+The system card is the reference: the cards the bar opens all draw their lines
+with its row, `ui/CardRow.qml`. Anything new should be built from these rather
+than deciding its own numbers, so that changing one value moves the whole shell
+instead of leaving one widget behind. The rules behind them - capitalisation,
+getting out of a surface, drawing on a scale-2 display, what the bar opens -
+are in [`shell/ui/GUIDELINES.md`](shell/ui/GUIDELINES.md).
 
 | Component | Use for |
 |---|---|
 | `Theme.qml` | Every colour, radius, spacing and type size. A singleton; needs `import QtQuick` as well as `import Quickshell`, or the whole config fails to load |
-| `ui/GlassPanel.qml` | Any glass surface: gradient rim, inset body, feathered shadow. Falls back to flat when `Theme.glass` is off |
+| `ui/GlassPanel.qml` | Any glass surface: a flat fill, a uniform 1px edge and a shadow that lifts it. Falls back to opaque when `Theme.glass` is off |
 | `ui/GlassTile.qml` | Panel-sized things. Standard padding, a header naming what it is and what it acts on |
 | `ui/Slider.qml` | Any 0..1 value. The lens sits inside the track; the caller owns the value and handles `moved` |
 | `ui/Lens.qml` | The sphere of glass. The slider's knob and a dialog's icon disc are this at different sizes |
 | `ui/GlassDialog.qml` | Modal sheet: dimmed, blurred desktop with a centred pane. The caller owns the window |
 | `ui/GlassField.qml` | Text entry as a glass track, with a focus ring rather than a thicker border |
-| `ui/BarPopup.qml` | A readout in the bar and the tile it opens: window, click-catcher, animation, positioning |
+| `ui/BarPopup.qml` | A readout in the bar and the card it opens: window, click-catcher, animation, positioning |
+| `ui/TabCard.qml` | The card itself: a tab standing round what opened it, growing down into the card |
+| `ui/CardRow.qml` | One line in a card: glyph, title over detail, and the figure, switch or dot on the right |
 | `ui/Chip.qml` | One option among a few, the chosen one brighter |
 | `ui/Switch.qml` | Two states and no third: the lens as a knob on a track |
 | `ui/Checkbox.qml` | A box and its label, clickable as one thing |
@@ -135,8 +140,9 @@ Two rules worth stating because breaking them is easy:
 `Theme.glass` toggles the translucent look off for the whole shell, so every
 component must read sensibly both ways.
 
-Every colour, spacing, radius and type size in the shell now comes from
-`Theme.qml`; there are no literals left in any component.
+Nearly every colour, spacing, radius and type size comes from `Theme.qml`. A
+few colour literals remain, most of them in the Files, Settings and Store
+windows; moving them into tokens is open work.
 
 ## Requirements
 
@@ -259,8 +265,9 @@ editing before you test authentication.
 
 Cancelling a polkit prompt **counts as a failed attempt** for `pam_faillock`.
 Abandoning the prompt makes `pam_unix` fail and faillock counts that; nothing
-in the shell can prevent it. Three of them and the account locks for ten
-minutes — on TTYs too — after which every password is rejected unread,
+in the shell can prevent it. Three of them and the account locks — for two
+minutes with the installer's setting, ten without it, and on TTYs too — after
+which every password is rejected unread,
 including correct ones. Check `faillock --user "$USER"` before concluding the
 dialog is broken.
 

@@ -1,0 +1,44 @@
+name: Something does not work
+description: A part of Groma behaves wrongly, or the installer fails
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A way past the lock screen or anything else that weakens the machine is
+        not an issue: report it privately, as SECURITY.md says.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      placeholder: |
+        1. Open the Wi-Fi card
+        2. ...
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: The output of `qs --version` and `hyprctl version`, and the Groma release or commit.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: machine
+    attributes:
+      label: Machine
+      description: The computer, and its graphics (AMD, Intel, NVIDIA). Groma is tested on one AMD laptop so far.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The relevant part of `qs -c groma log`, or of the installer's output.
+      render: text

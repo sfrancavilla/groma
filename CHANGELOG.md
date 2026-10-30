@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### What is new
+
+- **Bar cards read alike** — sound, battery, Wi-Fi, Bluetooth and power draw
+  their lines as the system card does: a small glyph, a title over a detail,
+  and the figure, switch or dot on the right. Sound lists its outputs with a
+  dot on the one in use; Battery shows the adapter's watts and the battery's
+  health; the connected Wi-Fi network offers Disconnect when pointed at,
+  rather than disconnecting on a click; Bluetooth shows a device's battery.
+- **btop and nvtop from the system card** — a row opens the terminal monitor
+  that says more about it, or brings forward the one already open. The
+  installer adds both; without them the row stays a reading.
+
+### Fixed
+
+- **Fingerprint after a wake** — a suspend in the middle of a fingerprint
+  check left fprintd refusing the reader, and the lock screen went
+  password-only until the next lock. The lock now keeps trying, and
+  `groma-fprintd-on-wake.service` restarts fprintd after every wake, so the
+  reader is back within a second.
+- **Rows that only looked clickable** — a row that does nothing no longer
+  shows the hand, and the system card's rows stop flickering under the
+  pointer as their figures change.
+
 ## v0.2.0-alpha — 2026-10-29
 
 The second alpha. A settings window, screenshots and recordings, a calendar
