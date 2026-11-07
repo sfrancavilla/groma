@@ -311,7 +311,6 @@ keyboard, which is how SUPER reaches the guest.
   when a pair of Nothing earbuds connects.
 - [Quickshell](https://quickshell.org) and [Hyprland](https://hypr.land), which
   this is built on.
-- The interface follows a design made with Claude in claude.ai.
 
 ## Licence
 
