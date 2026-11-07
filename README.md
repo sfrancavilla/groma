@@ -5,6 +5,7 @@
 # Groma
 
 A desktop shell for Hyprland, written in QML on [Quickshell](https://quickshell.org).
+Screenshots, a tour and the install guide are at **[gromaos.com](https://gromaos.com)**.
 
 Named for the Roman surveying instrument used to lay out a military camp or a
 new city. Sight along it and you get the *cardo* and *decumanus*, the two axes
