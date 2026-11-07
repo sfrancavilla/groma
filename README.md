@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://gromaos.com"><img src=".github/logo.svg" width="96" alt="Groma's logo: a white cross with a plumb line at each arm, on a dark teal tile"></a>
+</p>
+
 # Groma
 
 A desktop shell for Hyprland, written in QML on [Quickshell](https://quickshell.org).
