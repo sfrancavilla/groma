@@ -21,6 +21,9 @@
 
 ### Fixed
 
+- **A clock left to drift** — a base install can leave time sync off, and
+  a minute's drift is enough for MFA codes to be refused. The installer now
+  turns on systemd-timesyncd, unless chrony or ntpd already keep the time.
 - **The notification centre was empty** — since the bar went to every
   screen, the clock's card was handed nothing, so notifications stopped
   appearing under the clock once their toast went, though they were still

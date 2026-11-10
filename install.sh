@@ -214,6 +214,20 @@ sudo systemctl enable groma-lock-on-sleep.service
 say "Power modes"
 sudo systemctl enable --now power-profiles-daemon.service
 
+say "Keeping the clock right"
+# A base install can leave time sync off, and the clock then drifts until the
+# things that check it fail: a minute out, and MFA codes are refused. timesyncd
+# comes with systemd; a machine already running chrony or ntpd keeps its own.
+ntp=""
+for unit in chronyd.service ntpd.service; do
+	systemctl is-active --quiet "$unit" && ntp="$unit"
+done
+if [ -n "$ntp" ]; then
+	note "$ntp already keeps the time; left as it is."
+else
+	sudo timedatectl set-ntp true
+fi
+
 if [ -n "$fingerprint" ]; then
 	say "A fingerprint at polkit prompts"
 	# The reader before the password (system/polkit-1.pam). Copied, not

@@ -182,7 +182,7 @@ where the disk has the Btrfs `@` / `@snapshots` layout, and says why when it
 skips; NVIDIA is detected but untested, and the installer says so. It links
 the shell and the compositor config into `~/.config`, registers Groma's own
 applications, starts Hyprland after login on tty1, installs the
-lock-before-sleep unit, builds an AUR helper, and shortens the faillock lockout
+lock-before-sleep unit, turns on time sync, builds an AUR helper, and shortens the faillock lockout
 to two minutes. Safe to re-run.
 
 On a machine that boots with Limine, the boot menu can also list snapshots.
