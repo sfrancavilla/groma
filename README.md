@@ -190,6 +190,10 @@ That is a separate step because it changes the boot loader:
 `system/setup-limine-snapshots.sh` stops before rebooting so the result can be
 read first. Read `system/BOOT-RECOVERY.md` before running it.
 
+Docker is not installed by default. `system/setup-docker.sh` installs it with
+its data in `@docker` and `@containerd` subvolumes, so snapshots of `/` leave
+images and volumes out and a rollback leaves them alone.
+
 ### Machine-local overrides
 
 Anything specific to one machine — a monitor layout, a keybind you want on this
