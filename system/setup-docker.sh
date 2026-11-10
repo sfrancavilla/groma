@@ -18,6 +18,15 @@ set -euo pipefail
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 
+# After a kernel update and before the reboot, the running kernel's modules
+# are gone from disk, and Docker needs two it may not have loaded yet:
+# overlay for container files and nf_tables for its network rules. Better to
+# stop here than at the end, with Docker installed but not starting.
+if [ ! -d "/usr/lib/modules/$(uname -r)" ]; then
+	echo "Stopping: the kernel was updated since the last boot. Reboot, then run this again."
+	exit 1
+fi
+
 # Without the Btrfs @ layout there is nothing to keep out of snapshots, so
 # Docker goes in as a plain install.
 layout=yes
@@ -113,7 +122,14 @@ else
 fi
 
 step "What is there now"
-sudo docker info --format 'Docker {{.ServerVersion}}, data in {{.DockerRootDir}}, storage {{.Driver}}'
+# A daemon that does not start is reported, not fatal: the mounts below are
+# worth seeing either way.
+# docker info prints its template half-empty before failing, so ask first.
+if sudo docker info >/dev/null 2>&1; then
+	sudo docker info --format 'Docker {{.ServerVersion}}, data in {{.DockerRootDir}}, storage {{.Driver}}'
+else
+	echo "  Docker did not start. journalctl -u docker.service -b says why."
+fi
 if [ "$layout" = yes ]; then
 	findmnt -n -o TARGET,SOURCE /var/lib/docker
 	findmnt -n -o TARGET,SOURCE /var/lib/containerd
