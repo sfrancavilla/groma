@@ -4,6 +4,11 @@
 
 ### What is new
 
+- **Your own bar widgets** — any `.qml` file in `shell/local/` shows in the
+  bar, in name order, and git ignores it. A widget can use everything the
+  bar's own controls do; `shell/local/README.md` has an example.
+- **Docker, when wanted** — `system/setup-docker.sh` installs it with its
+  data in `@docker` and `@containerd`, outside the snapshots of `/`.
 - **Bar cards read alike** — sound, battery, Wi-Fi, Bluetooth and power draw
   their lines as the system card does: a small glyph, a title over a detail,
   and the figure, switch or dot on the right. Sound lists its outputs with a

@@ -1,8 +1,10 @@
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Quickshell.Io
 import Quickshell.Services.Pipewire
 import QtQuick
+import Qt.labs.folderlistmodel
 import "modules"
 import "ui"
 import "integrations/nothingear"
@@ -170,6 +172,40 @@ ShellRoot {
 					verticalCenter: parent.verticalCenter
 				}
 				spacing: Theme.spacingL
+
+				// Your own widgets: every .qml file in local/, in name order.
+				// git ignores what is in there, so it is never part of Groma;
+				// local/README.md says how to write one. A file added while
+				// the shell runs appears without a reload, and one that fails
+				// to load leaves only itself out.
+				Repeater {
+					model: FolderListModel {
+						// Must exist: pointed at a missing folder, the model
+						// lists another one. The README keeps it in the repo.
+						folder: "file://" + Quickshell.shellDir + "/local"
+						nameFilters: ["*.qml"]
+						showDirs: false
+					}
+
+					delegate: Loader {
+						id: widget
+
+						required property string fileName
+						required property string filePath
+
+						// Quickshell reloads when a file it loaded at start
+						// changes, and these load after; watched here, saving
+						// one reloads the shell as saving any other file does.
+						property FileView watch: FileView {
+							path: widget.filePath
+							watchChanges: true
+							onFileChanged: Quickshell.reload(false)
+						}
+
+						anchors.verticalCenter: parent?.verticalCenter
+						source: Qt.resolvedUrl("local/" + widget.fileName)
+					}
+				}
 
 				// Only while recording the screen: how long, and a click stops it.
 				RecordingControl {

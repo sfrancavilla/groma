@@ -207,6 +207,13 @@ cp ~/groma/hypr/machine.lua.example ~/.config/hypr/machine.lua
 
 Leave it out entirely and nothing breaks — the config only loads it if present.
 
+### Your own bar widgets
+
+A widget of your own — a status, a switch, a card for something only you use —
+is a `.qml` file in `shell/local/`. The bar shows every file there, and git
+ignores them, so nothing personal ends up in this repository.
+`shell/local/README.md` has a small example and the rules to follow.
+
 ## Development
 
 ```bash

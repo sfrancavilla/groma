@@ -224,6 +224,7 @@ from nothing in the bar.
 | `icons/` | Glyphs, drawn as `Shape` paths, scaling from a `baseWidth`/`baseHeight`. |
 | `modules/` | One feature each: its data, its IPC and its layout. A helper process a module keeps alive is a script beside it, named after it: `files-worker.py`. |
 | `integrations/<name>/` | Code for one maker's or one device's behaviour, self-contained. `<name>` is a QML module name: letters only, no hyphens. |
+| `local/` | The user's own bar widgets, one `.qml` each, ignored by git. Nothing in Groma refers to one; `shell.qml` loads whatever is there. |
 
 An integration fills a **contract the baseline defines** - a property on a
 module (`BluetoothControl.batteryDetail`), a function on a service

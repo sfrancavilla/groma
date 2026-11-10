@@ -2,3 +2,7 @@
 *.swp
 *~
 .DS_Store
+
+# Your own bar widgets (shell/local/README.md): yours, not Groma's
+shell/local/*
+!shell/local/README.md

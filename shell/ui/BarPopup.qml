@@ -85,8 +85,13 @@ Item {
 		// settles there only once every child has its height. On a cold start
 		// the first answer came before that, and the trigger drawn on the tab
 		// sat too high, cut off at the tab's edge.
+		//
+		// A widget from local/ sits in a Loader, a level further from the
+		// row, so the row's own place is read as well: it moves whenever a
+		// control beside it appears.
 		void [root.width, root.height, root.x, root.y, root.parent?.x, root.parent?.width,
-			root.parent?.y, root.parent?.height, root.barWidth];
+			root.parent?.y, root.parent?.height, root.parent?.parent?.x,
+			root.parent?.parent?.width, root.barWidth];
 
 		const at = root.mapToItem(null, 0, 0);
 		return Qt.rect(at.x, at.y, root.width, root.height);
