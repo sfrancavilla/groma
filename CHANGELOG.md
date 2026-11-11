@@ -31,6 +31,9 @@
 
 ### Fixed
 
+- **Files did not open from the launcher** — its entry ran `files open %f`,
+  and a launcher drops `%f`, so the call came one argument short and was
+  refused. The entry now passes an empty path when there is no file.
 - **A refused file left "Receiving" behind** — when obexd dropped a
   transfer without a word, the progress notification stayed for good, and
   "Show in Files" did nothing once the shell had reloaded. The summary now

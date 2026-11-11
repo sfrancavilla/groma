@@ -2,7 +2,9 @@
 Type=Application
 Name=Files
 Comment=Groma's file manager
-Exec=qs -c groma ipc call files open %f
+# sh, so that with no file the call still has its argument: a launcher
+# drops %f, and the IPC call is refused for one argument short.
+Exec=sh -c "qs -c groma ipc call files open \\"\\$1\\"" sh %f
 Icon=groma-files
 Terminal=false
 Categories=System;FileTools;FileManager;Utility;
