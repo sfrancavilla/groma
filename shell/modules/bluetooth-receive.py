@@ -137,11 +137,11 @@ class Agent:
         value, = self.call(DBusAddress(path, bus_name=OBEX, interface=PROPS), "Get", "ss", (interface, name))
         return value[1]
 
-    def notify(self, summary, body, actions=(), urgency=1, replaces=0):
+    def notify(self, summary, body, actions=(), replaces=0, timeout=-1):
         try:
             nid, = self.call(NOTIFY, "Notify", "susssasa{sv}i",
                              ("Groma", replaces, "bluetooth", summary, body, list(actions),
-                              {"urgency": ("y", urgency), "category": ("s", "transfer")}, -1))
+                              {"urgency": ("y", 1), "category": ("s", "transfer")}, timeout))
             return nid
         except (DBusErrorResponse, TimeoutError) as err:
             log("notify:", repr(err))
@@ -219,8 +219,12 @@ class Agent:
             return
 
         what = name + (f" · {size_text(size)}" if size is not None else "")
+        # Not critical, which Groma draws as an alarm: a toast with no
+        # timeout stays until it is answered. With Do Not Disturb on it
+        # waits in the centre instead, still answerable for the minute
+        # obexd gives it.
         nid = self.notify(f"{device} wants to send a file", what,
-                          ["accept", "Accept", "decline", "Decline"], urgency=2)
+                          ["accept", "Accept", "decline", "Decline"], timeout=0)
         if nid == 0:
             self.refuse(msg)
             return
