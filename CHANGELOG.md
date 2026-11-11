@@ -31,6 +31,10 @@
 
 ### Fixed
 
+- **A refused file left "Receiving" behind** — when obexd dropped a
+  transfer without a word, the progress notification stayed for good, and
+  "Show in Files" did nothing once the shell had reloaded. The summary now
+  comes when the phone's share ends, and its buttons work whenever clicked.
 - **Pairing a phone never showed the code** — bluetoothctl asks "Confirm
   passkey" as its prompt, with no newline, so Groma did not see the
   question until something else was printed. The prompt is now read as

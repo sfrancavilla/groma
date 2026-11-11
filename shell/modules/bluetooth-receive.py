@@ -21,7 +21,11 @@ nothing is ever opened by itself.
 
 A phone sends several files as one session, one file after another, and
 asks about each. Accepting the first accepts the rest of that session from
-that same phone: one question per share, not one per photo.
+that same phone: one question per share, not one per photo. While it runs,
+one notification follows it; when the session ends, a new one says what
+came of it, so that it shows even after the first has gone to the centre.
+Its buttons carry what they are about ("open:<path>", "show"), so they
+still work after this process has been restarted.
 
 Talks to QML in JSON lines on stdout: {"event": "ready"} once registered,
 {"event": "show", "path": ...} for a notification's "Show in Files", and
@@ -232,7 +236,8 @@ class Agent:
                                              "name": offer["name"], "size": offer["size"],
                                              "device": offer["device"], "shown": 0.0}
         self.reply(offer["msg"], "s", (arriving,))
-        state = self.sessions.setdefault(offer["session"], {"nid": 0, "got": []})
+        state = self.sessions.setdefault(offer["session"], {"nid": 0, "got": [], "lost": [],
+                                                            "device": offer["device"]})
         state["nid"] = self.notify(f"Receiving from {offer['device']}", offer["name"],
                                    replaces=state["nid"])
 
@@ -251,6 +256,15 @@ class Agent:
             path = msg.header.fields.get(HeaderFields.path)
             if path in self.receiving:
                 self.progress(path, msg.body[1])
+        elif member == "InterfacesRemoved":
+            path, _ = msg.body
+            # A transfer obexd dropped without saying how it ended: it
+            # refused to write, or the phone went. Then the phone's share
+            # itself ends, and that is when to say what came of it.
+            if path in self.receiving:
+                self.lost(path)
+            if path in self.sessions:
+                self.finish(path)
         elif member == "NameOwnerChanged":
             name, old, new = msg.body
             if name == OBEX and old and not new:
@@ -265,16 +279,29 @@ class Agent:
             else:
                 self.refuse(offer["msg"])
             return
-        action = self.done.get(nid)
-        if action is None:
-            return
+        # The buttons carry what they are about, so they still work for an
+        # agent that did not post them - after a restart, say. A click on
+        # the notification itself opens the one file it names, if this
+        # agent posted it, and Downloads otherwise.
         if key == "show":
             emit(event="show", path=DOWNLOADS)
-        elif key == "default":
-            if len(action["got"]) == 1:
-                emit(event="open", path=action["got"][0])
+        elif key.startswith("open:"):
+            self.open(key[5:])
+        elif key == "default" and nid in self.done:
+            got = self.done[nid]
+            if len(got) == 1:
+                self.open(got[0])
             else:
                 emit(event="show", path=DOWNLOADS)
+        elif key == "default":
+            emit(event="show", path=DOWNLOADS)
+
+    def open(self, path):
+        # Only something this agent put there: the key is a string anyone
+        # on the session bus could have sent.
+        real = os.path.realpath(path)
+        if os.path.dirname(real) == os.path.realpath(DOWNLOADS) and os.path.isfile(real):
+            emit(event="open", path=real)
 
     def progress(self, path, changed):
         file = self.receiving[path]
@@ -288,25 +315,15 @@ class Agent:
                 shutil.move(file["arriving"], target)
             except OSError as err:
                 log("move:", repr(err))
-                state["nid"] = self.notify(f"Could not keep {file['name']}", str(err.strerror or err),
-                                           replaces=state["nid"])
+                state["lost"].append(file["name"])
                 return
             state["got"].append(target)
-            got = state["got"]
-            name = os.path.basename(target)
-            summary = f"Received {name}" if len(got) == 1 else f"Received {len(got)} files"
-            state["nid"] = self.notify(summary, f"From {file['device']} · in Downloads",
-                                       ["default", "Open", "show", "Show in Files"], replaces=state["nid"])
-            self.done[state["nid"]] = {"got": list(got)}
+            count = len(state["got"])
+            state["nid"] = self.notify(f"Receiving from {file['device']}",
+                                       os.path.basename(target) if count == 1 else f"{count} files so far",
+                                       replaces=state["nid"])
         elif status == "error":
-            del self.receiving[path]
-            # obexd leaves what had arrived; half a file is no use to anyone.
-            try:
-                os.unlink(file["arriving"])
-            except OSError:
-                pass
-            state["nid"] = self.notify(f"Did not receive {file['name']}",
-                                       f"{file['device']} stopped sending.", replaces=state["nid"])
+            self.lost(path)
         elif "Transferred" in changed and file["size"]:
             now = time.monotonic()
             if now - file["shown"] >= 2:
@@ -315,6 +332,36 @@ class Agent:
                 state["nid"] = self.notify(f"Receiving from {file['device']}",
                                            f"{file['name']} · {size_text(done)} of {size_text(file['size'])}",
                                            replaces=state["nid"])
+
+    def lost(self, path):
+        file = self.receiving.pop(path)
+        # obexd leaves what had arrived; half a file is no use to anyone.
+        try:
+            os.unlink(file["arriving"])
+        except OSError:
+            pass
+        self.sessions[file["session"]]["lost"].append(file["name"])
+
+    def finish(self, session):
+        """The phone's share is over: one notification for all of it, posted
+        new rather than replacing the progress, so that it shows."""
+        state = self.sessions.pop(session)
+        self.trusted.pop(session, None)
+        self.close_notification(state["nid"])
+        got, lost, device = state["got"], state["lost"], state["device"]
+        missed = f" · {len(lost)} did not arrive" if got and lost else ""
+        if len(got) == 1:
+            nid = self.notify(f"Received {os.path.basename(got[0])}", f"From {device} · in Downloads{missed}",
+                              ["open:" + got[0], "Open", "show", "Show in Files"])
+        elif got:
+            nid = self.notify(f"Received {len(got)} files", f"From {device} · in Downloads{missed}",
+                              ["show", "Show in Files"])
+        elif lost:
+            what = lost[0] if len(lost) == 1 else f"{len(lost)} files"
+            nid = self.notify(f"Did not receive {what}", f"{device} stopped sending.")
+        else:
+            return
+        self.done[nid] = got
 
     # --- the loop ---------------------------------------------------------
 
@@ -328,6 +375,8 @@ class Agent:
                                path_namespace="/org/bluez/obex"))
         bus.AddMatch(MatchRule(type="signal", interface="org.freedesktop.Notifications",
                                path="/org/freedesktop/Notifications"))
+        bus.AddMatch(MatchRule(type="signal", sender=OBEX, interface="org.freedesktop.DBus.ObjectManager",
+                               member="InterfacesRemoved"))
         owner = MatchRule(type="signal", sender="org.freedesktop.DBus", member="NameOwnerChanged")
         owner.add_arg_condition(0, OBEX)
         bus.AddMatch(owner)
