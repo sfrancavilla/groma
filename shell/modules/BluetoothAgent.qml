@@ -94,8 +94,12 @@ Scope {
 		// silently stops working until the next reload.
 		onExited: restart.start()
 
+		// Unsplit: a question comes as the prompt, with no newline after
+		// it, so a line splitter would hold it back until bluetoothctl next
+		// printed something - after the device had given up waiting.
 		stdout: SplitParser {
-			onRead: line => root.handle(line)
+			splitMarker: ""
+			onRead: data => root.take(data)
 		}
 	}
 
@@ -111,10 +115,27 @@ Scope {
 	function clean(line) {
 		return line
 			.replace(/\u001b\[[0-9;?]*[A-Za-z]/g, "")
-			.replace(/\r/g, "")
+			.replace(/[\r\u0001\u0002]/g, "")
 			// Prompts stack: "[bluetoothctl]> [Nothing Ear (3)]> [NEW] ...".
 			.replace(/^(\s*\[[^\]]*\][>#]?\s*)+/, "")
 			.trim();
+	}
+
+	// What bluetoothctl has printed since its last newline.
+	property string unfinished: ""
+
+	function take(data) {
+		const lines = (root.unfinished + data).split("\n");
+		root.unfinished = lines.pop();
+		for (const line of lines)
+			root.handle(line);
+
+		// "[agent] Confirm passkey 481903 (yes/no): " is the prompt itself,
+		// left on the line for the answer to be typed after it.
+		if (/\(yes\/no\):\s*$/.test(root.clean(root.unfinished))) {
+			root.handle(root.unfinished);
+			root.unfinished = "";
+		}
 	}
 
 	function handle(raw) {
@@ -123,6 +144,10 @@ Scope {
 			return;
 
 
+
+		// Announces the question below; the passkey is in that one.
+		if (line === "Request confirmation")
+			return;
 
 		// "Confirm passkey 481903 (yes/no):"
 		const confirm = line.match(/Confirm passkey (\d+)/);
@@ -150,10 +175,11 @@ Scope {
 		}
 
 		// "Attempting to pair with X" and "Pairing successful" are confirmed
-		// against real hardware. The passkey wording above is not: earbuds
-		// pair "just works" and never ask. So anything that looks like a
-		// question and fell through all of the above gets said out loud,
-		// rather than leaving bluez waiting on an answer nobody will give.
+		// against real hardware; the passkey wording above is bluetoothctl's
+		// own (client/agent.c), and a phone pairing shows it. Anything else
+		// that looks like a question and fell through all of the above gets
+		// said out loud, rather than leaving bluez waiting on an answer
+		// nobody will give.
 		if (/passkey|pin code|confirmation/i.test(line))
 			console.warn("BluetoothAgent: unhandled prompt:", line);
 

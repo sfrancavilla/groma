@@ -31,6 +31,10 @@
 
 ### Fixed
 
+- **Pairing a phone never showed the code** — bluetoothctl asks "Confirm
+  passkey" as its prompt, with no newline, so Groma did not see the
+  question until something else was printed. The prompt is now read as
+  it arrives.
 - **A failed copy left its card up** — when the worker refused a copy
   partway (no permission, the folder gone), the progress card stayed on
   screen with nothing behind it.
