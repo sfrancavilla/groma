@@ -7,6 +7,16 @@
 - **Your own bar widgets** — any `.qml` file in `shell/local/` shows in the
   bar, in name order, and git ignores it. A widget can use everything the
   bar's own controls do; `shell/local/README.md` has an example.
+- **Files from a phone, over Bluetooth** — share to "Bluetooth" on a
+  paired phone and pick this computer: a notification asks, with Accept
+  and Decline, and the files land in Downloads. Accepting a share takes
+  all its files; a device that is not paired is refused without asking.
+  obexd runs with Object Push alone (`system/obex-object-push.conf`), not
+  the folder browsing and phonebook services it starts with.
+- **Send to phone** — in Files, a file's actions offer "Send to phone…":
+  pick a paired phone and the files go over Bluetooth, in the same card as
+  a copy, with progress and Cancel. The phone asks before it takes each
+  one.
 - **Docker, when wanted** — `system/setup-docker.sh` installs it with its
   data in `@docker` and `@containerd`, outside the snapshots of `/`.
 - **Bar cards read alike** — sound, battery, Wi-Fi, Bluetooth and power draw
@@ -21,6 +31,9 @@
 
 ### Fixed
 
+- **A failed copy left its card up** — when the worker refused a copy
+  partway (no permission, the folder gone), the progress card stayed on
+  screen with nothing behind it.
 - **A clock left to drift** — a base install can leave time sync off, and
   a minute's drift is enough for MFA codes to be refused. The installer now
   turns on systemd-timesyncd, unless chrony or ntpd already keep the time.

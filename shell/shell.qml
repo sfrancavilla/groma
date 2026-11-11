@@ -89,6 +89,11 @@ ShellRoot {
 	// The file manager: an ordinary window, opened from SUPER+E.
 	FilesWindow { id: files }
 
+	// Files from a phone over Bluetooth, asked about in a notification.
+	BluetoothReceive {
+		files: files
+	}
+
 	// Groma Store: installing and updating, from the official repositories and the AUR.
 	SoftwareWindow {}
 

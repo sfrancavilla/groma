@@ -42,11 +42,13 @@ PACKAGES=(
 	networkmanager      # the network tile, and nmcli behind it
 	bluez               # bluetooth; without an adapter the tile has nothing to show
 	bluez-utils
+	bluez-obex          # obexd: "Send to Phone" in Files, over Bluetooth
 	polkit              # the authentication agent talks to polkitd
 
 	brightnessctl       # the idle chain dims with this, the OSD reads it
 	playerctl           # media keys, and pausing when an earbud comes out
 	python              # the Files, Software and earbud helpers
+	python-jeepney      # D-Bus from Python: Files sends to a phone through obexd with it
 	curl                # the public-address lookup in the network tile
 
 	xdg-desktop-portal  # screen sharing, file pickers
@@ -159,6 +161,13 @@ for icon in "$GROMA"/system/icons/*.svg; do
 done
 update-desktop-database "$HOME/.local/share/applications"
 xdg-mime default groma-files.desktop inode/directory
+
+# obexd with Object Push alone, taking only what Groma's agent accepts.
+# system/obex-object-push.conf says why.
+mkdir -p "$HOME/.config/systemd/user/obex.service.d"
+ln -sfn "$GROMA/system/obex-object-push.conf" "$HOME/.config/systemd/user/obex.service.d/groma.conf"
+systemctl --user daemon-reload
+systemctl --user try-restart obex.service
 
 # GTK applications - file pickers, pavucontrol - take their icons from here;
 # the shell takes them from QS_ICON_THEME in the compositor config.

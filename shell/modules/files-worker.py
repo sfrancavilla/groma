@@ -20,13 +20,15 @@ move as the move back.
 Copy and move run on a thread of their own, so the main loop keeps
 reading: a conflict is reported and the transfer waits for the answer, a
 cancel is honoured between chunks. Progress goes out as events carrying
-the request's id; the last line for that id carries `ok`.
+the request's id; the last line for that id carries `ok`. Sending to a
+phone over Bluetooth is the same kind of transfer, and shares the card.
 """
 import datetime
 import json
 import os
 import queue
 import shutil
+import socket
 import sys
 import threading
 import time
@@ -411,6 +413,11 @@ class Transfer(threading.Thread):
             shutil.copystat(src, dst)
 
 
+    def cancel(self):
+        self.cancelled = True
+        self.answers.put({})
+
+
 def op_transfer(request):
     global transfer
     if transfer is not None and transfer.is_alive():
@@ -418,6 +425,224 @@ def op_transfer(request):
     transfer = Transfer(request["id"], request["op"], request["paths"], request["to"])
     transfer.start()
     return None            # the thread answers, when it is done
+
+
+# --- sending to a phone -----------------------------------------------------
+#
+# Over Bluetooth, through obexd: Object Push, the "Bluetooth" entry in an
+# Android share sheet, run backwards. bluez knows which paired devices offer
+# it; obexd does the sending, one file at a time, and the phone asks its owner
+# whether to take each one.
+#
+# obexd ends a session the moment the D-Bus connection that made it goes
+# away, so one-shot busctl calls cannot hold one. jeepney keeps a connection
+# open for the whole send, and the same connection hears obexd's progress.
+# It is imported only here, so a missing jeepney costs this feature and not
+# the window. Closing the connection is also the cancel: obexd drops the
+# session, the transfer with it, and the phone discards the part it had.
+
+OPP_UUID = "00001105-0000-1000-8000-00805f9b34fb"
+OBEX = "org.bluez.obex"
+
+
+def jeepney():
+    try:
+        import jeepney
+        import jeepney.io.blocking
+    except ImportError:
+        raise Refused("Sending needs python-jeepney, which is not installed")
+    return jeepney
+
+
+def op_phones():
+    """The paired devices that take files, those connected first."""
+    jp = jeepney()
+    bluez = jp.DBusAddress("/", bus_name="org.bluez", interface="org.freedesktop.DBus.ObjectManager")
+    try:
+        with jp.io.blocking.open_dbus_connection(bus="SYSTEM") as conn:
+            objects, = jp.wrappers.unwrap_msg(conn.send_and_get_reply(
+                jp.new_method_call(bluez, "GetManagedObjects"), timeout=5))
+    except (OSError, jp.wrappers.DBusErrorResponse):
+        raise Refused("Bluetooth is not running")
+    adapters = [ifaces["org.bluez.Adapter1"] for ifaces in objects.values() if "org.bluez.Adapter1" in ifaces]
+    if not adapters:
+        raise Refused("This computer has no Bluetooth")
+    if not any(adapter.get("Powered", (None, False))[1] for adapter in adapters):
+        raise Refused("Bluetooth is off · turn it on to send")
+    phones = []
+    for ifaces in objects.values():
+        device = ifaces.get("org.bluez.Device1")
+        if device is None:
+            continue
+        value = lambda key, default=None: device.get(key, (None, default))[1]
+        if not value("Paired", False) or OPP_UUID not in value("UUIDs", []):
+            continue
+        address = value("Address", "")
+        phones.append({"address": address, "name": value("Alias") or value("Name") or address,
+                       "icon": value("Icon", ""), "connected": value("Connected", False)})
+    phones.sort(key=lambda p: (not p["connected"], p["name"].lower()))
+    return {"phones": phones}
+
+
+class Sending(threading.Thread):
+    """Some files to one phone, over one obexd session."""
+
+    def __init__(self, rid, paths, address, name):
+        super().__init__(daemon=True)
+        self.rid, self.paths, self.address, self.name = rid, paths, address, name
+        self.cancelled = False
+        self.conn = None
+        self.done = 0
+        self.total = 0
+        self.current = ""
+        self.index = 0
+        self.reported = 0.0
+
+    def cancel(self):
+        self.cancelled = True
+        # Wakes the thread from whatever it is waiting on, and ends the session.
+        conn = self.conn
+        if conn is not None:
+            try:
+                conn.sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+
+    def run(self):
+        global transfer
+        sent = 0
+        try:
+            for path in self.paths:
+                if os.path.isdir(path):
+                    raise Refused("Bluetooth sends files, not folders")
+                if not os.path.isfile(path):
+                    raise Refused(f"{os.path.basename(path)} is not a file that can be sent")
+            self.total = sum(os.path.getsize(p) for p in self.paths)
+            self.report(force=True)
+            sent = self.send()
+        except Refused as why:
+            if not self.cancelled:
+                emit(id=self.rid, ok=False, error=str(why))
+                transfer = None
+                return
+        except (OSError, EOFError, ConnectionError) as err:
+            if not self.cancelled:
+                print(f"send: {err!r}", file=sys.stderr, flush=True)
+                emit(id=self.rid, ok=False, error=f"Lost the connection to {self.name}")
+                transfer = None
+                return
+        finally:
+            if self.conn is not None:
+                self.conn.close()
+        emit(id=self.rid, ok=True, op="send", count=sent, cancelled=self.cancelled)
+        transfer = None
+
+    def send(self):
+        jp = jeepney()
+        self.conn = conn = jp.io.blocking.open_dbus_connection(bus="SESSION")
+        if self.cancelled:
+            return 0
+
+        def call(path, interface, method, signature=None, body=(), timeout=10):
+            address = jp.DBusAddress(path, bus_name=OBEX, interface=interface)
+            return jp.wrappers.unwrap_msg(conn.send_and_get_reply(
+                jp.new_method_call(address, method, signature, body), timeout=timeout))
+
+        # Reaching the phone is a Bluetooth connection, and slow when it
+        # is far or asleep. Unreachable is the commonest failure there is.
+        try:
+            session, = call("/org/bluez/obex", "org.bluez.obex.Client1", "CreateSession",
+                            "sa{sv}", (self.address, {"Target": ("s", "opp")}), timeout=45)
+        except jp.wrappers.DBusErrorResponse as err:
+            print(f"send: CreateSession: {err.name} {err.data}", file=sys.stderr, flush=True)
+            raise Refused(f"Could not reach {self.name}. Is its Bluetooth on?")
+        except TimeoutError:
+            raise Refused(f"{self.name} did not answer")
+
+        # Before the first file, so no word of it is missed.
+        changes = jp.MatchRule(type="signal", interface="org.freedesktop.DBus.Properties",
+                               member="PropertiesChanged", path_namespace=session)
+        bus = jp.io.blocking.Proxy(jp.message_bus, conn)
+        bus.AddMatch(jp.MatchRule(type="signal", sender=OBEX, interface="org.freedesktop.DBus.Properties",
+                                  member="PropertiesChanged", path_namespace=session))
+
+        sent = 0
+        with conn.filter(changes) as heard:
+            for i, path in enumerate(self.paths):
+                if self.cancelled:
+                    break
+                self.index = i
+                self.current = os.path.basename(path)
+                self.report(force=True)
+                before = self.done
+                try:
+                    transferring, _ = call(session, "org.bluez.obex.ObjectPush1", "SendFile",
+                                           "s", (path,))
+                except jp.wrappers.DBusErrorResponse as err:
+                    print(f"send: SendFile: {err.name} {err.data}", file=sys.stderr, flush=True)
+                    raise Refused(f"Could not send {self.current}")
+                self.follow(jp, conn, call, heard, transferring, before)
+                self.done = before + os.path.getsize(path)
+                sent += 1
+                self.report(force=True)
+        try:
+            call("/org/bluez/obex", "org.bluez.obex.Client1", "RemoveSession", "o", (session,))
+        except (jp.wrappers.DBusErrorResponse, OSError):
+            pass
+        return sent
+
+    def follow(self, jp, conn, call, heard, transferring, before):
+        """Until obexd says the file is through, or that it is not."""
+        quiet = 0.0
+        while not self.cancelled:
+            try:
+                msg = conn.recv_until_filtered(heard, timeout=0.5)
+            except TimeoutError:
+                # A phone waiting for its owner to tap Accept says nothing
+                # for as long as that takes. Now and then, check the
+                # transfer is still there at all.
+                quiet += 0.5
+                if quiet >= 5:
+                    quiet = 0.0
+                    try:
+                        status, = call(transferring, "org.freedesktop.DBus.Properties", "Get",
+                                       "ss", ("org.bluez.obex.Transfer1", "Status"))
+                    except jp.wrappers.DBusErrorResponse:
+                        raise Refused(f"{self.name} stopped taking {self.current}")
+                    if status[1] == "complete":
+                        return
+                    if status[1] == "error":
+                        raise Refused(f"{self.name} did not take {self.current}")
+                continue
+            if msg.header.fields.get(jp.HeaderFields.path) != transferring:
+                continue
+            quiet = 0.0
+            _, changed, _ = msg.body
+            if "Transferred" in changed:
+                self.done = before + changed["Transferred"][1]
+                self.report()
+            status = changed.get("Status", (None, ""))[1]
+            if status == "complete":
+                return
+            if status == "error":
+                raise Refused(f"{self.name} did not take {self.current}")
+
+    def report(self, force=False):
+        now = time.monotonic()
+        if not force and now - self.reported < 0.1:
+            return
+        self.reported = now
+        emit(id=self.rid, event="progress", done=self.done, total=self.total,
+             file=self.current, index=self.index, count=len(self.paths))
+
+
+def op_send(request):
+    global transfer
+    if transfer is not None and transfer.is_alive():
+        raise Refused("Another copy is still running")
+    transfer = Sending(request["id"], request["paths"], request["address"], request["name"])
+    transfer.start()
+    return None
 
 
 # Neither answers on its own: the transfer's final line is the answer, and
@@ -430,14 +655,15 @@ def op_answer(request):
 
 def op_cancel(request):
     if transfer is not None:
-        transfer.cancelled = True
-        transfer.answers.put({})
+        transfer.cancel()
     return None
 
 
 OPS = {
     "copy": op_transfer,
     "move": op_transfer,
+    "send": op_send,
+    "phones": lambda r: op_phones(),
     "answer": op_answer,
     "cancel": op_cancel,
     "rename": lambda r: op_rename(r["path"], r["name"]),

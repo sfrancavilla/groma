@@ -5,6 +5,7 @@ import QtQuick
 import QtQuick.Effects
 import "../ui"
 import "../icons"
+import "../icons/devices.js" as Devices
 import ".."
 
 // Files: the design's turn 10, an ordinary window rather than a sheet.
@@ -39,7 +40,7 @@ Scope {
 	property var ahead: []
 
 	// A sheet over the window: the folder and the places step back under it.
-	readonly property bool sheetUp: root.confirm !== null || root.conflict !== null || root.opener !== null || root.props !== null
+	readonly property bool sheetUp: root.confirm !== null || root.conflict !== null || root.opener !== null || root.props !== null || root.sender !== null
 
 	// The path of the highlighted entry, or "" for none: where the keyboard
 	// is. The selection is what an action applies to; usually the same one
@@ -161,6 +162,11 @@ Scope {
 		const then = root.pending[msg.id];
 		delete root.pending[msg.id];
 		if (!msg.ok) {
+			// A transfer that fails ends here, not in its callback.
+			if (root.transfer !== null && msg.id === root.transfer.id) {
+				root.transfer = null;
+				root.conflict = null;
+			}
 			root.say(msg.error);
 			return;
 		}
@@ -316,6 +322,8 @@ Scope {
 			Quickshell.execDetached(["sh", "-c", "printf %s \"$1\" | wl-copy", "sh", entry.path]);
 			root.say(`Copied ${root.tilde(entry.path)}`);
 		} });
+		if (!them.some(e => e.folder))
+			out.push({ label: "Send to phone…", run: () => root.askSend(them) });
 		out.push({ label: "New folder", run: () => root.newFolder() });
 		out.push({ label: "Move to Trash", run: () => root.trashEntries(them) });
 		out.push({ label: "Delete forever…", run: () => root.askDelete(them) });
@@ -538,8 +546,12 @@ Scope {
 		if (root.transfer === null || msg.id !== root.transfer.id)
 			return;
 		if (msg.event === "progress") {
+			// A send waits for the phone's owner to tap Accept; the time
+			// left is reckoned from the first byte, not from the asking.
+			const waited = root.transfer.op === "send" && root.transfer.done === 0 && msg.done > 0;
 			root.transfer = Object.assign({}, root.transfer, {
-				file: msg.file, index: msg.index, done: msg.done, total: msg.total });
+				file: msg.file, index: msg.index, done: msg.done, total: msg.total },
+				waited ? { started: Date.now() } : {});
 		} else if (msg.event === "conflict") {
 			root.applyAll = false;
 			root.conflict = { id: msg.id, name: msg.name, existing: msg.existing,
@@ -562,6 +574,60 @@ Scope {
 
 	function things(n) {
 		return n === 1 ? "1 item" : n + " items";
+	}
+
+	// --- sending to a phone ------------------------------------------------------
+	//
+	// Over Bluetooth, to a paired phone, through the worker: it asks bluez
+	// which paired devices take files, and drives obexd for the send. The
+	// send is a transfer like a copy, in the same card, with the same Cancel.
+	// The phone asks its owner before it takes each file; until they tap,
+	// the card waits at the start of that file.
+
+	// { entries, phones: [{ address, name, icon, connected }], index } or null.
+	property var sender: null
+
+	function askSend(entries) {
+		if (entries.length === 0)
+			return;
+		root.ask("phones", {}, msg => {
+			if (msg.phones.length === 0)
+				root.say("No paired phone takes files · pair one in Bluetooth first");
+			else
+				root.sender = { entries: entries, phones: msg.phones, index: 0 };
+		});
+	}
+
+	function moveSender(delta) {
+		const s = root.sender;
+		if (s === null)
+			return;
+		root.sender = Object.assign({}, s, {
+			index: Math.max(0, Math.min(s.phones.length - 1, s.index + delta)) });
+		senderList.positionViewAtIndex(root.sender.index, ListView.Contain);
+	}
+
+	function runSender() {
+		const s = root.sender;
+		root.sender = null;
+		if (s === null)
+			return;
+		const phone = s.phones[s.index];
+		if (root.transfer !== null) {
+			root.say("Wait for the current copy to finish");
+			return;
+		}
+		const paths = s.entries.map(e => e.path);
+		const id = root.nextId;
+		root.transfer = { id: id, op: "send", count: paths.length, to: phone.name, file: "", index: 0,
+			done: 0, total: 0, started: Date.now() };
+		root.ask("send", { paths: paths, address: phone.address, name: phone.name }, msg => {
+			root.transfer = null;
+			if (msg.cancelled)
+				root.say("Sending cancelled");
+			else
+				root.say("Sent " + root.things(msg.count) + " to " + phone.name);
+		});
 	}
 
 	function nameOf(path) {
@@ -1191,6 +1257,7 @@ Scope {
 			root.confirm = null;
 			root.menu = null;
 			root.opener = null;
+			root.sender = null;
 			root.props = null;
 			root.renaming = "";
 		}
@@ -1511,6 +1578,22 @@ Scope {
 			}
 		}
 
+		// The path "Send to phone…" takes on what is picked.
+		function send(): void {
+			const them = root.chosen();
+			if (them.length > 0 && !them.some(e => e.folder))
+				root.askSend(them);
+		}
+
+		// The path Send takes in that sheet, for a given address.
+		function sendto(address: string): void {
+			const index = root.sender?.phones.findIndex(p => p.address === address) ?? -1;
+			if (index >= 0) {
+				root.sender = Object.assign({}, root.sender, { index: index });
+				root.runSender();
+			}
+		}
+
 		// The path the conflict sheet's chips take: skip, keep or replace.
 		function answer(choice: string): void {
 			root.answerConflict(choice);
@@ -1592,6 +1675,20 @@ Scope {
 							root.runOpener();
 						else if (event.key === Qt.Key_Escape)
 							root.opener = null;
+						event.accepted = true;
+						return;
+					}
+
+					// "Send to phone": walk the phones, Return sends, Escape leaves.
+					if (root.sender !== null) {
+						if (event.key === Qt.Key_Down)
+							root.moveSender(1);
+						else if (event.key === Qt.Key_Up)
+							root.moveSender(-1);
+						else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+							root.runSender();
+						else if (event.key === Qt.Key_Escape)
+							root.sender = null;
 						event.accepted = true;
 						return;
 					}
@@ -3023,6 +3120,8 @@ Scope {
 									return [["Esc", "Close"]];
 								if (root.opener !== null)
 									return [["↑↓", "Move"], ["↵", "Open"], ["Esc", "Cancel"]];
+								if (root.sender !== null)
+									return [["↑↓", "Move"], ["↵", "Send"], ["Esc", "Cancel"]];
 								if (root.conflict !== null)
 									return [["↵", "Keep both"], ["Esc", "Skip"]];
 								if (root.confirm !== null)
@@ -3387,8 +3486,10 @@ Scope {
 								width: parent.width
 								elide: Text.ElideRight
 								text: root.transfer === null ? ""
-									: (root.transfer.op === "copy" ? "Copying " : "Moving ")
-										+ root.things(root.transfer.count) + " to " + root.nameOf(root.transfer.to)
+									: root.transfer.op === "send"
+										? "Sending " + root.things(root.transfer.count) + " to " + root.transfer.to
+										: (root.transfer.op === "copy" ? "Copying " : "Moving ")
+											+ root.things(root.transfer.count) + " to " + root.nameOf(root.transfer.to)
 								font.pixelSize: Theme.fontTitle
 								font.bold: true
 								color: Theme.glassTextPrimary
@@ -3826,6 +3927,152 @@ Scope {
 							variant: "primary"
 							enabled: root.openerApps.length > 0
 							onClicked: root.runOpener()
+						}
+					}
+				}
+			}
+
+			// "Send to phone": the paired phones that take files, the
+			// connected ones first. It asks a question, so no X: Cancel and
+			// the affirmative, which names the phone.
+			GlassDialog {
+				id: senderSheet
+
+				readonly property var phone: root.sender !== null ? root.sender.phones[root.sender.index] : null
+
+				anchors.fill: parent
+				dense: true
+				open: root.sender !== null
+				visible: open || sheet.opacity > 0.01
+				sheetWidth: Math.min(Theme.dialogWidthPrompt, body.width - 40)
+				title: root.sender === null ? ""
+					: root.sender.entries.length === 1 ? `Send “${root.sender.entries[0].name}” to`
+					: `Send ${root.sender.entries.length} files to`
+				body: "Over Bluetooth. The phone asks before it takes anything."
+
+				icon: FileIcon {
+					width: 44
+					height: 44
+					fileName: root.sender?.entries[0]?.name ?? ""
+					folder: false
+					path: root.sender?.entries[0]?.path ?? ""
+					zoom: 1.3
+				}
+
+				ListView {
+					id: senderList
+
+					width: parent.width
+					readonly property int shown: Math.min(4, Math.max(1, root.sender?.phones.length ?? 1))
+
+					height: shown * 48 + (shown - 1) * 4
+					clip: true
+					spacing: 4
+					model: root.sender?.phones ?? []
+					boundsBehavior: Flickable.StopAtBounds
+
+					delegate: Rectangle {
+						id: phoneRow
+
+						required property var modelData
+						required property int index
+
+						readonly property bool chosen: root.sender !== null && root.sender.index === index
+
+						width: senderList.width
+						height: 48
+						radius: Theme.radiusRow
+						color: phoneRow.chosen ? Theme.glassChipActive
+							: phoneMouse.containsMouse ? Theme.glassControlHover : "transparent"
+						border.width: phoneRow.chosen ? 1 : 0
+						border.color: Theme.glassTrackBorderFocus
+
+						Row {
+							anchors {
+								left: parent.left
+								right: parent.right
+								leftMargin: Theme.spacingM
+								rightMargin: Theme.spacingM
+								verticalCenter: parent.verticalCenter
+							}
+
+							spacing: Theme.spacingM
+
+							Lens {
+								id: phoneDisc
+
+								anchors.verticalCenter: parent.verticalCenter
+								width: 30
+								height: 30
+								sheen: false
+
+								DeviceIcon {
+									anchors.centerIn: parent
+									width: 16
+									height: 16
+									kind: Devices.kindFor(phoneRow.modelData.icon)
+									color: Theme.glassTextOnLens
+								}
+							}
+
+							Column {
+								anchors.verticalCenter: parent.verticalCenter
+								width: parent.width - phoneDisc.width - Theme.spacingM
+								spacing: 2
+
+								Text {
+									width: parent.width
+									elide: Text.ElideRight
+									text: phoneRow.modelData.name
+									font.pixelSize: Theme.fontLead
+									font.weight: phoneRow.chosen ? Font.Bold : Font.DemiBold
+									color: Theme.glassTextPrimary
+								}
+
+								Text {
+									width: parent.width
+									elide: Text.ElideRight
+									text: phoneRow.modelData.connected ? "Connected" : "Not connected"
+									font.pixelSize: Theme.fontBody
+									font.weight: Font.DemiBold
+									opacity: 0.6
+									color: Theme.glassTextPrimary
+								}
+							}
+						}
+
+						MouseArea {
+							id: phoneMouse
+
+							anchors.fill: parent
+							hoverEnabled: true
+							onClicked: root.sender = Object.assign({}, root.sender, { index: phoneRow.index })
+							onDoubleClicked: { root.sender = Object.assign({}, root.sender, { index: phoneRow.index }); root.runSender(); }
+						}
+					}
+				}
+
+				Item {
+					width: parent.width
+					height: Theme.chipHeight
+
+					Row {
+						anchors {
+							right: parent.right
+							verticalCenter: parent.verticalCenter
+						}
+
+						spacing: Theme.spacingS
+
+						DialogButton {
+							text: "Cancel"
+							onClicked: root.sender = null
+						}
+
+						DialogButton {
+							text: senderSheet.phone !== null ? "Send to " + senderSheet.phone.name : "Send"
+							variant: "primary"
+							onClicked: root.runSender()
 						}
 					}
 				}

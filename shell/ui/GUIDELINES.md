@@ -113,6 +113,7 @@ Which puts every surface built so far in exactly one place:
 | Files: a name already taken | none | `Skip` · `Keep both` · `Replace` - three answers, `Escape` is `Skip` |
 | Files: a copy in flight | none - a card, not a sheet | `Cancel` alone |
 | Files: open with | none | `Cancel` `Open` |
+| Files: send to phone | none | `Cancel` `Send to Pixel 8` |
 | Files: properties | X | none - it asks nothing |
 | Groma Store window | X | none - `Enter` acts on the pick; the footer carries the status and the keys |
 | Groma Store: details | X | `Cancel` · `Install` / `Update` / `Remove` (destructive) |
