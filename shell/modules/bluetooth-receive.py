@@ -35,6 +35,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import sys
 import time
 
@@ -400,7 +401,22 @@ class Agent:
                     self.on_signal(msg)
 
 
+def die_with_parent():
+    """obexd takes one agent. One left running by a shell that died would
+    keep the next shell's from registering, so this one goes with its
+    parent: the kernel sends SIGTERM when the shell exits."""
+    try:
+        import ctypes
+        PR_SET_PDEATHSIG = 1
+        ctypes.CDLL("libc.so.6", use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
+    except OSError:
+        pass
+    if os.getppid() == 1:
+        sys.exit(0)
+
+
 if __name__ == "__main__":
+    die_with_parent()
     try:
         Agent().run()
     except (OSError, EOFError) as err:
