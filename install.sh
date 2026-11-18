@@ -57,7 +57,7 @@ PACKAGES=(
 	xdg-utils           # xdg-open and xdg-mime: opening files, default applications
 	glib2               # gio launch, behind Files' "Open with"
 
-	foot                # the terminal the keybinding opens, and "run in terminal"
+	kitty               # the terminal the keybinding opens, and "run in terminal"
 	btop                # what the system card opens for the processor, memory and disks
 	nvtop               # and for the graphics
 	wl-clipboard        # wl-copy and wl-paste: copying from the launcher, and feeding cliphist
@@ -140,6 +140,24 @@ ln -sfn "$GROMA/shell" "$HOME/.config/quickshell/groma"
 say "Linking the compositor config into ~/.config/hypr"
 mkdir -p "$HOME/.config/hypr"
 ln -sfn "$GROMA/hypr/hyprland.lua" "$HOME/.config/hypr/hyprland.lua"
+
+say "Setting the terminal up"
+# Ctrl+C and Ctrl+V for copy and paste (system/kitty/groma.conf). Included
+# from kitty.conf, not linked over it: a kitty.conf already here is someone's
+# own, and is left as it is.
+mkdir -p "$HOME/.config/kitty"
+ln -sfn "$GROMA/system/kitty/groma.conf" "$HOME/.config/kitty/groma.conf"
+kitty_conf="$HOME/.config/kitty/kitty.conf"
+if [ ! -e "$kitty_conf" ]; then
+	printf '%s\n' '# Groma: copy and paste on Ctrl+C and Ctrl+V, and a quiet close (install.sh)' \
+		'include groma.conf' '' '# Your own settings go below, where they win.' >"$kitty_conf"
+	note "Wrote $kitty_conf."
+elif grep -qE '^[[:space:]]*include[[:space:]]+groma\.conf' "$kitty_conf"; then
+	note "Already in $kitty_conf."
+else
+	note "$kitty_conf is not Groma's; left as it is. For Ctrl+C and Ctrl+V"
+	note "to copy and paste, add this line to it: include groma.conf"
+fi
 
 say "Registering Groma's applications"
 # Desktop entries for the shell's own windows, so the launcher lists them and

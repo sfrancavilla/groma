@@ -88,7 +88,7 @@ Scope {
 
 	function restore() {
 		root.open = false;
-		Quickshell.execDetached(["foot", "--app-id=groma-snapshot-restore", "--title=Restore a Snapshot", "--",
+		Quickshell.execDetached(["kitty", "--app-id=groma-snapshot-restore", "--title=Restore a Snapshot", "--",
 			"bash", "-c", 'echo "Restoring makes this snapshot the system again. The current one is kept as a backup entry in the boot menu."; echo; sudo limine-snapper-restore; echo; read -rp "Press Enter to close. Restart to boot the restored system."']);
 	}
 

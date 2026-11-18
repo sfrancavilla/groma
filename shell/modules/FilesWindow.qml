@@ -834,11 +834,11 @@ Scope {
 			root.probeOpen(entry, false);
 	}
 
-	// A terminal with the folder as its working directory. Foot is what
+	// A terminal with the folder as its working directory. kitty is what
 	// the keybinding opens; a terminal takes no file, so it never appears
 	// in "Open with", and gets a line of its own.
 	function openTerminal(folder) {
-		Quickshell.execDetached(["foot", "--working-directory=" + folder]);
+		Quickshell.execDetached(["kitty", "--working-directory=" + folder]);
 	}
 
 	// --- properties ------------------------------------------------------------

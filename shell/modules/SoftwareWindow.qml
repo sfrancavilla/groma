@@ -11,7 +11,7 @@ import ".."
 // Knowing is software-worker.py's job - pacman for the repositories, the
 // AUR's own API for the rest, one JSON line each way. Doing is a
 // terminal's: an install needs a password and prints a lot, so Install,
-// Remove and Update open Foot running software-run.sh, which logs every
+// Remove and Update open kitty running software-run.sh, which logs every
 // line for the card in the corner to tail. The window chooses, shows what
 // is installed and what is waiting, and never runs pacman itself.
 Scope {
@@ -306,7 +306,7 @@ Scope {
 			return;
 		}
 		root.job = { verb: verb, what: what, started: Date.now(), last: "", pid: 0 };
-		Quickshell.execDetached(["foot", "--app-id=groma-software-run", "--title=Groma Store", "--",
+		Quickshell.execDetached(["kitty", "--app-id=groma-software-run", "--title=Groma Store", "--",
 			"bash", root.runner, root.logPath].concat(argv));
 		tailTimer.start();
 	}

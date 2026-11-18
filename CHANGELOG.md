@@ -29,6 +29,16 @@
   that says more about it, or brings forward the one already open. The
   installer adds both; without them the row stays a reading.
 
+### Changed
+
+- **kitty is the terminal, and Ctrl+C and Ctrl+V copy and paste** — the
+  keybinding and every terminal the shell opens use kitty in place of Foot.
+  With text selected, Ctrl+C copies it; with nothing selected it interrupts,
+  as before. Foot could bind the key to one or the other, not both. The
+  settings are in `system/kitty/groma.conf`, included from your own
+  `kitty.conf`. On a machine already set up, run `install.sh` again; Foot
+  stays installed until you remove it.
+
 ### Fixed
 
 - **Files did not open from the launcher** — its entry ran `files open %f`,

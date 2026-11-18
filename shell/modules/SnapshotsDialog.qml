@@ -175,7 +175,7 @@ Scope {
 
 	function undo(c) {
 		root.open = false;
-		Quickshell.execDetached(["foot", "--app-id=groma-snapshot-undo", "--title=Undo a Change", "--",
+		Quickshell.execDetached(["kitty", "--app-id=groma-snapshot-undo", "--title=Undo a Change", "--",
 			"bash", "-c",
 			'echo "Undoing \\"$1\\": every file it changed goes back to how it was before it ($2)."; '
 			+ 'echo "Packages are left as pacman knows them - run a system update afterwards if this was one."; echo; '

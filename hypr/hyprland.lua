@@ -35,7 +35,7 @@ hl.monitor({
 ---------------------
 
 -- Set programs that you use
-local terminal = "foot"
+local terminal = "kitty"
 local fileManager = "qs -c groma ipc call files toggle"  -- the shell's own Files window
 local menu        = "qs -c groma ipc call launcher toggle"  -- the shell's own launcher
 

@@ -702,7 +702,7 @@ Scope {
 		History.noteCommand(line);
 
 		if (inTerminal) {
-			Quickshell.execDetached(["foot", "-e", "sh", "-c", line + '; exec "$SHELL"']);
+			Quickshell.execDetached(["kitty", "sh", "-c", line + '; exec "$SHELL"']);
 			root.close();
 			return;
 		}

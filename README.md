@@ -180,8 +180,8 @@ installs the matching microcode and Vulkan driver, and fprintd where there is
 a fingerprint reader; it sets up snapshots only
 where the disk has the Btrfs `@` / `@snapshots` layout, and says why when it
 skips; NVIDIA is detected but untested, and the installer says so. It links
-the shell and the compositor config into `~/.config`, registers Groma's own
-applications, starts Hyprland after login on tty1, installs the
+the shell and the compositor config into `~/.config`, sets the terminal up,
+registers Groma's own applications, starts Hyprland after login on tty1, installs the
 lock-before-sleep unit, turns on time sync, builds an AUR helper, and shortens the faillock lockout
 to two minutes. Safe to re-run.
 
@@ -206,6 +206,23 @@ cp ~/groma/hypr/machine.lua.example ~/.config/hypr/machine.lua
 ```
 
 Leave it out entirely and nothing breaks — the config only loads it if present.
+
+### The terminal
+
+SUPER+Q opens [kitty](https://sw.kovidgoyal.net/kitty/), and so does the shell
+wherever it needs a terminal: a Groma Store job, btop from the system card,
+"Open in Terminal" in Files, a launcher command run with Shift+Enter.
+
+Copy and paste are on Ctrl+C and Ctrl+V, as everywhere else. With text
+selected, Ctrl+C copies it and clears the selection; with nothing selected it
+interrupts the running program, so a second press after a copy is an
+interrupt. Ctrl+Shift+C and Ctrl+Shift+V still work. The one thing lost is
+Ctrl+V reaching the program inside: in Vim, block selection is Ctrl+Q.
+
+The settings are in `system/kitty/groma.conf`, which the installer includes
+from `~/.config/kitty/kitty.conf`. Put your own below the `include` line and
+they win; a `kitty.conf` that was there already is left alone, and the
+installer says which line to add.
 
 ### Your own bar widgets
 

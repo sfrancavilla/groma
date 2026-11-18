@@ -102,7 +102,7 @@ BarPopup {
 					Quickshell.execDetached(["hyprctl", "dispatch",
 						`hl.dsp.focus({ window = "address:${win.address}" })`]);
 				else
-					Quickshell.execDetached(["foot", `--app-id=groma-${tool}`, tool]);
+					Quickshell.execDetached(["kitty", `--app-id=groma-${tool}`, tool]);
 			}
 		}
 	}
