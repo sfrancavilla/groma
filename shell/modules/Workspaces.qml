@@ -43,8 +43,12 @@ Row {
 	// does not have yet - on every screen, since it is not on any. The name
 	// is what holds the place: a colour alone is remembered for when the
 	// workspace comes back, but does not keep an empty one in the bar.
+	//
+	// Special workspaces are left out. They are not places in the row but
+	// overlays on whichever place you are in - the scratchpad, the shelf
+	// minimised windows wait on - and Hyprland gives them no number to show.
 	readonly property var slots: {
-		const all = Hyprland.workspaces.values;
+		const all = Hyprland.workspaces.values.filter(ws => !ws.name.startsWith("special:"));
 		const live = all.filter(ws => root.screenName === "" || ws.monitor?.name === root.screenName);
 		const liveIds = all.map(ws => ws.id);
 		const waiting = Object.keys(Settings.workspaceNames ?? {}).map(Number)

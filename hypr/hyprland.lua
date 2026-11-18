@@ -320,6 +320,12 @@ hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "right" }))
 hl.bind(mainMod .. " + up",    hl.dsp.focus({ direction = "up" }))
 hl.bind(mainMod .. " + down",  hl.dsp.focus({ direction = "down" }))
 
+-- Swap the focused window with its neighbour with mainMod + SHIFT + arrow keys
+hl.bind(mainMod .. " + SHIFT + left",  hl.dsp.window.swap({ direction = "left" }))
+hl.bind(mainMod .. " + SHIFT + right", hl.dsp.window.swap({ direction = "right" }))
+hl.bind(mainMod .. " + SHIFT + up",    hl.dsp.window.swap({ direction = "up" }))
+hl.bind(mainMod .. " + SHIFT + down",  hl.dsp.window.swap({ direction = "down" }))
+
 -- Switch workspaces with mainMod + [0-9]
 -- Move active window to a workspace with mainMod + SHIFT + [0-9]
 for i = 1, 10 do
@@ -328,9 +334,31 @@ for i = 1, 10 do
     hl.bind(mainMod .. " + SHIFT + " .. key,     hl.dsp.window.move({ workspace = i }))
 end
 
--- Example special workspace (scratchpad)
-hl.bind(mainMod .. " + S",         hl.dsp.workspace.toggle_special("magic"))
-hl.bind(mainMod .. " + SHIFT + S", hl.dsp.window.move({ workspace = "special:magic" }))
+-- Minimise. A tiling layout has nowhere to put a hidden window, so it goes to
+-- a special workspace kept as a shelf. mainMod + H puts the focused window
+-- there without opening the shelf; mainMod + SHIFT + H opens the shelf, and
+-- mainMod + H on a window there brings it back to the workspace underneath.
+local shelf = "min"
+hl.bind(mainMod .. " + H", function()
+    local window = hl.get_active_window()
+    if not window then return end
+
+    if window.workspace and window.workspace.name == "special:" .. shelf then
+        hl.dispatch(hl.dsp.window.move({ workspace = hl.get_active_workspace().id }))
+        -- Taking the last window off closes the shelf by itself, and toggling
+        -- it then would open it again, empty.
+        if hl.get_active_special_workspace() then
+            hl.dispatch(hl.dsp.workspace.toggle_special(shelf))
+        end
+    else
+        hl.dispatch(hl.dsp.window.move({ workspace = "special:" .. shelf, follow = false }))
+    end
+end)
+hl.bind(mainMod .. " + SHIFT + H", hl.dsp.workspace.toggle_special(shelf))
+
+-- Maximise: the focused window covers its neighbours and the bar stays. The
+-- same key again puts the split back.
+hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ mode = "maximized" }))
 
 -- Scroll through existing workspaces with mainMod + scroll
 hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
